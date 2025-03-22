@@ -1,4 +1,5 @@
 const express = require('express');
+const authMiddleware = require('../auth/auth')
 const {
     registerSchool,
     getAllSchools,
@@ -13,7 +14,7 @@ const router = express.Router();
 router.post('/register', registerSchool);
 router.get('/all', getAllSchools);
 router.get('/login', loginSchool);
-router.patch('/update', updateSchool);
+router.patch('/update',authMiddleware(['SCHOOL']), updateSchool);
 router.get('/fetch-single', getSchoolOwnData);
 
 // Default export

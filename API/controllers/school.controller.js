@@ -121,7 +121,7 @@ module.exports = {
     // Update school details
     updateSchool: async (req, res) => {
         try {
-            const { id } = req.params;
+            const { id } = req.user.role;
             const form = new formidable.IncomingForm();
 
             form.parse(req, async (err, fields, files) => {
