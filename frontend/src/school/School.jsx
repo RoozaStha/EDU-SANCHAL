@@ -18,6 +18,18 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailIcon from '@mui/icons-material/Mail';
+import { Outlet } from 'react-router-dom';
+import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'; //dashboardcustomize icon
+import PeopleIcon from '@mui/icons-material/People';//student
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt';//teacher
+import EventIcon from '@mui/icons-material/Event';//schedule
+import NotificationsIcon from '@mui/icons-material/Notifications';//notification
+import SubjectIcon from '@mui/icons-material/Subject';//subject
+import ExplicitIcon from '@mui/icons-material/Explicit';//examinations
+import RecentActorsIcon from '@mui/icons-material/RecentActors';//attendance
+import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';//class
+
+
 
 const drawerWidth = 240;
 
@@ -111,6 +123,19 @@ export default function School() {
     setOpen(false);
   };
 
+  const navArr = [
+    {link:"/school", component:"Dashboard", icon: DashboardCustomizeIcon},
+    {link:"/school/class", component:"Class", icon: LocalLibraryIcon },
+    {link:"/school/subject", component:"Subject", icon:SubjectIcon},
+    {link:"/school/students", component:"Students", icon:PeopleIcon},
+    {link:"/school/teachers", component:"Teachers", icon:PeopleAltIcon},
+    {link:"/school/schedule", component:"Schedule", icon:EventIcon},
+    {link:"/school/attendance", component:"Attendance", icon: RecentActorsIcon},
+    {link:"/school/examinations", component:"Examinations", icon:ExplicitIcon},
+    {link:"/school/notification", component:"Notice", icon:NotificationsIcon}
+
+  ]
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -143,8 +168,8 @@ export default function School() {
         </DrawerHeader>
         <Divider />
         <List>
-          {['Inbox', 'Starred', 'Send email', 'Drafts'].map((text, index) => (
-            <ListItem key={text} disablePadding sx={{ display: 'block' }}>
+          {navArr.map((navItem, index) => (
+            <ListItem key={index} disablePadding sx={{ display: 'block' }}>
               <ListItemButton
                 sx={[
                   {
@@ -175,10 +200,10 @@ export default function School() {
                         },
                   ]}
                 >
-                  {index % 2 === 0 ? <InboxIcon /> : <MailIcon />}
+                  {<navItem.icon/>}
                 </ListItemIcon>
                 <ListItemText
-                  primary={text}
+                  primary={navItem.component}
                   sx={[
                     open
                       ? {
@@ -194,7 +219,7 @@ export default function School() {
           ))}
         </List>
         <Divider />
-        <List>
+        {/* <List>
           {['All mail', 'Trash', 'Spam'].map((text, index) => (
             <ListItem key={text} disablePadding sx={{ display: 'block' }}>
               <ListItemButton
@@ -244,10 +269,11 @@ export default function School() {
               </ListItemButton>
             </ListItem>
           ))}
-        </List>
+        </List> */}
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <DrawerHeader />
+        <Outlet/>
         
       </Box>
     </Box>
