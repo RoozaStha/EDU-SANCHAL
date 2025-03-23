@@ -14,24 +14,23 @@ import Teachers from './school/components/teachers/Teachers';
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        {/* SCHOOL ROUTE - Main Parent */}
-        <Route path="/" element={<School />}>
-          <Route index element={<Dashboard />} />  {/* Default Child (Dashboard) */}
-          <Route path="school" element={<Dashboard />} />
+  <Routes>
+    {/* SCHOOL ROUTE - Main Parent */}
+    <Route path="/school" element={<School />}>
+      <Route index element={<Dashboard />} />
+      <Route path="dashboard" element={<Dashboard />} />
+      <Route path="attendance" element={<Attendance />} />
+      <Route path="class" element={<Class />} /> {/* Correct path */}
+      <Route path="examinations" element={<Examinations />} />
+      <Route path="notice" element={<Notice />} />
+      <Route path="schedule" element={<Schedule />} />
+      <Route path="students" element={<Students />} />
+      <Route path="subjects" element={<Subjects />} />
+      <Route path="teachers" element={<Teachers />} />
+    </Route>
+  </Routes>
+</BrowserRouter>
 
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="attendance" element={<Attendance />} />
-          <Route path="class" element={<Class />} />
-          <Route path="examinations" element={<Examinations />} />
-          <Route path="notice" element={<Notice />} />
-          <Route path="schedule" element={<Schedule />} />
-          <Route path="students" element={<Students />} />
-          <Route path="subjects" element={<Subjects />} />
-          <Route path="teachers" element={<Teachers />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
   );
 }
 

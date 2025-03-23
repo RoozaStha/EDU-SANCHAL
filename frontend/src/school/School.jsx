@@ -18,7 +18,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailIcon from '@mui/icons-material/Mail';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import DashboardCustomizeIcon from '@mui/icons-material/DashboardCustomize'; //dashboardcustomize icon
 import PeopleIcon from '@mui/icons-material/People';//student
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt';//teacher
@@ -123,18 +123,23 @@ export default function School() {
     setOpen(false);
   };
 
+  
   const navArr = [
-    {link:"/school", component:"Dashboard", icon: DashboardCustomizeIcon},
-    {link:"/school/class", component:"Class", icon: LocalLibraryIcon },
-    {link:"/school/subject", component:"Subject", icon:SubjectIcon},
-    {link:"/school/students", component:"Students", icon:PeopleIcon},
-    {link:"/school/teachers", component:"Teachers", icon:PeopleAltIcon},
-    {link:"/school/schedule", component:"Schedule", icon:EventIcon},
-    {link:"/school/attendance", component:"Attendance", icon: RecentActorsIcon},
-    {link:"/school/examinations", component:"Examinations", icon:ExplicitIcon},
-    {link:"/school/notification", component:"Notice", icon:NotificationsIcon}
-
-  ]
+    { link: "/school", component: "Dashboard", icon: DashboardCustomizeIcon },
+    { link: "/school/class", component: "Class", icon: LocalLibraryIcon }, // Fix
+    { link: "/school/subjects", component: "Subjects", icon: SubjectIcon },
+    { link: "/school/students", component: "Students", icon: PeopleIcon },
+    { link: "/school/teachers", component: "Teachers", icon: PeopleAltIcon },
+    { link: "/school/schedule", component: "Schedule", icon: EventIcon },
+    { link: "/school/attendance", component: "Attendance", icon: RecentActorsIcon },
+    { link: "/school/examinations", component: "Examinations", icon: ExplicitIcon },
+    { link: "/school/notice", component: "Notice", icon: NotificationsIcon }
+  ];
+  
+const navigate = useNavigate()
+  const handleNavigation =(link)=>{
+    navigate(link)
+  }
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -184,6 +189,7 @@ export default function School() {
                         justifyContent: 'center',
                       },
                 ]}
+                onClick={()=>{handleNavigation(navItem.link)}}
               >
                 <ListItemIcon
                   sx={[
