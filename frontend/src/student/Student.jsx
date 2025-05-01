@@ -28,6 +28,8 @@ import SubjectIcon from '@mui/icons-material/Subject';//subject
 import ExplicitIcon from '@mui/icons-material/Explicit';//examinations
 import RecentActorsIcon from '@mui/icons-material/RecentActors';//attendance
 import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';//class
+import HomeIcon from '@mui/icons-material/Home';
+
 
 
 
@@ -126,6 +128,8 @@ export default function Student() {
 
   
   const navArr = [
+    { link: "/", component: "Home", icon: HomeIcon },
+
     { link: "/student", component: "Your Details", icon: DashboardCustomizeIcon },
     { link: "/student/schedule", component: "Schedule", icon: EventIcon },
     { link: "/student/attendance", component: "Attendance", icon: RecentActorsIcon },
