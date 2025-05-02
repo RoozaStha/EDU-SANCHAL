@@ -5,101 +5,231 @@ const path = require("path");
 const fs = require("fs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const mongoose = require('mongoose');
+
 
 module.exports = {
     // Register a new school
     registerSchool: async (req, res) => {
         try {
             const form = new formidable.IncomingForm();
-            
+
             form.parse(req, async (err, fields, files) => {
-                if (err) {
-                    return res.status(400).json({ success: false, message: "Form parsing error", error: err });
-                }
                 try {
-                    // Process the uploaded image
-                    const photo = files.image[0];
-                    let filepath = photo.filepath;
-                    let originFilename = photo.originalFilename.replace(" ", "_");
-                    let newPath = path.join(__dirname, process.env.SCHOOL_IMAGE_PATH, originFilename);
-                    
-                    let photoData = fs.readFileSync(filepath);
-                    fs.writeFileSync(newPath, photoData);
+                    // ========================
+                    // 1. VALIDATE INPUT FIELDS
+                    // ========================
+                    const requiredFields = ['school_name', 'email', 'owner_name', 'password'];
+                    const missingFields = requiredFields.filter(field => !fields[field]);
 
-                    // Hash the password before saving
-                    const salt = bcrypt.genSaltSync(10);
-                    const hashPassword = bcrypt.hashSync(fields.password[0], salt);
+                    if (missingFields.length > 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: `Missing required fields: ${missingFields.join(', ')}`
+                        });
+                    }
 
-                    // Create a new school entry
+                    // ======================
+                    // 2. PROCESS CREDENTIALS
+                    // ======================
+                    const email = fields.email[0].trim().toLowerCase();
+                    const rawPassword = fields.password[0].trim();
+
+                    // Email validation
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        return res.status(400).json({
+                            success: false,
+                            message: "Invalid email format"
+                        });
+                    }
+
+                    // Password strength check
+                    if (rawPassword.length < 8) {
+                        return res.status(400).json({
+                            success: false,
+                            message: "Password must be at least 8 characters"
+                        });
+                    }
+
+                    // =====================
+                    // 3. CHECK EXISTING USER
+                    // =====================
+                    const existingSchool = await School.findOne({
+                        email: { $regex: new RegExp(`^${email}$`, "i") }
+                    });
+
+                    if (existingSchool) {
+                        return res.status(409).json({
+                            success: false,
+                            message: "Email already registered"
+                        });
+                    }
+
+                    // ====================
+                    // 4. HANDLE IMAGE UPLOAD
+                    // ====================
+                    const uploadDir = path.join(process.cwd(), process.env.SCHOOL_IMAGE_PATH);
+
+                    // Create directory if not exists
+                    if (!fs.existsSync(uploadDir)) {
+                        fs.mkdirSync(uploadDir, { recursive: true });
+                    }
+
+                    // Validate image file
+                    if (!files?.school_image) {
+                        return res.status(400).json({
+                            success: false,
+                            message: "School image is required"
+                        });
+                    }
+
+                    const photo = files.school_image[0];
+
+                    // Sanitize filename
+                    const sanitizedFilename = photo.originalFilename
+                        .replace(/ /g, "_")
+                        .replace(/[^a-zA-Z0-9_.-]/g, "")
+                        .toLowerCase();
+
+                    const newPath = path.join(uploadDir, sanitizedFilename);
+
+                    // Save file
+                    fs.writeFileSync(newPath, fs.readFileSync(photo.filepath));
+
+                    // ====================
+                    // 5. CREATE SCHOOL ENTRY
+                    // ====================
+                    const hashedPassword = bcrypt.hashSync(rawPassword, 10);
+
                     const newSchool = new School({
-                        school_name: fields.school_name[0],
-                        email: fields.email[0],
-                        owner_name: fields.owner_name[0],
-                        password: hashPassword,
+                        school_name: fields.school_name[0].trim(),
+                        email: email,
+                        owner_name: fields.owner_name[0].trim(),
+                        password: hashedPassword,
+                        school_image: sanitizedFilename
                     });
 
                     const savedSchool = await newSchool.save();
-                    res.status(200).json({
+
+                    // =================
+                    // 6. SEND RESPONSE
+                    // =================
+                    res.status(201).json({
                         success: true,
-                        data: savedSchool,
-                        message: "School is registered successfully."
+                        data: {
+                            id: savedSchool._id,
+                            email: savedSchool.email,
+                            school_name: savedSchool.school_name
+                        },
+                        message: "School registered successfully"
                     });
+
                 } catch (error) {
-                    res.status(500).json({ success: false, message: "Error saving school", error: error.message });
+                    console.error("Registration error:", error);
+
+                    // Handle duplicate key error
+                    if (error.code === 11000) {
+                        return res.status(400).json({
+                            success: false,
+                            message: "Email already exists in the system"
+                        });
+                    }
+
+                    res.status(500).json({
+                        success: false,
+                        message: "Registration failed",
+                        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+                    });
                 }
             });
         } catch (error) {
-            res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+            res.status(500).json({
+                success: false,
+                message: "Server error",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
         }
     },
 
     // Login a school
     loginSchool: async (req, res) => {
         try {
-            const school = await School.findOne({ email: req.body.email });
-            if (school) {
-                const isAuth = bcrypt.compareSync(req.body.password, school.password);
-                if (isAuth) {
-                    const jwtSecret = process.env.JWT_SECRET;
-                    const token = jwt.sign({
-                        id: school._id,
-                        schoolId: school._id,
-                        owner_name: school.owner_name,
-                        school_name: school.school_name,
-                        image_url: school.school_image,
-                        role: "SCHOOL"
-                    }, jwtSecret);
-                    
-                    res.header("Authorization", token);
-                    res.status(200).json({
-                        success: true,
-                        message: "Login successful.",
-                        user: {
-                            id: school._id,
-                            owner_name: school.owner_name,
-                            school_name: school.school_name,
-                            image_url: school.school_image,
-                            role: "SCHOOL"
-                        }
-                    });
-                } else {
-                    res.status(401).json({ success: false, message: "Password is incorrect" });
-                }
-            } else {
-                res.status(401).json({ success: false, message: "Email is not registered" });
+            // Trim and case-insensitive email search
+            const email = req.body.email.trim().toLowerCase();
+            const school = await School.findOne({
+                email: { $regex: new RegExp(`^${email}$`, "i") }
+            });
+
+            if (!school) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Email is not registered"
+                });
             }
+
+            // Password comparison
+            const isMatch = bcrypt.compareSync(req.body.password.trim(), school.password);
+            if (!isMatch) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Password is incorrect"
+                });
+            }
+
+            // JWT generation
+            const token = jwt.sign(
+                {
+                    id: school._id,
+                    role: "SCHOOL"
+                },
+                process.env.SchoolJWT_SECRET,
+                { expiresIn: '1h' }
+            );
+
+            // Successful response
+            res.status(200).json({
+                success: true,
+                message: "Login successful.",
+                token: token,
+                user: {
+                    id: school._id,
+                    owner_name: school.owner_name,
+                    school_name: school.school_name,
+                    image_url: school.school_image,
+                    role: "SCHOOL"
+                }
+            });
+
         } catch (error) {
-            res.status(500).json({ success: false, message: "Internal Server Error [SCHOOL LOGIN]", error: error.message });
+            console.error("Login error:", error);
+            res.status(500).json({
+                success: false,
+                message: "Internal Server Error [SCHOOL LOGIN]",
+                error: error.message
+            });
         }
     },
 
     // Fetch all schools excluding sensitive data
-     getAllSchools: async (req, res) => {
+    getAllSchools: async (req, res) => {
         try {
-            const schools = await School.find().select(['-password','_id', '-email', '-owner_name', 'createdAt']);
-            res.status(200).json({ success: true, message: "Successfully fetched all schools.", schools });
+            const schools = await School.find()
+                .select('-password -__v -createdAt -updatedAt')
+                .lean();
+
+            res.status(200).json({
+                success: true,
+                message: "Schools fetched successfully",
+                count: schools.length,
+                data: schools
+            });
         } catch (error) {
-            res.status(500).json({ success: false, message: "Internal Server Error [ALL SCHOOLS]" });
+            console.error("Get all schools error:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to fetch schools",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
         }
     },
 
@@ -107,68 +237,135 @@ module.exports = {
     getSchoolOwnData: async (req, res) => {
         try {
             const { id } = req.params;
-            const school = await School.findOne({ _id: id });
-            if (school) {
-                res.status(200).json({ success: true, message: "Successfully fetched school data.", school });
-            } else {
-                res.status(404).json({ success: false, message: "School not found" });
+
+            if (!mongoose.Types.ObjectId.isValid(id)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid school ID format"
+                });
             }
+
+            const school = await School.findById(id)
+                .select('-password -__v')
+                .lean();
+
+            if (!school) {
+                return res.status(404).json({
+                    success: false,
+                    message: "School not found"
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "School data retrieved",
+                data: school
+            });
+
         } catch (error) {
-            res.status(500).json({ success: false, message: "Internal Server Error [OWN SCHOOL DATA]", error: error.message });
+            console.error("Get school error:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to fetch school data",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
         }
     },
 
     // Update school details
     updateSchool: async (req, res) => {
         try {
-            const { id } = req.user.role;
+            const { id } = req.user; // Get ID from authenticated user
             const form = new formidable.IncomingForm();
 
             form.parse(req, async (err, fields, files) => {
-                if (err) {
-                    return res.status(400).json({ success: false, message: "Form parsing error", error: err });
-                }
                 try {
-                    const school = await School.findOne({ _id: id });
+                    // Validate school exists
+                    const school = await School.findById(id);
                     if (!school) {
-                        return res.status(404).json({ success: false, message: "School not found" });
+                        return res.status(404).json({
+                            success: false,
+                            message: "School not found"
+                        });
                     }
 
-                    // Update school image if provided
-                    if (files.image) {
-                        const photo = files.image[0];
-                        let filepath = photo.filepath;
-                        let originFilename = photo.originalFilename.replace(" ", "_");
-                        let newPath = path.join(__dirname, process.env.SCHOOL_IMAGE_PATH, originFilename);
+                    // Handle image update
+                    if (files?.school_image) {
+                        const photo = files.school_image[0];
+                        const uploadDir = path.join(process.cwd(), process.env.SCHOOL_IMAGE_PATH);
 
-                        // Delete old image if it exists
+                        // Create directory if not exists
+                        if (!fs.existsSync(uploadDir)) {
+                            fs.mkdirSync(uploadDir, { recursive: true });
+                        }
+
+                        // Delete old image
                         if (school.school_image) {
-                            let oldImagePath = path.join(__dirname, process.env.SCHOOL_IMAGE_PATH, school.school_image);
-                            if (fs.existsSync(oldImagePath)) {
-                                fs.unlink(oldImagePath, (err) => {
-                                    if (err) console.log("Error deleting old image", err);
-                                });
+                            const oldPath = path.join(uploadDir, school.school_image);
+                            if (fs.existsSync(oldPath)) {
+                                fs.unlinkSync(oldPath);
                             }
                         }
 
-                        let photoData = fs.readFileSync(filepath);
-                        fs.writeFileSync(newPath, photoData);
-                        school.school_image = originFilename;
+                        // Process new image
+                        const sanitizedFilename = photo.originalFilename
+                            .replace(/ /g, "_")
+                            .replace(/[^a-zA-Z0-9_.-]/g, "");
+
+                        const newPath = path.join(uploadDir, sanitizedFilename);
+                        fs.writeFileSync(newPath, fs.readFileSync(photo.filepath));
+                        school.school_image = sanitizedFilename;
                     }
 
-                    // Update other fields
-                    Object.keys(fields).forEach((field) => {
-                        school[field] = fields[field][0];
+                    // Update allowed fields
+                    const allowedUpdates = ['school_name', 'owner_name'];
+                    allowedUpdates.forEach(field => {
+                        if (fields[field]) {
+                            school[field] = fields[field][0].trim();
+                        }
                     });
 
+                    // Handle password update
+                    if (fields.password) {
+                        const newPassword = fields.password[0].trim();
+                        if (newPassword.length < 8) {
+                            return res.status(400).json({
+                                success: false,
+                                message: "Password must be at least 8 characters"
+                            });
+                        }
+                        school.password = bcrypt.hashSync(newPassword, 10);
+                    }
+
                     await school.save();
-                    res.status(200).json({ success: true, message: "School updated successfully", school });
+
+                    // Remove sensitive data before sending response
+                    const schoolData = school.toObject();
+                    delete schoolData.password;
+                    delete schoolData.__v;
+
+                    res.status(200).json({
+                        success: true,
+                        message: "School updated successfully",
+                        data: schoolData
+                    });
+
                 } catch (error) {
-                    res.status(500).json({ success: false, message: "Error updating school", error: error.message });
+                    console.error("Update error:", error);
+                    res.status(500).json({
+                        success: false,
+                        message: "Failed to update school",
+                        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+                    });
                 }
             });
         } catch (error) {
-            res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+            console.error("Update school error:", error);
+            res.status(500).json({
+                success: false,
+                message: "Internal server error",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
         }
     }
-};
+}

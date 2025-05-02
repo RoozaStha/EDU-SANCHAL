@@ -31,7 +31,7 @@ app.get('/test', (req, res) => {
 });
 
 // Use the school router
-app.use('/app/school', schoolRouter);
+app.use('/api/school', schoolRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {

@@ -13,9 +13,9 @@ const router = express.Router();
 // Routes
 router.post('/register', registerSchool);
 router.get('/all', getAllSchools);
-router.get('/login', loginSchool);
+// Change from GET to POST
+router.post('/login', loginSchool); 
 router.patch('/update',authMiddleware(['SCHOOL']), updateSchool);
-router.get('/fetch-single', getSchoolOwnData);
-
+router.get('/fetch-single/:id', getSchoolOwnData); // ✅ Correct
 // Default export
 module.exports = router;
