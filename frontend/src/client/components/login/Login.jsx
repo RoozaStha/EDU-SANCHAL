@@ -18,8 +18,10 @@ import axios from "axios";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
 import { loginSchema } from "../../../yupSchema/loginSchema";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../../context/AuthContext";
 
 export default function Login() {
+  const {login} = React.useContext(AuthContext)
   const theme = useTheme();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = React.useState(false);
@@ -39,7 +41,7 @@ export default function Login() {
         const response = await axios.post(
           'http://localhost:5000/api/school/login', 
           {
-            email: values.email.trim(),
+            email: values.email.trim().toLowerCase(), 
             password: values.password.trim()
           },
           {
@@ -53,9 +55,10 @@ export default function Login() {
         // Store token and user data
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        login(response.data.user)
         
         // Redirect after delay
-        setTimeout(() => navigate('/dashboard'), 1500);
+        setTimeout(() => navigate('/school'), 1500);
         
       } catch (error) {
         const errorMessage = error.response?.data?.message || 
