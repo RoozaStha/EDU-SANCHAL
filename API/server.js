@@ -11,10 +11,18 @@ dotenv.config();
 const app = express();
 
 // 1. Enhanced CORS configuration
+
 app.use(cors({
-  origin: 'http://localhost:5173', // Update with your frontend port
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
+app.use('/images/uploaded/school', express.static(
+  path.join(__dirname, '../frontend/public/images/uploaded/school'),
+  { maxAge: '1d' }
+));
 
 // 2. Middleware ordering fix
 app.use(express.json());
