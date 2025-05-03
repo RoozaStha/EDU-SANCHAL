@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require('mongoose');
 
 
+
 module.exports = {
     // Register a new school
     registerSchool: async (req, res) => {
@@ -68,11 +69,23 @@ module.exports = {
                     // ====================
                     // 4. HANDLE IMAGE UPLOAD
                     // ====================
-                    const uploadDir = path.join(process.cwd(), process.env.SCHOOL_IMAGE_PATH);
+                    // ====================
+                    // 4. HANDLE IMAGE UPLOAD
+                    // ====================
+                    const uploadDir = path.join(
+                        process.cwd(), // Start from project root
+                        process.env.SCHOOL_IMAGE_PATH
+                    );
 
                     // Create directory if not exists
                     if (!fs.existsSync(uploadDir)) {
-                        fs.mkdirSync(uploadDir, { recursive: true });
+                        fs.mkdirSync(uploadDir, {
+                            recursive: true,
+                            mode: 0o755
+                        });
+                        console.log('Directory created at:', uploadDir);
+                    } else {
+                        console.log('Directory already exists at:', uploadDir);
                     }
 
                     // Validate image file
@@ -84,17 +97,20 @@ module.exports = {
                     }
 
                     const photo = files.school_image[0];
+                    console.log('Project root:', process.cwd());
+                    console.log('Resolved upload path:', uploadDir);
 
                     // Sanitize filename
-                    const sanitizedFilename = photo.originalFilename
+                    const sanitizedFilename = `${Date.now()}-${photo.originalFilename
                         .replace(/ /g, "_")
                         .replace(/[^a-zA-Z0-9_.-]/g, "")
-                        .toLowerCase();
+                        .toLowerCase()}`;
 
                     const newPath = path.join(uploadDir, sanitizedFilename);
+                    console.log('Target path:', newPath); // Debug log
 
                     // Save file
-                    fs.writeFileSync(newPath, fs.readFileSync(photo.filepath));
+                    fs.renameSync(photo.filepath, newPath); // Use renameSync instead of writeFileSync
 
                     // ====================
                     // 5. CREATE SCHOOL ENTRY
