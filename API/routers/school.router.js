@@ -16,6 +16,6 @@ router.get('/all', getAllSchools);
 // Change from GET to POST
 router.post('/login', loginSchool); 
 router.patch('/update',authMiddleware(['SCHOOL']), updateSchool);
-router.get('/fetch-single/:id', getSchoolOwnData); // ✅ Correct
-// Default export
+// Change the route to use authenticated user ID
+router.get('/fetch-single', authMiddleware(['SCHOOL']), getSchoolOwnData);// Default export
 module.exports = router;

@@ -168,63 +168,77 @@ module.exports = {
     },
 
     // Login a school
-    loginSchool: async (req, res) => {
-        try {
-            // Trim and case-insensitive email search
-            const email = req.body.email.trim().toLowerCase();
-            const school = await School.findOne({
-                email: { $regex: new RegExp(`^${email}$`, "i") }
-            });
-
-            if (!school) {
-                return res.status(401).json({
-                    success: false,
-                    message: "Email is not registered"
-                });
-            }
-
-            // Password comparison
-            const isMatch = bcrypt.compareSync(req.body.password.trim(), school.password);
-            if (!isMatch) {
-                return res.status(401).json({
-                    success: false,
-                    message: "Password is incorrect"
-                });
-            }
-
-            // JWT generation
-            const token = jwt.sign(
-                {
-                    id: school._id,
-                    role: "SCHOOL"
-                },
-                process.env.SchoolJWT_SECRET,
-                { expiresIn: '1h' }
-            );
-
-            // Successful response
-            res.status(200).json({
-                success: true,
-                message: "Login successful.",
-                token: token,
-                user: {
-                    id: school._id,
-                    owner_name: school.owner_name,
-                    school_name: school.school_name,
-                    image_url: school.school_image,
-                    role: "SCHOOL"
-                }
-            });
-
-        } catch (error) {
-            console.error("Login error:", error);
-            res.status(500).json({
-                success: false,
-                message: "Internal Server Error [SCHOOL LOGIN]",
-                error: error.message
-            });
+   // In your school.controller.js
+loginSchool: async (req, res) => {
+    try {
+      const { email, password } = req.body;
+  
+      // Input validation
+      if (!email || !password) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Email and password are required" 
+        });
+      }
+  
+      const school = await School.findOne({ 
+        email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
+      });
+  
+      if (!school) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid credentials" 
+        });
+      }
+  
+      const isMatch = await bcrypt.compare(password.trim(), school.password);
+      if (!isMatch) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid credentials" 
+        });
+      }
+  
+      // Create token payload
+      const payload = {
+        id: school._id.toString(),
+        role: "SCHOOL",
+        email: school.email,
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour
+      };
+  
+      // Generate token
+      const token = jwt.sign(
+        payload,
+        process.env.SchoolJWT_SECRET,
+        { algorithm: 'HS256' }
+      );
+       // Verify the token was created correctly
+    const decoded = jwt.verify(token, process.env.SchoolJWT_SECRET);
+  
+      // Send response
+      res.status(200).json({
+        success: true,
+        message: "Login successful",
+        token: token,
+        user: {
+          id: school._id,
+          email: school.email,
+          role: "SCHOOL"
         }
-    },
+      });
+  
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Login failed",
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
 
     // Fetch all schools excluding sensitive data
     getAllSchools: async (req, res) => {
@@ -252,39 +266,45 @@ module.exports = {
     // Fetch data of a single school by ID
     getSchoolOwnData: async (req, res) => {
         try {
-            const { id } = req.params;
-
-            if (!mongoose.Types.ObjectId.isValid(id)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid school ID format"
-                });
-            }
-
-            const school = await School.findById(id)
-                .select('-password -__v')
-                .lean();
-
-            if (!school) {
-                return res.status(404).json({
-                    success: false,
-                    message: "School not found"
-                });
-            }
-
-            res.status(200).json({
-                success: true,
-                message: "School data retrieved",
-                data: school
+          if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+            return res.status(400).json({
+              success: false,
+              message: "Invalid school ID format"
             });
-
+          }
+    
+          const school = await School.findById(req.user.id)
+            .select('-password')
+            .lean();
+    
+          if (!school) {
+            return res.status(404).json({
+              success: false,
+              message: "School not found"
+            });
+          }
+    
+          res.status(200).json({
+            success: true,
+            data: school
+          });
+    
         } catch (error) {
-            console.error("Get school error:", error);
-            res.status(500).json({
-                success: false,
-                message: "Failed to fetch school data",
-                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+          console.error("Get school error:", error);
+          
+          // Handle CastError (invalid ID format)
+          if (error.name === 'CastError') {
+            return res.status(400).json({
+              success: false,
+              message: "Invalid school ID format"
             });
+          }
+          
+          res.status(500).json({
+            success: false,
+            message: "Failed to fetch school data",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+          });
         }
     },
 

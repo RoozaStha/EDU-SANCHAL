@@ -55,8 +55,7 @@ export default function Login() {
         // Store token and user data
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
-        login(response.data.user)
-        
+        login(response.data.user, response.data.token);        
         // Redirect after delay
         setTimeout(() => navigate('/school'), 1500);
         
