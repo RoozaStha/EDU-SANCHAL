@@ -1,32 +1,37 @@
 const mongoose = require('mongoose');
 
-// Define the schema for Subject
-const subjectSchema = new mongoose.Schema(
-  {
-    school: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'School', // Reference to the 'School' model
-      required: true,
-    },
-    subject_name: {
-      type: String,
-      required: true,
-      trim: true, // Removes extra spaces
-      minlength: 3, // Ensures at least 3 characters
-    },
-    subject_codename: {
-      type: String,
-      required: true,
-      trim: true,
-      uppercase: true, // Converts to uppercase automatically
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now, // Uses the current timestamp
-    },
+const subjectSchema = new mongoose.Schema({
+  school: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'School',
+    required: [true, 'School reference is required']
   },
-  { timestamps: true } // Enables 'createdAt' and 'updatedAt'
-);
+  subject_name: {
+    type: String,
+    required: [true, 'Subject name is required'],
+    trim: true,
+    minlength: [3, 'Subject name must be at least 3 characters'],
+    maxlength: [100, 'Subject name cannot exceed 100 characters']
+  },
+  subject_codename: {
+    type: String,
+    required: [true, 'Subject codename is required'],
+    trim: true,
+    uppercase: true,
+    validate: {
+      validator: function(v) {
+        return /^[A-Z0-9]{3,10}$/.test(v);
+      },
+      message: 'Codename must be 3-10 alphanumeric characters'
+    }
+  }
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-// Export the model
+// Create compound index
+subjectSchema.index({ school: 1, subject_codename: 1 }, { unique: true });
+
 module.exports = mongoose.model('Subject', subjectSchema);

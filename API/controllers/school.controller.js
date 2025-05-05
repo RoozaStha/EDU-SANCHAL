@@ -168,77 +168,68 @@ module.exports = {
     },
 
     // Login a school
-   // In your school.controller.js
-loginSchool: async (req, res) => {
-    try {
-      const { email, password } = req.body;
-  
-      // Input validation
-      if (!email || !password) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Email and password are required" 
-        });
-      }
-  
-      const school = await School.findOne({ 
-        email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
-      });
-  
-      if (!school) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid credentials" 
-        });
-      }
-  
-      const isMatch = await bcrypt.compare(password.trim(), school.password);
-      if (!isMatch) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid credentials" 
-        });
-      }
-  
-      // Create token payload
-      const payload = {
-        id: school._id.toString(),
-        role: "SCHOOL",
-        email: school.email,
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + (60 * 60) // 1 hour
-      };
-  
-      // Generate token
-      const token = jwt.sign(
-        payload,
-        process.env.SchoolJWT_SECRET,
-        { algorithm: 'HS256' }
-      );
-       // Verify the token was created correctly
-    const decoded = jwt.verify(token, process.env.SchoolJWT_SECRET);
-  
-      // Send response
-      res.status(200).json({
-        success: true,
-        message: "Login successful",
-        token: token,
-        user: {
-          id: school._id,
-          email: school.email,
-          role: "SCHOOL"
+    loginSchool: async (req, res) => {
+        try {
+          const { email, password } = req.body;
+      
+          // Input validation
+          if (!email || !password) {
+            return res.status(400).json({ 
+              success: false, 
+              message: "Email and password are required" 
+            });
+          }
+      
+          const school = await School.findOne({ 
+            email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
+          });
+      
+          if (!school) {
+            return res.status(401).json({ 
+              success: false, 
+              message: "Invalid credentials" 
+            });
+          }
+      
+          const isMatch = await bcrypt.compare(password.trim(), school.password);
+          if (!isMatch) {
+            return res.status(401).json({ 
+              success: false, 
+              message: "Invalid credentials" 
+            });
+          }
+      
+          // Create token payload with schoolId
+          const payload = {
+            id: school._id.toString(),
+            schoolId: school._id.toString(), // Critical for subject creation
+            role: "SCHOOL",
+            email: school.email
+          };
+      
+          // Generate token
+          const token = jwt.sign(
+            payload,
+            process.env.SchoolJWT_SECRET,
+            { expiresIn: '7d', algorithm: 'HS256' }
+          );
+      
+          res.status(200).json({
+            success: true,
+            message: "Login successful",
+            token: token,
+            user: payload // Send back the same payload for verification
+          });
+      
+        } catch (error) {
+          console.error("Login error:", error);
+          res.status(500).json({
+            success: false,
+            message: "Login failed",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+          });
         }
-      });
-  
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Login failed",
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  },
+      },
 
     // Fetch all schools excluding sensitive data
     getAllSchools: async (req, res) => {

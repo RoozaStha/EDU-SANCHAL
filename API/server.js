@@ -6,6 +6,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const schoolRouter = require('./routers/school.router.js');
 const classRouter = require("./routers/class.router.js");
+const subjectRouter = require("./routers/subject.router.js")
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.get('/health', (req, res) => {
 // 6. API routes
 app.use('/api/school', schoolRouter);
 app.use("/api/class",classRouter);
+app.use("/api/subjects", subjectRouter); 
 
 // 7. Enhanced error handling
 app.use((err, req, res, next) => {

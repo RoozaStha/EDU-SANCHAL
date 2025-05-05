@@ -1,68 +1,44 @@
-const jwt = require("jsonwebtoken");
-require("dotenv").config(); // This should be at the top
+const jwt = require('jsonwebtoken');
 
-
-const authMiddleware = (roles = []) => {
+module.exports = (roles = []) => {
   return async (req, res, next) => {
     try {
-      const authHeader = req.header("Authorization");
+      const token = req.header('Authorization')?.replace('Bearer ', '');
       
-      if (!authHeader) {
+      if (!token) {
         return res.status(401).json({ 
           success: false, 
-          message: "Authorization header missing" 
-        });
-      }
-
-      const tokenParts = authHeader.split(' ');
-      
-      // Check for "Bearer" format
-      if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid authorization format. Use 'Bearer <token>'" 
-        });
-      }
-
-      const token = tokenParts[1];
-      
-      // Basic token validation
-      if (!token || token.split('.').length !== 3) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Malformed token" 
+          message: "Authorization token required" 
         });
       }
 
       const decoded = jwt.verify(token, process.env.SchoolJWT_SECRET);
-
-      req.user = decoded;
-
-      // Role-based access control
-      if (roles.length > 0 && !roles.includes(req.user.role)) {
+      
+      // Verify role access
+      if (roles.length > 0 && !roles.includes(decoded.role)) {
         return res.status(403).json({ 
           success: false, 
-          message: "Access Denied." 
+          message: "Insufficient permissions" 
         });
       }
+
+      // Attach full user data to request
+      req.user = {
+        id: decoded.id,
+        schoolId: decoded.schoolId, // Ensure this exists
+        role: decoded.role,
+        email: decoded.email
+      };
 
       next();
     } catch (error) {
       console.error("Authentication error:", error);
-      
-      if (error instanceof jwt.JsonWebTokenError) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid token" 
-        });
-      }
-      
-      res.status(500).json({ 
+      res.status(401).json({ 
         success: false, 
-        message: "Authentication failed" 
+        message: error instanceof jwt.TokenExpiredError 
+          ? "Session expired. Please login again" 
+          : "Invalid authentication token"
       });
     }
   };
 };
-
-module.exports = authMiddleware;
