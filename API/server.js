@@ -8,6 +8,8 @@ const schoolRouter = require('./routers/school.router.js');
 const classRouter = require("./routers/class.router.js");
 const subjectRouter = require("./routers/subject.router.js")
 const studentRouter = require('./routers/student.router.js');
+const teacherRouter = require('./routers/teacher.router.js');
+
 
 
 dotenv.config();
@@ -52,6 +54,7 @@ app.use('/api/school', schoolRouter);
 app.use("/api/class",classRouter);
 app.use("/api/subjects", subjectRouter); 
 app.use('/api/students', studentRouter);
+app.use("/api/teachers",teacherRouter)
 
 
 // 7. Enhanced error handling
