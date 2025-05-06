@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 module.exports = (roles = []) => {
   return async (req, res, next) => {
     try {
+      // Get token from header
       const token = req.header('Authorization')?.replace('Bearer ', '');
       
       if (!token) {
@@ -12,6 +13,7 @@ module.exports = (roles = []) => {
         });
       }
 
+      // Verify token
       const decoded = jwt.verify(token, process.env.SchoolJWT_SECRET);
       
       // Verify role access
@@ -25,19 +27,27 @@ module.exports = (roles = []) => {
       // Attach full user data to request
       req.user = {
         id: decoded.id,
-        schoolId: decoded.schoolId, // Ensure this exists
+        schoolId: decoded.schoolId,
         role: decoded.role,
-        email: decoded.email
+        email: decoded.email,
+        name: decoded.name,
+        image_url: decoded.image_url
       };
 
       next();
     } catch (error) {
       console.error("Authentication error:", error);
+      let message = "Invalid authentication token";
+      if (error instanceof jwt.TokenExpiredError) {
+        message = "Session expired. Please login again";
+      } else if (error instanceof jwt.JsonWebTokenError) {
+        message = "Invalid token";
+      }
+      
       res.status(401).json({ 
         success: false, 
-        message: error instanceof jwt.TokenExpiredError 
-          ? "Session expired. Please login again" 
-          : "Invalid authentication token"
+        message: message,
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   };
