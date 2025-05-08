@@ -7,7 +7,8 @@ import {
   Select, 
   MenuItem, 
   Button,
-  FormHelperText 
+  FormHelperText,
+  Typography
 } from "@mui/material";
 import { periodSchema } from "../../../yupSchema/periodSchema";
 import { baseApi } from "../../../environment.js";
@@ -17,8 +18,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
 
-const ScheduleEvent = () => {
-  // Static periods data
+const ScheduleEvent = ({ selectedClass }) => {
   const periods = [
     { id: 1, label: 'Period 1 (10:00 AM - 11:00 AM)', startTime: '10:00', endTime: '11:00' },
     { id: 2, label: 'Period 2 (11:00 AM - 12:00 PM)', startTime: '11:00', endTime: '12:00' },
@@ -28,67 +28,158 @@ const ScheduleEvent = () => {
     { id: 6, label: 'Period 5 (3:00 PM - 4:00 PM)', startTime: '15:00', endTime: '16:00' }
   ];
 
-  // State for dynamic data
   const [teachers, setTeachers] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
-  // Formik initialization
   const formik = useFormik({
     initialValues: {
       teacher: "",
       subject: "",
       period: "",
-      date: null
+      date: dayjs(),
+      class: selectedClass?._id || ""
     },
     validationSchema: periodSchema,
-    onSubmit: async (values) => {
+    onSubmit: async (values, { resetForm }) => {
       setIsSubmitting(true);
+      setError(null);
+      setSuccess(null);
+      
       try {
+        const [startTimeStr, endTimeStr] = values.period.split(',');
+        const selectedDate = dayjs(values.date).toDate();
+
+        // Create Date objects with proper time
+        const startTimeDate = new Date(selectedDate);
+        const [startHours, startMinutes] = startTimeStr.split(':').map(Number);
+        startTimeDate.setHours(startHours, startMinutes, 0, 0);
+
+        const endTimeDate = new Date(selectedDate);
+        const [endHours, endMinutes] = endTimeStr.split(':').map(Number);
+        endTimeDate.setHours(endHours, endMinutes, 0, 0);
+
+        console.log("Schedule Details:", {
+          teacher: values.teacher,
+          subject: values.subject,
+          class: values.class,
+          date: dayjs(values.date).format('YYYY-MM-DD'),
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          startTimeDate,
+          endTimeDate,
+          durationMinutes: (endTimeDate - startTimeDate) / (1000 * 60)
+        });
+
         const formattedValues = {
-          ...values,
-          date: values.date ? dayjs(values.date).format('YYYY-MM-DD') : null
+          teacher: values.teacher,
+          subject: values.subject,
+          class: values.class,
+          date: dayjs(values.date).format('YYYY-MM-DD'),
+          startTime: startTimeStr,
+          endTime: endTimeStr,
+          startTimeISO: startTimeDate.toISOString(),
+          endTimeISO: endTimeDate.toISOString()
         };
-        console.log("Submitting schedule:", formattedValues);
-        // Add your API call here
-        // await axios.post(`${baseApi}/schedule`, formattedValues);
-        alert('Schedule created successfully!');
-        formik.resetForm();
+
+        try {
+          const response = await axios.post(
+            `${baseApi}/schedule/create`, 
+            formattedValues,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          );
+          console.log("API Response:", response.data);
+          setSuccess('Schedule created successfully!');
+        } catch (apiError) {
+          console.error("API Error:", apiError.response?.data || apiError.message);
+          setError('Failed to create schedule. Please try again.');
+        }
+
+        resetForm({
+          values: {
+            teacher: "",
+            subject: "",
+            period: "",
+            date: dayjs(),
+            class: selectedClass?._id || ""
+          }
+        });
       } catch (error) {
-        console.error("Error creating schedule:", error);
-        alert('Failed to create schedule');
+        console.error("Form Error:", error);
+        setError(error.message || 'Failed to process form');
       } finally {
         setIsSubmitting(false);
       }
     }
   });
 
-  // Data fetching
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [teacherResponse, subjectResponse] = await Promise.all([
-          axios.get(`${baseApi}/teachers/all`),
-          axios.get(`${baseApi}/subjects/all`)
+          axios.get(`${baseApi}/teachers/all`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+          }),
+          axios.get(`${baseApi}/subjects`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+          })
         ]);
-        setTeachers(teacherResponse.data.teachers || []);
-        setSubjects(subjectResponse.data.data || []);
+        
+        setTeachers(teacherResponse.data?.data || []);
+        setSubjects(subjectResponse.data?.data || []);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Data Fetch Error:", error);
+        setError('Failed to load required data. Please refresh the page.');
       }
     };
 
     fetchData();
-  }, []); // Empty dependency array ensures this runs only once
+  }, []);
 
-  // Date change handler
+  useEffect(() => {
+    if (selectedClass?._id) {
+      formik.setFieldValue('class', selectedClass._id);
+    }
+  }, [selectedClass]);
+
   const handleDateChange = (date) => {
     formik.setFieldValue('date', date);
   };
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
-      <h1>Schedule Event</h1>
+      <Typography variant="h4" gutterBottom>
+        Schedule Event
+      </Typography>
+      
+      {selectedClass && (
+        <Typography variant="subtitle1" gutterBottom>
+          For Class: {selectedClass.className}
+        </Typography>
+      )}
+      
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+      
+      {success && (
+        <Typography color="success.main" sx={{ mb: 2 }}>
+          {success}
+        </Typography>
+      )}
+
       <Box
         component="form"
         sx={{
@@ -102,7 +193,6 @@ const ScheduleEvent = () => {
         }}
         onSubmit={formik.handleSubmit}
       >
-        {/* Teacher Select */}
         <FormControl fullWidth error={formik.touched.teacher && Boolean(formik.errors.teacher)}>
           <InputLabel id="teacher-label">Teacher</InputLabel>
           <Select
@@ -115,16 +205,15 @@ const ScheduleEvent = () => {
           >
             {teachers.map((teacher) => (
               <MenuItem key={teacher._id} value={teacher._id}>
-                {teacher.name}
+                {teacher.name || `Teacher ${teacher._id}`}
               </MenuItem>
             ))}
           </Select>
-          <FormHelperText error>
+          <FormHelperText>
             {formik.touched.teacher && formik.errors.teacher}
           </FormHelperText>
         </FormControl>
 
-        {/* Subject Select */}
         <FormControl fullWidth error={formik.touched.subject && Boolean(formik.errors.subject)}>
           <InputLabel id="subject-label">Subject</InputLabel>
           <Select
@@ -137,16 +226,15 @@ const ScheduleEvent = () => {
           >
             {subjects.map((subject) => (
               <MenuItem key={subject._id} value={subject._id}>
-                {subject.subject_name}
+                {subject.subject_name || `Subject ${subject._id}`}
               </MenuItem>
             ))}
           </Select>
-          <FormHelperText error>
+          <FormHelperText>
             {formik.touched.subject && formik.errors.subject}
           </FormHelperText>
         </FormControl>
 
-        {/* Period Select */}
         <FormControl fullWidth error={formik.touched.period && Boolean(formik.errors.period)}>
           <InputLabel id="period-label">Period</InputLabel>
           <Select
@@ -163,17 +251,17 @@ const ScheduleEvent = () => {
               </MenuItem>
             ))}
           </Select>
-          <FormHelperText error>
+          <FormHelperText>
             {formik.touched.period && formik.errors.period}
           </FormHelperText>
         </FormControl>
 
-        {/* Date Picker */}
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
             label="Date"
             value={formik.values.date}
             onChange={handleDateChange}
+            minDate={dayjs()}
             slotProps={{
               textField: {
                 fullWidth: true,
@@ -184,16 +272,21 @@ const ScheduleEvent = () => {
           />
         </LocalizationProvider>
 
-        {/* Submit Button */}
         <Button
           type="submit"
           variant="contained"
           size="large"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !selectedClass}
           sx={{ mt: 2 }}
         >
           {isSubmitting ? 'Scheduling...' : 'Schedule Event'}
         </Button>
+
+        {!selectedClass && (
+          <Typography color="error" variant="body2">
+            Please select a class first
+          </Typography>
+        )}
       </Box>
     </Box>
   );
