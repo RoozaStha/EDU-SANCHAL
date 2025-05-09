@@ -1,62 +1,190 @@
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ScheduleEvent from "./ScheduleEvent";
-import { Button, FormControl, InputLabel, Select, MenuItem, Typography } from "@mui/material";
-import { useEffect } from "react";
-import { baseApi } from "../../../environment";
+import { 
+  Button, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem, 
+  Typography,
+  Box,
+  Alert,
+  Snackbar,
+  CircularProgress
+} from "@mui/material";
 import axios from "axios";
 
 const localizer = momentLocalizer(moment);
 
 export default function Schedule() {
   const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedClass, setSelectedClass] = useState("");
   const [newPeriod, setNewPeriod] = useState(false);
   const [currentView, setCurrentView] = useState("week");
+  const [events, setEvents] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const myEventsList = [
-    {
-      id: 1,
-      title: "Subject: History, Teacher: Hamid",
-      start: new Date(new Date().setHours(11, 30, 0)),
-      end: new Date(new Date().setHours(14, 30, 0)),
-    },
-    {
-      id: 2,
-      title: "Subject: English, Teacher: Hamid",
-      start: new Date(new Date().setHours(15, 30, 0)),
-      end: new Date(new Date().setHours(18, 30, 0)),
-    },
-  ];
+  const refreshSchedules = useCallback(async () => {
+    if (!selectedClass) return;
+    
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("Authentication token missing. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      console.log(`Fetching schedules for class: ${selectedClass}`);
+      
+      const response = await axios.get(
+        `http://localhost:5000/api/schedule/fetch-with-class/${selectedClass}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      console.log("Schedule data received:", response.data);
+
+      if (!response.data.success) {
+        setError(response.data.message || "Failed to load schedules");
+        setLoading(false);
+        return;
+      }
+
+      const formattedEvents = response.data.data.map((schedule) => {
+        // Ensure proper date objects for calendar
+        const start = new Date(schedule.startTime);
+        const end = new Date(schedule.endTime);
+        
+        return {
+          id: schedule._id,
+          title: `${schedule.subject?.subject_name || 'Unknown Subject'} - ${schedule.teacher?.name || 'Unknown Teacher'}`,
+          start,
+          end,
+          resource: schedule
+        };
+      });
+
+      console.log("Formatted events:", formattedEvents);
+      setEvents(formattedEvents);
+    } catch (error) {
+      console.error("Error fetching schedules:", error);
+      
+      let errorMessage = "Failed to load schedule data.";
+      if (error.response) {
+        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        errorMessage = "No response from server. Please check your connection.";
+      } else {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedClass]);
 
   useEffect(() => {
-    axios.get(`${baseApi}/class/all`)
-      .then(resp => {
-        const fetchedClasses = resp.data.data;
+    const fetchClasses = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setError("Authentication token missing. Please log in again.");
+          return;
+        }
+
+        const response = await axios.get(
+          `http://localhost:5000/api/class/all`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        
+        console.log("Classes data:", response.data);
+        
+        if (!response.data.success) {
+          setError(response.data.message || "Failed to load classes");
+          return;
+        }
+        
+        const fetchedClasses = response.data.data;
         setClasses(fetchedClasses);
-        // Set default to first class if available
+        
         if (fetchedClasses.length > 0) {
           setSelectedClass(fetchedClasses[0]._id);
         }
-      })
-      .catch(e => {
-        console.log("Fetch class Err", e);
-      });
+      } catch (error) {
+        console.error("Error fetching classes:", error);
+        
+        let errorMessage = "Failed to load classes.";
+        if (error.response) {
+          errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+        } else if (error.request) {
+          errorMessage = "No response from server. Please check your connection.";
+        } else {
+          errorMessage = error.message;
+        }
+        
+        setError(errorMessage);
+      }
+    };
+
+    fetchClasses();
   }, []);
 
-  return (
-    <div style={{ height: "80vh", padding: "20px" }}>
-      <h1>Schedule</h1>
+  useEffect(() => {
+    if (selectedClass) {
+      refreshSchedules();
+    }
+  }, [selectedClass, refreshSchedules]);
 
-      <FormControl fullWidth>
-        <Typography variant='h5'>Class</Typography>
+  const handleCloseError = () => {
+    setError(null);
+  };
+
+  const eventStyleGetter = (event) => {
+    return {
+      style: {
+        backgroundColor: '#3174ad',
+        borderRadius: '5px',
+        opacity: 0.8,
+        color: 'white',
+        border: '0px',
+        display: 'block'
+      }
+    };
+  };
+
+  const handleEventSelect = (event) => {
+    console.log("Selected event:", event);
+    // You can add functionality to edit or view event details here
+  };
+
+  return (
+    <Box sx={{ height: "80vh", padding: "20px" }}>
+      <Typography variant="h4" gutterBottom>
+        Schedule
+      </Typography>
+
+      <FormControl fullWidth sx={{ mb: 2 }}>
         <InputLabel id="class-label">Class</InputLabel>
         <Select
-          name="class"
-          value={selectedClass}
+          labelId="class-label"
           label="Class"
+          value={selectedClass}
           onChange={(e) => setSelectedClass(e.target.value)}
         >
           {classes.length === 0 ? (
@@ -73,18 +201,48 @@ export default function Schedule() {
         </Select>
       </FormControl>
 
-      <Button onClick={() => setNewPeriod(true)}>Add New Period</Button>
-      {newPeriod && <ScheduleEvent selectedClass={selectedClass} />}
-      
+      <Button
+        onClick={() => setNewPeriod(true)}
+        variant="contained"
+        sx={{ mb: 2 }}
+        disabled={!selectedClass}
+      >
+        Add New Period
+      </Button>
+
+      {error && (
+        <Snackbar open={!!error} autoHideDuration={6000} onClose={handleCloseError}>
+          <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+            {error}
+          </Alert>
+        </Snackbar>
+      )}
+
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {newPeriod && (
+        <ScheduleEvent
+          selectedClass={selectedClass}
+          refreshSchedules={refreshSchedules}
+          onClose={() => {
+            setNewPeriod(false);
+          }}
+        />
+      )}
+
       <Calendar
         localizer={localizer}
-        events={myEventsList}
+        events={events}
         view={currentView}
         onView={setCurrentView}
         views={{
           week: true,
           day: true,
-          agenda: true
+          agenda: true,
         }}
         defaultView="week"
         step={30}
@@ -94,9 +252,16 @@ export default function Schedule() {
         startAccessor="start"
         endAccessor="end"
         defaultDate={new Date()}
+        onSelectEvent={handleEventSelect}
         showMultiDayTimes
-        style={{ height: "100%" }}
+        eventPropGetter={eventStyleGetter}
+        style={{
+          height: "calc(100% - 120px)",
+          backgroundColor: "white",
+          borderRadius: "8px",
+          padding: "16px",
+        }}
       />
-    </div>
+    </Box>
   );
 }

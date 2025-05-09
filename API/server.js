@@ -9,6 +9,7 @@ const classRouter = require("./routers/class.router.js");
 const subjectRouter = require("./routers/subject.router.js")
 const studentRouter = require('./routers/student.router.js');
 const teacherRouter = require('./routers/teacher.router.js');
+const scheduleRouter = require('./routers/schedule.router.js')
 
 
 
@@ -55,6 +56,7 @@ app.use("/api/class",classRouter);
 app.use("/api/subjects", subjectRouter); 
 app.use('/api/students', studentRouter);
 app.use("/api/teachers",teacherRouter)
+app.use("/api/schedule",scheduleRouter)
 
 
 // 7. Enhanced error handling

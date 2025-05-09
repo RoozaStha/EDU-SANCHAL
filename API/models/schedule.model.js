@@ -1,25 +1,24 @@
 const mongoose = require('mongoose');
 
-// Define the schema for Schedule
 const scheduleSchema = new mongoose.Schema({
   school: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'School', // Reference to the 'School' model
+    ref: 'School',
     required: true,
   },
   teacher: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Teacher', // Reference to the 'Teacher' model
+    ref: 'Teacher',
     required: true,
   },
   subject: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Subject', // Reference to the 'Subject' model
+    ref: 'Subject',
     required: true,
   },
   class: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Class', // Reference to the 'Class' model
+    ref: 'Class',
     required: true,
   },
   startTime: {
@@ -32,9 +31,12 @@ const scheduleSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now, // Uses the current timestamp
+    default: Date.now,
   },
 });
 
-// Export the model
+// Index for faster querying
+scheduleSchema.index({ class: 1, startTime: 1, endTime: 1 });
+scheduleSchema.index({ school: 1 }); // Add index for school queries
+
 module.exports = mongoose.model('Schedule', scheduleSchema);
