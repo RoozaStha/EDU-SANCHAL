@@ -1,16 +1,23 @@
 const Examination = require("../models/examination.model");
 
 module.exports = {
-
     newExamination: async (req, res) => {
         try {
             const schoolId = req.user.schoolId;
-            const { date, subjectId, examType, classId } = req.body;
+            const { date, subject, examType, classId } = req.body;
+
+            // Validate required fields
+            if (!date || !subject || !examType || !classId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "All fields are required: date, subject, examType, classId"
+                });
+            }
 
             const newExamination = new Examination({
                 school: schoolId,
                 examDate: date,
-                subject: subjectId,
+                subject: subject,
                 examType: examType,
                 class: classId,
             });
@@ -57,11 +64,17 @@ module.exports = {
         try {
             const schoolId = req.user.schoolId;
             const examinationId = req.params.id;
-            const { date, subjectId, examType } = req.body;
+            const { date, subject, examType } = req.body;
 
             const updated = await Examination.findOneAndUpdate(
                 { _id: examinationId, school: schoolId },
-                { $set: { examDate: date, subject: subjectId, examType: examType } },
+                { 
+                    $set: { 
+                        examDate: date, 
+                        subject: subject, 
+                        examType: examType 
+                    } 
+                },
                 { new: true }
             );
 
@@ -69,10 +82,17 @@ module.exports = {
                 return res.status(404).json({ success: false, message: "Examination not found." });
             }
 
-            return res.status(200).json({ success: true, message: "Examination is updated successfully.", data: updated });
+            return res.status(200).json({ 
+                success: true, 
+                message: "Examination is updated successfully.", 
+                data: updated 
+            });
         } catch (error) {
             console.error("Update Error:", error);
-            return res.status(500).json({ success: false, message: "Error in Updating Examination." });
+            return res.status(500).json({ 
+                success: false, 
+                message: "Error in Updating Examination." 
+            });
         }
     },
 
@@ -81,16 +101,28 @@ module.exports = {
             const schoolId = req.user.schoolId;
             const examinationId = req.params.id;
 
-            const deleted = await Examination.findOneAndDelete({ _id: examinationId, school: schoolId });
+            const deleted = await Examination.findOneAndDelete({ 
+                _id: examinationId, 
+                school: schoolId 
+            });
 
             if (!deleted) {
-                return res.status(404).json({ success: false, message: "Examination not found." });
+                return res.status(404).json({ 
+                    success: false, 
+                    message: "Examination not found." 
+                });
             }
 
-            return res.status(200).json({ success: true, message: "Examination is deleted successfully." });
+            return res.status(200).json({ 
+                success: true, 
+                message: "Examination is deleted successfully." 
+            });
         } catch (error) {
             console.error("Delete Error:", error);
-            return res.status(500).json({ success: false, message: "Error in Deleting Examination." });
+            return res.status(500).json({ 
+                success: false, 
+                message: "Error in Deleting Examination." 
+            });
         }
     }
 };
