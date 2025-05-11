@@ -7,7 +7,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 
 // Material UI components
 import {
@@ -40,7 +40,7 @@ import {
   DialogTitle,
   Avatar,
   Tooltip,
-  useTheme
+  useTheme,
 } from "@mui/material";
 
 // Icons
@@ -55,34 +55,78 @@ import {
   ArrowForward as ArrowForwardIcon,
   Close as CloseIcon,
   Check as CheckIcon,
-  CalendarMonth as CalendarIcon
+  CalendarMonth as CalendarIcon,
 } from "@mui/icons-material";
 
 const periodSchema = Yup.object().shape({
   teacher: Yup.string().required("Teacher selection is required"),
   subject: Yup.string().required("Subject selection is required"),
   period: Yup.string().required("Period selection is required"),
-  date: Yup.date().required("Date selection is required").typeError("Invalid date"),
+  date: Yup.date()
+    .required("Date selection is required")
+    .typeError("Invalid date"),
   class: Yup.string().required("Class selection is required"),
 });
 
 const periods = [
-  { id: 1, label: "Period 1", timeRange: "10:00 AM - 11:00 AM", startTime: "10:00", endTime: "11:00", color: "#4caf50" },
-  { id: 2, label: "Period 2", timeRange: "11:00 AM - 12:00 PM", startTime: "11:00", endTime: "12:00", color: "#2196f3" },
-  { id: 3, label: "Period 3", timeRange: "12:00 PM - 1:00 PM", startTime: "12:00", endTime: "13:00", color: "#ff9800" },
-  { id: 4, label: "Lunch Break", timeRange: "1:00 PM - 2:00 PM", startTime: "13:00", endTime: "14:00", color: "#f44336" },
-  { id: 5, label: "Period 4", timeRange: "2:00 PM - 3:00 PM", startTime: "14:00", endTime: "15:00", color: "#9c27b0" },
-  { id: 6, label: "Period 5", timeRange: "3:00 PM - 4:00 PM", startTime: "15:00", endTime: "16:00", color: "#673ab7" },
+  {
+    id: 1,
+    label: "Period 1",
+    timeRange: "10:00 AM - 11:00 AM",
+    startTime: "10:00",
+    endTime: "11:00",
+    color: "#4caf50",
+  },
+  {
+    id: 2,
+    label: "Period 2",
+    timeRange: "11:00 AM - 12:00 PM",
+    startTime: "11:00",
+    endTime: "12:00",
+    color: "#2196f3",
+  },
+  {
+    id: 3,
+    label: "Period 3",
+    timeRange: "12:00 PM - 1:00 PM",
+    startTime: "12:00",
+    endTime: "13:00",
+    color: "#ff9800",
+  },
+  {
+    id: 4,
+    label: "Lunch Break",
+    timeRange: "1:00 PM - 2:00 PM",
+    startTime: "13:00",
+    endTime: "14:00",
+    color: "#f44336",
+  },
+  {
+    id: 5,
+    label: "Period 4",
+    timeRange: "2:00 PM - 3:00 PM",
+    startTime: "14:00",
+    endTime: "15:00",
+    color: "#9c27b0",
+  },
+  {
+    id: 6,
+    label: "Period 5",
+    timeRange: "3:00 PM - 4:00 PM",
+    startTime: "15:00",
+    endTime: "16:00",
+    color: "#673ab7",
+  },
 ];
 
-const ScheduleEvent = ({ 
-  open, 
-  onClose, 
-  event, 
-  selectedClass, 
-  refreshSchedules, 
-  onError, 
-  onSuccess 
+const ScheduleEvent = ({
+  open,
+  onClose,
+  event,
+  selectedClass,
+  refreshSchedules,
+  onError,
+  onSuccess,
 }) => {
   const [teachers, setTeachers] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -92,8 +136,60 @@ const ScheduleEvent = ({
   const [activeStep, setActiveStep] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const theme = useTheme();
-  
-  const steps = ['Select Teacher & Subject', 'Choose Time & Date', 'Confirm Details'];
+
+  const steps = [
+    "Select Teacher & Subject",
+    "Choose Time & Date",
+    "Confirm Details",
+  ];
+
+  useEffect(() => {
+    const initializeForm = async () => {
+      if (event) {
+        const {
+          teacher,
+          subject,
+          class: classId,
+          startTime,
+          endTime,
+        } = event.resource;
+
+        // Convert to dayjs objects
+        const start = dayjs(startTime);
+        const end = dayjs(endTime);
+
+        // Find matching period
+        const matchedPeriod = periods.find((p) => {
+          const [startH, startM] = p.startTime.split(":").map(Number);
+          const [endH, endM] = p.endTime.split(":").map(Number);
+
+          return (
+            start.hour() === startH &&
+            start.minute() === startM &&
+            end.hour() === endH &&
+            end.minute() === endM
+          );
+        });
+
+        formik.setValues({
+          teacher: teacher?._id || "",
+          subject: subject?._id || "",
+          class: classId?._id || selectedClass || "",
+          period: matchedPeriod?.id.toString() || "",
+          date: start,
+        });
+      } else {
+        formik.resetForm();
+        formik.setValues({
+          ...formik.initialValues,
+          class: selectedClass || "",
+        });
+      }
+      setActiveStep(0); // Reset steps when opening dialog
+    };
+
+    if (open) initializeForm();
+  }, [open, event, selectedClass]);
 
   const formik = useFormik({
     initialValues: {
@@ -110,7 +206,9 @@ const ScheduleEvent = ({
       setLocalSuccess(null);
 
       try {
-        const selectedPeriod = periods.find(p => p.id === Number(values.period));
+        const selectedPeriod = periods.find(
+          (p) => p.id === Number(values.period)
+        );
         if (!selectedPeriod) throw new Error("Selected period is invalid.");
 
         const dateObj = dayjs(values.date);
@@ -119,13 +217,15 @@ const ScheduleEvent = ({
         }
 
         const selectedDate = dateObj.toDate();
-        
-        const [startH, startM] = selectedPeriod.startTime.split(":").map(Number);
+
+        const [startH, startM] = selectedPeriod.startTime
+          .split(":")
+          .map(Number);
         const [endH, endM] = selectedPeriod.endTime.split(":").map(Number);
 
         const startDate = new Date(selectedDate);
         const endDate = new Date(selectedDate);
-        
+
         startDate.setHours(startH, startM, 0, 0);
         endDate.setHours(endH, endM, 0, 0);
 
@@ -136,36 +236,44 @@ const ScheduleEvent = ({
           startTimeISO: startDate.toISOString(),
           endTimeISO: endDate.toISOString(),
         };
-
         const token = localStorage.getItem("token");
-        await axios.post(
-          `http://localhost:5000/api/schedule`, 
-          formattedValues, 
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const url = event
+          ? `http://localhost:5000/api/schedule/${event.id}`
+          : `http://localhost:5000/api/schedule`;
 
-        const successMsg = "Schedule successfully created!";
+        const method = event ? "put" : "post";
+
+        await axios[method](url, formattedValues, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const successMsg = event
+          ? "Schedule updated successfully!"
+          : "Schedule successfully created!";
         setLocalSuccess(successMsg);
         if (onSuccess) onSuccess(successMsg);
         refreshSchedules();
-        
+
         // Reset form after successful submission
         setTimeout(() => {
           if (onClose) onClose();
         }, 1500);
       } catch (apiError) {
         console.error("API Error:", apiError);
-        
+
         let errorMessage;
         if (apiError.response) {
-          errorMessage = apiError.response.data?.message || 
-                       `Server error: ${apiError.response.status}`;
+          errorMessage =
+            apiError.response.data?.message ||
+            `Server error: ${apiError.response.status}`;
         } else if (apiError.request) {
-          errorMessage = "No response received from server. Please check your connection.";
+          errorMessage =
+            "No response received from server. Please check your connection.";
         } else {
-          errorMessage = apiError.message || "Failed to create schedule. Please try again.";
+          errorMessage =
+            apiError.message || "Failed to create schedule. Please try again.";
         }
-        
+
         setLocalError(errorMessage);
         if (onError) onError(errorMessage);
       } finally {
@@ -217,9 +325,9 @@ const ScheduleEvent = ({
     const stepValidation = {
       0: () => formik.values.teacher && formik.values.subject,
       1: () => formik.values.period && formik.values.date,
-      2: () => true
+      2: () => true,
     };
-    
+
     if (stepValidation[activeStep]()) {
       if (activeStep === 2) {
         setConfirmDialogOpen(true);
@@ -229,11 +337,11 @@ const ScheduleEvent = ({
     } else {
       // Touch the fields to show validation errors
       if (activeStep === 0) {
-        formik.setFieldTouched('teacher', true);
-        formik.setFieldTouched('subject', true);
+        formik.setFieldTouched("teacher", true);
+        formik.setFieldTouched("subject", true);
       } else if (activeStep === 1) {
-        formik.setFieldTouched('period', true);
-        formik.setFieldTouched('date', true);
+        formik.setFieldTouched("period", true);
+        formik.setFieldTouched("date", true);
       }
     }
   };
@@ -241,25 +349,25 @@ const ScheduleEvent = ({
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
   };
-  
+
   const handleConfirmSubmit = () => {
     setConfirmDialogOpen(false);
     formik.handleSubmit();
   };
 
   const getSelectedTeacherName = () => {
-    const teacher = teachers.find(t => t._id === formik.values.teacher);
-    return teacher ? teacher.name : 'Not selected';
+    const teacher = teachers.find((t) => t._id === formik.values.teacher);
+    return teacher ? teacher.name : "Not selected";
   };
 
   const getSelectedSubjectName = () => {
-    const subject = subjects.find(s => s._id === formik.values.subject);
-    return subject ? subject.subject_name : 'Not selected';
+    const subject = subjects.find((s) => s._id === formik.values.subject);
+    return subject ? subject.subject_name : "Not selected";
   };
 
   const getSelectedPeriodInfo = () => {
-    const period = periods.find(p => p.id === Number(formik.values.period));
-    return period || { label: 'Not selected', timeRange: '' };
+    const period = periods.find((p) => p.id === Number(formik.values.period));
+    return period || { label: "Not selected", timeRange: "" };
   };
 
   const renderStepContent = (step) => {
@@ -268,12 +376,15 @@ const ScheduleEvent = ({
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Typography
+                variant="h6"
+                sx={{ display: "flex", alignItems: "center", mb: 2 }}
+              >
                 <PersonIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
                 Select Instructor
               </Typography>
-              <FormControl 
-                fullWidth 
+              <FormControl
+                fullWidth
                 error={formik.touched.teacher && Boolean(formik.errors.teacher)}
                 variant="outlined"
               >
@@ -285,38 +396,62 @@ const ScheduleEvent = ({
                   value={formik.values.teacher}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  startAdornment={formik.values.teacher && (
-                    <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: theme.palette.primary.main }}>
-                      <PersonIcon fontSize="small" />
-                    </Avatar>
-                  )}
+                  startAdornment={
+                    formik.values.teacher && (
+                      <Avatar
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          mr: 1,
+                          bgcolor: theme.palette.primary.main,
+                        }}
+                      >
+                        <PersonIcon fontSize="small" />
+                      </Avatar>
+                    )
+                  }
                 >
                   {teachers.length === 0 ? (
-                    <MenuItem disabled value="">Loading teachers...</MenuItem>
+                    <MenuItem disabled value="">
+                      Loading teachers...
+                    </MenuItem>
                   ) : (
-                    teachers.map(teacher => (
+                    teachers.map((teacher) => (
                       <MenuItem key={teacher._id} value={teacher._id}>
                         <Stack direction="row" alignItems="center" spacing={1}>
-                          <Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.primary.main }}>
-                            {(teacher.name || '?')[0].toUpperCase()}
+                          <Avatar
+                            sx={{
+                              width: 24,
+                              height: 24,
+                              bgcolor: theme.palette.primary.main,
+                            }}
+                          >
+                            {(teacher.name || "?")[0].toUpperCase()}
                           </Avatar>
-                          <span>{teacher.name || `Teacher ${teacher._id}`}</span>
+                          <span>
+                            {teacher.name || `Teacher ${teacher._id}`}
+                          </span>
                         </Stack>
                       </MenuItem>
                     ))
                   )}
                 </Select>
-                <FormHelperText>{formik.touched.teacher && formik.errors.teacher}</FormHelperText>
+                <FormHelperText>
+                  {formik.touched.teacher && formik.errors.teacher}
+                </FormHelperText>
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Typography
+                variant="h6"
+                sx={{ display: "flex", alignItems: "center", mb: 2 }}
+              >
                 <BookIcon sx={{ mr: 1, color: theme.palette.secondary.main }} />
                 Select Subject
               </Typography>
-              <FormControl 
-                fullWidth 
+              <FormControl
+                fullWidth
                 error={formik.touched.subject && Boolean(formik.errors.subject)}
                 variant="outlined"
               >
@@ -328,28 +463,49 @@ const ScheduleEvent = ({
                   value={formik.values.subject}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  startAdornment={formik.values.subject && (
-                    <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: theme.palette.secondary.main }}>
-                      <BookIcon fontSize="small" />
-                    </Avatar>
-                  )}
+                  startAdornment={
+                    formik.values.subject && (
+                      <Avatar
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          mr: 1,
+                          bgcolor: theme.palette.secondary.main,
+                        }}
+                      >
+                        <BookIcon fontSize="small" />
+                      </Avatar>
+                    )
+                  }
                 >
                   {subjects.length === 0 ? (
-                    <MenuItem disabled value="">Loading subjects...</MenuItem>
+                    <MenuItem disabled value="">
+                      Loading subjects...
+                    </MenuItem>
                   ) : (
-                    subjects.map(subject => (
+                    subjects.map((subject) => (
                       <MenuItem key={subject._id} value={subject._id}>
                         <Stack direction="row" alignItems="center" spacing={1}>
-                          <Avatar sx={{ width: 24, height: 24, bgcolor: theme.palette.secondary.main }}>
-                            {(subject.subject_name || '?')[0].toUpperCase()}
+                          <Avatar
+                            sx={{
+                              width: 24,
+                              height: 24,
+                              bgcolor: theme.palette.secondary.main,
+                            }}
+                          >
+                            {(subject.subject_name || "?")[0].toUpperCase()}
                           </Avatar>
-                          <span>{subject.subject_name || `Subject ${subject._id}`}</span>
+                          <span>
+                            {subject.subject_name || `Subject ${subject._id}`}
+                          </span>
                         </Stack>
                       </MenuItem>
                     ))
                   )}
                 </Select>
-                <FormHelperText>{formik.touched.subject && formik.errors.subject}</FormHelperText>
+                <FormHelperText>
+                  {formik.touched.subject && formik.errors.subject}
+                </FormHelperText>
               </FormControl>
             </Grid>
           </Grid>
@@ -359,12 +515,15 @@ const ScheduleEvent = ({
         return (
           <Grid container spacing={3}>
             <Grid item xs={12}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Typography
+                variant="h6"
+                sx={{ display: "flex", alignItems: "center", mb: 2 }}
+              >
                 <TimeIcon sx={{ mr: 1, color: theme.palette.warning.main }} />
                 Select Class Period
               </Typography>
-              <FormControl 
-                fullWidth 
+              <FormControl
+                fullWidth
                 error={formik.touched.period && Boolean(formik.errors.period)}
                 variant="outlined"
               >
@@ -377,18 +536,23 @@ const ScheduleEvent = ({
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                 >
-                  {periods.map(period => (
+                  {periods.map((period) => (
                     <MenuItem key={period.id} value={period.id}>
-                      <Stack direction="row" alignItems="center" spacing={1} sx={{ width: '100%' }}>
-                        <Chip 
-                          label={period.label} 
-                          size="small" 
-                          sx={{ 
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        spacing={1}
+                        sx={{ width: "100%" }}
+                      >
+                        <Chip
+                          label={period.label}
+                          size="small"
+                          sx={{
                             bgcolor: period.color,
-                            color: 'white',
-                            fontWeight: 'bold',
-                            minWidth: '100px'
-                          }} 
+                            color: "white",
+                            fontWeight: "bold",
+                            minWidth: "100px",
+                          }}
                         />
                         <Typography variant="body2" sx={{ flex: 1 }}>
                           {period.timeRange}
@@ -397,12 +561,17 @@ const ScheduleEvent = ({
                     </MenuItem>
                   ))}
                 </Select>
-                <FormHelperText>{formik.touched.period && formik.errors.period}</FormHelperText>
+                <FormHelperText>
+                  {formik.touched.period && formik.errors.period}
+                </FormHelperText>
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12}>
-              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Typography
+                variant="h6"
+                sx={{ display: "flex", alignItems: "center", mb: 2 }}
+              >
                 <TodayIcon sx={{ mr: 1, color: theme.palette.info.main }} />
                 Select Date
               </Typography>
@@ -432,77 +601,151 @@ const ScheduleEvent = ({
         return (
           <Card sx={{ backgroundColor: theme.palette.background.default }}>
             <CardContent>
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold', color: theme.palette.primary.main }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  mb: 3,
+                  fontWeight: "bold",
+                  color: theme.palette.primary.main,
+                }}
+              >
                 Schedule Summary
               </Typography>
-              
+
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <Paper sx={{ p: 2, height: '100%', backgroundColor: theme.palette.background.paper }}>
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      height: "100%",
+                      backgroundColor: theme.palette.background.paper,
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
                       Teacher
                     </Typography>
-                    <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
-                      <PersonIcon sx={{ mr: 1, color: theme.palette.primary.main }} />
+                    <Typography
+                      variant="body1"
+                      sx={{ display: "flex", alignItems: "center" }}
+                    >
+                      <PersonIcon
+                        sx={{ mr: 1, color: theme.palette.primary.main }}
+                      />
                       {getSelectedTeacherName()}
                     </Typography>
                   </Paper>
                 </Grid>
-                
+
                 <Grid item xs={12} sm={6}>
-                  <Paper sx={{ p: 2, height: '100%', backgroundColor: theme.palette.background.paper }}>
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      height: "100%",
+                      backgroundColor: theme.palette.background.paper,
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
                       Subject
                     </Typography>
-                    <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
-                      <BookIcon sx={{ mr: 1, color: theme.palette.secondary.main }} />
+                    <Typography
+                      variant="body1"
+                      sx={{ display: "flex", alignItems: "center" }}
+                    >
+                      <BookIcon
+                        sx={{ mr: 1, color: theme.palette.secondary.main }}
+                      />
                       {getSelectedSubjectName()}
                     </Typography>
                   </Paper>
                 </Grid>
-                
+
                 <Grid item xs={12} sm={6}>
-                  <Paper sx={{ p: 2, height: '100%', backgroundColor: theme.palette.background.paper }}>
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      height: "100%",
+                      backgroundColor: theme.palette.background.paper,
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
                       Class
                     </Typography>
-                    <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
-                      <ClassIcon sx={{ mr: 1, color: theme.palette.info.dark }} />
-                      {selectedClass || 'Not selected'}
+                    <Typography
+                      variant="body1"
+                      sx={{ display: "flex", alignItems: "center" }}
+                    >
+                      <ClassIcon
+                        sx={{ mr: 1, color: theme.palette.info.dark }}
+                      />
+                      {selectedClass || "Not selected"}
                     </Typography>
                   </Paper>
                 </Grid>
-                
+
                 <Grid item xs={12} sm={6}>
-                  <Paper sx={{ p: 2, height: '100%', backgroundColor: theme.palette.background.paper }}>
-                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      height: "100%",
+                      backgroundColor: theme.palette.background.paper,
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
                       Date
                     </Typography>
-                    <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
-                      <CalendarIcon sx={{ mr: 1, color: theme.palette.info.main }} />
-                      {dayjs(formik.values.date).format('MMMM D, YYYY')}
+                    <Typography
+                      variant="body1"
+                      sx={{ display: "flex", alignItems: "center" }}
+                    >
+                      <CalendarIcon
+                        sx={{ mr: 1, color: theme.palette.info.main }}
+                      />
+                      {dayjs(formik.values.date).format("MMMM D, YYYY")}
                     </Typography>
                   </Paper>
                 </Grid>
-                
+
                 <Grid item xs={12}>
-                  <Paper 
-                    sx={{ 
-                      p: 2, 
-                      backgroundColor: periodInfo.color ? `${periodInfo.color}15` : theme.palette.background.paper,
-                      border: `1px solid ${periodInfo.color || theme.palette.divider}`
+                  <Paper
+                    sx={{
+                      p: 2,
+                      backgroundColor: periodInfo.color
+                        ? `${periodInfo.color}15`
+                        : theme.palette.background.paper,
+                      border: `1px solid ${
+                        periodInfo.color || theme.palette.divider
+                      }`,
                     }}
                   >
                     <Stack direction="row" alignItems="center" spacing={1}>
-                      <Chip 
-                        label={periodInfo.label} 
-                        sx={{ 
+                      <Chip
+                        label={periodInfo.label}
+                        sx={{
                           bgcolor: periodInfo.color,
-                          color: 'white',
-                          fontWeight: 'bold'
-                        }} 
+                          color: "white",
+                          fontWeight: "bold",
+                        }}
                       />
-                      <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Typography
+                        variant="body1"
+                        sx={{ display: "flex", alignItems: "center" }}
+                      >
                         <TimeIcon sx={{ mx: 1 }} />
                         {periodInfo.timeRange}
                       </Typography>
@@ -520,39 +763,38 @@ const ScheduleEvent = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="md"
-    >
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <Box sx={{ maxWidth: 800, mx: "auto", p: 0 }}>
-        <Card sx={{ 
-          overflow: 'visible',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-          borderRadius: '16px'
-        }}>
+        <Card
+          sx={{
+            overflow: "visible",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+            borderRadius: "16px",
+          }}
+        >
           <CardContent sx={{ p: 0 }}>
-            <Box sx={{ 
-              p: 2, 
-              backgroundColor: theme.palette.primary.main,
-              color: 'white',
-              borderTopLeftRadius: '16px',
-              borderTopRightRadius: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
+            <Box
+              sx={{
+                p: 2,
+                backgroundColor: theme.palette.primary.main,
+                color: "white",
+                borderTopLeftRadius: "16px",
+                borderTopRightRadius: "16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
               <Stack direction="row" alignItems="center" spacing={1}>
                 <ScheduleIcon />
                 <Typography variant="h5" component="div">
                   Schedule New Class Event
                 </Typography>
               </Stack>
-              <IconButton 
-                size="small" 
+              <IconButton
+                size="small"
                 onClick={onClose}
-                sx={{ color: 'white' }}
+                sx={{ color: "white" }}
               >
                 <CloseIcon />
               </IconButton>
@@ -560,7 +802,7 @@ const ScheduleEvent = ({
 
             {(error || success) && (
               <Fade in={Boolean(error || success)}>
-                <Alert 
+                <Alert
                   severity={error ? "error" : "success"}
                   sx={{ m: 2 }}
                   action={
@@ -589,34 +831,47 @@ const ScheduleEvent = ({
                 ))}
               </Stepper>
 
-              <Box sx={{ mb: 4 }}>
-                {renderStepContent(activeStep)}
-              </Box>
+              <Box sx={{ mb: 4 }}>{renderStepContent(activeStep)}</Box>
 
               <Divider sx={{ my: 2 }} />
 
-              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Button
                   disabled={activeStep === 0}
                   onClick={handleBack}
                   variant="outlined"
-                  startIcon={<ArrowForwardIcon sx={{ transform: 'rotate(180deg)' }} />}
+                  startIcon={
+                    <ArrowForwardIcon sx={{ transform: "rotate(180deg)" }} />
+                  }
                 >
                   Back
                 </Button>
                 <Button
                   variant="contained"
                   onClick={handleNext}
-                  endIcon={activeStep === steps.length - 1 ? <CheckIcon /> : <ArrowForwardIcon />}
+                  endIcon={
+                    activeStep === steps.length - 1 ? (
+                      <CheckIcon />
+                    ) : (
+                      <ArrowForwardIcon />
+                    )
+                  }
                   disabled={isSubmitting || !selectedClass}
-                  color={activeStep === steps.length - 1 ? "success" : "primary"}
+                  color={
+                    activeStep === steps.length - 1 ? "success" : "primary"
+                  }
                 >
-                  {activeStep === steps.length - 1 ? 'Confirm' : 'Next'}
+                  {activeStep === steps.length - 1 ? "Confirm" : "Next"}
                 </Button>
               </Box>
 
               {!selectedClass && (
-                <Typography color="error" variant="body2" align="center" sx={{ mt: 2 }}>
+                <Typography
+                  color="error"
+                  variant="body2"
+                  align="center"
+                  sx={{ mt: 2 }}
+                >
                   Please select a class first
                 </Typography>
               )}
@@ -635,15 +890,16 @@ const ScheduleEvent = ({
           </DialogTitle>
           <DialogContent>
             <DialogContentText>
-              Are you sure you want to schedule this class event? This will be visible to all relevant students and teachers.
+              Are you sure you want to schedule this class event? This will be
+              visible to all relevant students and teachers.
             </DialogContentText>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setConfirmDialogOpen(false)}>Cancel</Button>
-            <Button 
-              onClick={handleConfirmSubmit} 
-              variant="contained" 
-              color="primary" 
+            <Button
+              onClick={handleConfirmSubmit}
+              variant="contained"
+              color="primary"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Scheduling..." : "Confirm"}
@@ -662,7 +918,7 @@ ScheduleEvent.propTypes = {
   selectedClass: PropTypes.string,
   refreshSchedules: PropTypes.func.isRequired,
   onError: PropTypes.func,
-  onSuccess: PropTypes.func
+  onSuccess: PropTypes.func,
 };
 
 export default ScheduleEvent;
