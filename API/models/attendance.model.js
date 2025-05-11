@@ -1,12 +1,64 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const attendanceSchema = new mongoose.Schema({
-    school: { type: mongoose.Schema.ObjectId, ref: "School" },
-    student: { type: mongoose.Schema.ObjectId, ref: "Student" },
-    class: { type: mongoose.Schema.ObjectId, ref: "Class" },
-    date: { type: Date, required: true },
-    status: { type: String, enum: ['Present', 'Absent'], default: 'Absent' },
-    createdAt: { type: Date, default: new Date() }
+  student: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Student',
+    required: true
+  },
+  date: {
+    type: Date,
+    required: true,
+    index: true
+  },
+  status: {
+    type: String,
+    required: true,
+    enum: ['present', 'absent', 'late', 'excused'],
+    default: 'present'
+  },
+  class: {
+    type: String,
+    required: true
+  },
+  school: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'School',
+    required: true
+  },
+  markedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  notes: {
+    type: String,
+    trim: true
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-module.exports = mongoose.model("Attendance", attendanceSchema);
+// Compound index to ensure one attendance record per student per day
+attendanceSchema.index({ student: 1, date: 1, school: 1 }, { unique: true });
+
+// Virtual population
+attendanceSchema.virtual('studentDetails', {
+  ref: 'Student',
+  localField: 'student',
+  foreignField: '_id',
+  justOne: true
+});
+
+attendanceSchema.virtual('markedByDetails', {
+  ref: 'User',
+  localField: 'markedBy',
+  foreignField: '_id',
+  justOne: true
+});
+
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
+module.exports = Attendance;

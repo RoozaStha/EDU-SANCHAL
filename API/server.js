@@ -10,7 +10,8 @@ const subjectRouter = require("./routers/subject.router.js")
 const studentRouter = require('./routers/student.router.js');
 const teacherRouter = require('./routers/teacher.router.js');
 const scheduleRouter = require('./routers/schedule.router.js')
-
+const attendanceRouter = require('./routers/attendance.router.js');
+const examinationRouter = require("./routers/examination.router.js");
 
 
 dotenv.config();
@@ -56,7 +57,9 @@ app.use("/api/class",classRouter);
 app.use("/api/subjects", subjectRouter); 
 app.use('/api/students', studentRouter);
 app.use("/api/teachers",teacherRouter)
-app.use("/api/schedule",scheduleRouter)
+app.use("/api/schedule",scheduleRouter);
+app.use("/api/attendance",attendanceRouter);
+app.use("/api/examination",examinationRouter);
 
 
 // 7. Enhanced error handling
