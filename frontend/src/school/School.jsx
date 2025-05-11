@@ -138,7 +138,7 @@ export default function School() {
     { link: "/school/attendance", component: "Attendance", icon: RecentActorsIcon },
     { link: "/school/examinations", component: "Examinations", icon: ExplicitIcon },
     { link: "/school/notice", component: "Notice", icon: NotificationsIcon },
-    { link:"/logout", component:"Log Out" , icon: LogoutIcon}
+    { link:"/logout", component:"LogOut" , icon: LogoutIcon}
   ];
   
 const navigate = useNavigate()

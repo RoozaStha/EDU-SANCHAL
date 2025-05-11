@@ -1,16 +1,20 @@
 import * as React from "react";
-import { 
-  Box, 
-  TextField, 
-  Button, 
-  Typography, 
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
   Container,
   Paper,
   useTheme,
   IconButton,
   InputAdornment,
   Stack,
-  Link
+  Link,
+  InputLabel,
+  MenuItem,
+  FormControl,
+  Select,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useFormik } from "formik";
@@ -21,13 +25,14 @@ import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
 
 export default function Login() {
-  const {login} = React.useContext(AuthContext)
+  const { login } = React.useContext(AuthContext);
   const theme = useTheme();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = React.useState(false);
   const [message, setMessage] = React.useState("");
   const [messageType, setMessageType] = React.useState("success");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [role, setRole] = React.useState("student");
 
   const formik = useFormik({
     initialValues: {
@@ -36,37 +41,47 @@ export default function Login() {
     },
     validationSchema: loginSchema,
     onSubmit: async (values) => {
+      let URL;
+      if (role === "student") {
+        URL = `http://localhost:5000/api/students/login`;
+      } else if (role === "teacher") {
+        URL = `http://localhost:5000/api/teachers/login`;
+      } else if (role === "school") {
+        URL = `http://localhost:5000/api/school/login`;
+      }
       setIsSubmitting(true);
       try {
         const response = await axios.post(
-          'http://localhost:5000/api/school/login', 
+          URL, // Fixed: Using the URL variable instead of string literal
           {
-            email: values.email.trim().toLowerCase(), 
-            password: values.password.trim()
+            email: values.email.trim().toLowerCase(),
+            password: values.password.trim(),
           },
           {
-            headers: { 'Content-Type': 'application/json' }
+            headers: { "Content-Type": "application/json" },
           }
         );
 
-        setMessage('Login successful! Redirecting...');
-        setMessageType('success');
-        
+        setMessage("Login successful! Redirecting...");
+        setMessageType("success");
+
         // Store token and user data
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        login(response.data.user, response.data.token);        
-        // Redirect after delay
-        setTimeout(() => navigate('/school'), 1500);
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        login(response.data.user, response.data.token);
         
+        // Redirect based on role
+        const redirectPath = role === "school" ? "/school" : `/${role}`;
+        setTimeout(() => navigate(redirectPath), 1500);
       } catch (error) {
-        const errorMessage = error.response?.data?.message || 
-          'Login failed. Please check your credentials.';
+        const errorMessage =
+          error.response?.data?.message ||
+          "Login failed. Please check your credentials.";
         setMessage(errorMessage);
-        setMessageType('error');
+        setMessageType("error");
       }
       setIsSubmitting(false);
-    }
+    },
   });
 
   const handleMessageClose = () => {
@@ -75,29 +90,54 @@ export default function Login() {
 
   return (
     <Container maxWidth="xs" sx={{ py: 8 }}>
-      <Paper elevation={6} sx={{ 
-        p: 4, 
-        borderRadius: 4,
-        background: theme.palette.background.paper,
-        boxShadow: theme.shadows[4],
-      }}>
-        <Typography variant="h4" component="h1" gutterBottom sx={{
-          textAlign: 'center',
-          fontWeight: 700,
-          color: theme.palette.primary.main,
-          mb: 4,
-          '&:after': {
-            content: '""',
-            display: 'block',
-            width: '50px',
-            height: '2px',
-            background: theme.palette.secondary.main,
-            margin: '12px auto 0',
-            borderRadius: 1
-          }
-        }}>
+      <Paper
+        elevation={6}
+        sx={{
+          p: 4,
+          borderRadius: 4,
+          background: theme.palette.background.paper,
+          boxShadow: theme.shadows[4],
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          sx={{
+            textAlign: "center",
+            fontWeight: 700,
+            color: theme.palette.primary.main,
+            mb: 4,
+            "&:after": {
+              content: '""',
+              display: "block",
+              width: "50px",
+              height: "2px",
+              background: theme.palette.secondary.main,
+              margin: "12px auto 0",
+              borderRadius: 1,
+            },
+          }}
+        >
           Welcome Back
         </Typography>
+
+        <FormControl fullWidth sx={{ mb: 3 }}>
+          <InputLabel id="role-select-label">Role</InputLabel>
+          <Select
+            labelId="role-select-label"
+            id="role-select"
+            value={role}
+            label="Role"
+            onChange={(e) => {
+              setRole(e.target.value);
+            }}
+          >
+            <MenuItem value={"student"}>Student</MenuItem>
+            <MenuItem value={"teacher"}>Teacher</MenuItem>
+            <MenuItem value={"school"}>School</MenuItem>
+          </Select>
+        </FormControl>
 
         <Box component="form" onSubmit={formik.handleSubmit}>
           <Stack spacing={3}>
@@ -113,11 +153,9 @@ export default function Login() {
               helperText={formik.touched.email && formik.errors.email}
               InputProps={{
                 startAdornment: (
-                  <InputAdornment position="start">
-                    ✉️
-                  </InputAdornment>
+                  <InputAdornment position="start">✉️</InputAdornment>
                 ),
-                sx: { borderRadius: 2 }
+                sx: { borderRadius: 2 },
               }}
             />
 
@@ -126,7 +164,7 @@ export default function Login() {
               variant="outlined"
               label="Password"
               name="password"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               value={formik.values.password}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
@@ -134,9 +172,7 @@ export default function Login() {
               helperText={formik.touched.password && formik.errors.password}
               InputProps={{
                 startAdornment: (
-                  <InputAdornment position="start">
-                    🔒
-                  </InputAdornment>
+                  <InputAdornment position="start">🔒</InputAdornment>
                 ),
                 endAdornment: (
                   <InputAdornment position="end">
@@ -148,17 +184,22 @@ export default function Login() {
                     </IconButton>
                   </InputAdornment>
                 ),
-                sx: { borderRadius: 2 }
+                sx: { borderRadius: 2 },
               }}
             />
 
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <Link href="/forgot-password" variant="body2" 
-                sx={{ color: theme.palette.text.secondary }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Link
+                href="/forgot-password"
+                variant="body2"
+                sx={{ color: theme.palette.text.secondary }}
+              >
                 Forgot Password?
               </Link>
             </Box>
@@ -172,25 +213,28 @@ export default function Login() {
               sx={{
                 py: 1.5,
                 borderRadius: 2,
-                fontWeight: 'bold',
-                textTransform: 'none',
-                fontSize: '1rem',
+                fontWeight: "bold",
+                textTransform: "none",
+                fontSize: "1rem",
                 background: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-                '&:hover': {
-                  transform: 'translateY(-1px)',
-                  boxShadow: theme.shadows[3]
+                "&:hover": {
+                  transform: "translateY(-1px)",
+                  boxShadow: theme.shadows[3],
                 },
-                transition: 'all 0.2s ease'
+                transition: "all 0.2s ease",
               }}
             >
-              {isSubmitting ? 'Signing In...' : 'Sign In'}
+              {isSubmitting ? "Signing In..." : "Sign In"}
             </Button>
 
-            <Typography variant="body2" sx={{ 
-              textAlign: 'center',
-              color: theme.palette.text.secondary
-            }}>
-              Don't have an account?{' '}
+            <Typography
+              variant="body2"
+              sx={{
+                textAlign: "center",
+                color: theme.palette.text.secondary,
+              }}
+            >
+              Don't have an account?{" "}
               <Link href="/register" sx={{ fontWeight: 500 }}>
                 Create account
               </Link>
@@ -199,9 +243,9 @@ export default function Login() {
         </Box>
       </Paper>
 
-      <MessageSnackbar 
-        message={message} 
-        type={messageType} 
+      <MessageSnackbar
+        message={message}
+        type={messageType}
         handleClose={handleMessageClose}
         autoHideDuration={3000}
       />

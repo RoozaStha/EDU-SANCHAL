@@ -12,6 +12,6 @@ export default function LogOut() {
   }, []);
 
 return (
-    <>Log Out</>
+    <>Logout</>
 )
 }
