@@ -202,25 +202,58 @@ const Teacher = () => {
     });
     setOpenDialog(true);
   };
-
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this teacher?")) {
-      try {
-        setLoading(true);
-        await axios.delete(`${baseApi}/teachers/delete/${id}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        setSuccess("Teacher deleted successfully");
-        fetchTeachers();
-        setLoading(false);
-      } catch (err) {
-        setError(err.response?.data?.message || "Failed to delete teacher");
-        setLoading(false);
-      }
+const handleDelete = async () => {
+  try {
+    setLoading(true);
+    
+    if (!teacherDetails || !teacherDetails._id) {
+      throw new Error("Teacher ID not found");
     }
-  };
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+    
+    await axios.delete(
+      `http://localhost:5000/api/teachers/delete/${teacherDetails._id}`, 
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true // If using cookies/CSRF
+      }
+    );
+    
+    setSnackbar({
+      open: true,
+      message: "Account deleted successfully",
+      severity: "success"
+    });
+    
+    setTimeout(() => {
+      localStorage.removeItem('token');
+      window.location.href = "/login";
+    }, 1500);
+  } catch (error) {
+    console.error("Detailed error:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
+    setSnackbar({
+      open: true,
+      message: error.response?.data?.message || 
+              `Delete failed: ${error.message}`,
+      severity: "error"
+    });
+  } finally {
+    setLoading(false);
+    setOpenDeleteDialog(false);
+  }
+};
 
   const filteredTeachers = teachers.filter((teacher) => {
     const matchesSearch = teacher.name.toLowerCase().includes(searchTerm.toLowerCase());
