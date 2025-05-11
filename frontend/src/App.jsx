@@ -28,6 +28,7 @@ import NoticeStudent from './student/components/notice/NoticeStudent';
 import ProtectedRoute from './guard/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import AttendanceStudentList from './school/components/attendance/AttendanceStudentList';
+import LogOut from './client/components/logout/LogOut';
 
 function App() {
   return (
@@ -76,6 +77,7 @@ function App() {
       <Route index element={<Home/>} />
       <Route path='/login' element={<Login/>} />
       <Route path='/register' element={<Register/>} />
+      <Route path='logout' element={<LogOut/>} />
 
 
 

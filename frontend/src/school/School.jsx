@@ -29,6 +29,7 @@ import ExplicitIcon from '@mui/icons-material/Explicit';//examinations
 import RecentActorsIcon from '@mui/icons-material/RecentActors';//attendance
 import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';//class
 import HomeIcon from '@mui/icons-material/Home';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 
 
@@ -136,7 +137,8 @@ export default function School() {
     { link: "/school/schedule", component: "Schedule", icon: EventIcon },
     { link: "/school/attendance", component: "Attendance", icon: RecentActorsIcon },
     { link: "/school/examinations", component: "Examinations", icon: ExplicitIcon },
-    { link: "/school/notice", component: "Notice", icon: NotificationsIcon }
+    { link: "/school/notice", component: "Notice", icon: NotificationsIcon },
+    { link:"/logout", component:"Log Out" , icon: LogoutIcon}
   ];
   
 const navigate = useNavigate()
