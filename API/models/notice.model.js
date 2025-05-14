@@ -4,7 +4,7 @@ const noticeSchema = new mongoose.Schema({
     school: { type: mongoose.Schema.ObjectId, ref: 'School' },
     title: { type: String, required: true },
     message: { type: String, required: true },
-    audience: { type: String, enum: ['student', 'teacher'] },
+    audience: { type: String, enum: ['student', 'teacher','all'] },
     createdAt: { type: Date, default: new Date() }
 });
 

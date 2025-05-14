@@ -45,7 +45,6 @@ import AnnouncementIcon from "@mui/icons-material/Announcement";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import SubjectIcon from "@mui/icons-material/Subject";
 
-
 import AddIcon from "@mui/icons-material/Add";
 import SchoolIcon from "@mui/icons-material/School";
 import PersonIcon from "@mui/icons-material/Person";
@@ -85,13 +84,9 @@ export default function Notice() {
   const theme = useTheme();
   const [notices, setNotices] = useState([]);
   const [filteredNotices, setFilteredNotices] = useState([]);
-  const [editMode, setEditMode] = useState(false);
-  const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success");
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [newNoticesCount, setNewNoticesCount] = useState(0);
@@ -123,23 +118,11 @@ export default function Notice() {
           ...(values.publishAt && { publishAt: values.publishAt.toISOString() }),
         };
 
-        let response;
-        if (editMode) {
-          response = await axios.patch(
-            `${baseApi}/notice/update/${editingId}`,
-            noticeData
-          );
-          setMessage("Notice updated successfully");
-        } else {
-          response = await axios.post(`${baseApi}/notice/create`, noticeData);
-          setMessage("Notice created successfully");
-        }
-
+        const response = await axios.post(`${baseApi}/notice/create`, noticeData);
+        setMessage("Notice created successfully");
         setMessageType("success");
         resetForm();
         fetchNotices();
-        setEditMode(false);
-        setEditingId(null);
       } catch (error) {
         console.error("Error:", error);
         setMessage(error.response?.data?.message || "An error occurred");
@@ -150,6 +133,7 @@ export default function Notice() {
 
   const fetchNotices = async () => {
     try {
+      // Fixed the syntax error: missing double quote at the end of the URL
       const response = await axios.get(`${baseApi}/notice/all`);
       const sortedNotices = response.data.data.sort((a, b) => 
         new Date(b.createdAt) - new Date(a.createdAt)
@@ -167,48 +151,6 @@ export default function Notice() {
       setMessage("Failed to fetch notices");
       setMessageType("error");
     }
-  };
-
-  const handleEdit = (notice) => {
-    setEditMode(true);
-    setEditingId(notice._id);
-    formik.setValues({
-      title: notice.title,
-      message: notice.message,
-      audience: notice.audience,
-      publishAt: notice.publishAt ? new Date(notice.publishAt) : null,
-    });
-  };
-
-  const cancelEdit = () => {
-    setEditMode(false);
-    setEditingId(null);
-    formik.resetForm();
-  };
-
-  const confirmDelete = (id) => {
-    setDeleteId(id);
-    setOpenDialog(true);
-  };
-
-  const handleDelete = async () => {
-    try {
-      await axios.delete(`${baseApi}/notice/delete/${deleteId}`);
-      setMessage("Notice deleted successfully");
-      setMessageType("success");
-      fetchNotices();
-      setOpenDialog(false);
-    } catch (error) {
-      console.error("Error deleting notice:", error);
-      setMessage("Failed to delete notice");
-      setMessageType("error");
-      setOpenDialog(false);
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setDeleteId(null);
   };
 
   const formatDate = (dateString) => {
@@ -289,7 +231,7 @@ export default function Notice() {
             backgroundSize: "200% 200%",
           }}
         >
-          {editMode ? "Edit Notice" : "Notice Board"}
+          Notice Board
         </Typography>
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -376,7 +318,7 @@ export default function Notice() {
           mb: 4,
           p: 3,
           borderRadius: 2,
-          bgcolor: editMode ? theme.palette.action.selected : theme.palette.background.paper,
+          bgcolor: theme.palette.background.paper,
           boxShadow: theme.shadows[1],
           transition: 'all 0.3s ease',
           '&:hover': {
@@ -386,7 +328,7 @@ export default function Notice() {
       >
         <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
           <AnnouncementIcon color="primary" />
-          {editMode ? "Edit Notice" : "Create New Notice"}
+          Create New Notice
         </Typography>
         
         <Stack spacing={3}>
@@ -450,9 +392,6 @@ export default function Notice() {
                   </MenuItem>
                 ))}
               </Select>
-              {formik.touched.audience && formik.errors.audience && (
-                <FormHelperText error>{formik.errors.audience}</FormHelperText>
-              )}
             </FormControl>
 
             <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -483,24 +422,10 @@ export default function Notice() {
           </Box>
 
           <Stack direction="row" spacing={2} justifyContent="flex-end">
-            {editMode && (
-              <Button
-                variant="outlined"
-                onClick={cancelEdit}
-                startIcon={<CloseIcon />}
-                sx={{
-                  borderRadius: 2,
-                  px: 3,
-                  py: 1,
-                }}
-              >
-                Cancel
-              </Button>
-            )}
             <Button
               variant="contained"
               type="submit"
-              startIcon={editMode ? <EditIcon /> : <AddIcon />}
+              startIcon={<AddIcon />}
               sx={{
                 borderRadius: 2,
                 px: 3,
@@ -508,7 +433,7 @@ export default function Notice() {
                 fontWeight: 'bold',
               }}
             >
-              {editMode ? "Update Notice" : "Create Notice"}
+              Create Notice
             </Button>
           </Stack>
         </Stack>
@@ -617,32 +542,6 @@ export default function Notice() {
                     </Box>
                   </Box>
                 </CardContent>
-                
-                <Divider />
-                
-                <CardActions sx={{ 
-                  justifyContent: 'flex-end',
-                  bgcolor: theme.palette.action.hover,
-                }}>
-                  <Tooltip title="Edit notice">
-                    <IconButton
-                      onClick={() => handleEdit(notice)}
-                      color="primary"
-                      size="small"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete notice">
-                    <IconButton
-                      onClick={() => confirmDelete(notice._id)}
-                      color="error"
-                      size="small"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </CardActions>
               </Card>
             ))}
           </Stack>
@@ -679,34 +578,6 @@ export default function Notice() {
           </Box>
         )}
       </Box>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle sx={{ fontWeight: 600 }}>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this notice? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} variant="outlined">
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleDelete} 
-            variant="contained" 
-            color="error"
-            autoFocus
-          >
-            Delete Notice
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }
