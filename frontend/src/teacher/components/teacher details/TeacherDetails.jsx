@@ -1,11 +1,10 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { 
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-  Paper, Avatar, Typography, Box, Button, TextField, MenuItem, 
+  Avatar, Typography, Box, Button, TextField, MenuItem, 
   IconButton, CircularProgress, Snackbar, Alert, InputAdornment,
-  Card, CardContent, CardHeader, Divider, Grid, Fade, Slide, Grow,
-  useTheme, useMediaQuery
+  Card, CardContent, Divider, Grid, Fade, Slide, Grow,
+  useTheme, useMediaQuery, Paper, Stack
 } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -21,35 +20,43 @@ import LockIcon from '@mui/icons-material/Lock';
 import axios from "axios";
 import { styled } from '@mui/material/styles';
 
-const StyledAvatar = styled(Avatar)(({ theme }) => ({
-  width: 180,
-  height: 180,
+const ProfileAvatar = styled(Avatar)(({ theme }) => ({
+  width: 150,
+  height: 150,
   border: `4px solid ${theme.palette.primary.main}`,
   boxShadow: theme.shadows[4],
-  transition: 'transform 0.3s ease-in-out',
-  '&:hover': {
-    transform: 'scale(1.05)'
-  }
+  marginBottom: theme.spacing(2),
 }));
 
 const ProfileCard = styled(Card)(({ theme }) => ({
-  borderRadius: 16,
-  boxShadow: theme.shadows[10],
-  transition: 'all 0.3s ease-in-out',
-  '&:hover': {
-    transform: 'translateY(-5px)',
-    boxShadow: theme.shadows[16]
-  }
+  borderRadius: 12,
+  boxShadow: theme.shadows[2],
+  maxWidth: 800,
+  margin: 'auto',
+  padding: theme.spacing(3),
 }));
 
-const DetailRow = ({ icon, label, value }) => (
-  <TableRow>
-    <TableCell sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 'bold' }}>
+const DetailItem = ({ icon, label, value }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+    <Box sx={{ 
+      backgroundColor: 'primary.light', 
+      color: 'primary.contrastText',
+      borderRadius: 1,
+      p: 1,
+      mr: 2,
+      minWidth: 40,
+      display: 'flex',
+      justifyContent: 'center'
+    }}>
       {icon}
-      {label}
-    </TableCell>
-    <TableCell>{value}</TableCell>
-  </TableRow>
+    </Box>
+    <Box>
+      <Typography variant="subtitle2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="body1">{value}</Typography>
+    </Box>
+  </Box>
 );
 
 export default function TeacherDetails() {
@@ -265,303 +272,281 @@ export default function TeacherDetails() {
 
   return (
     <Fade in={true} timeout={500}>
-      <Box sx={{ maxWidth: 1200, margin: 'auto', p: isMobile ? 2 : 4 }}>
+      <Box sx={{ p: isMobile ? 2 : 4 }}>
         <Slide direction="down" in={true} timeout={700}>
-          <Typography 
-            variant="h3" 
-            gutterBottom 
-            sx={{ 
-              mb: 4, 
-              fontWeight: 'bold',
-              color: theme.palette.primary.main,
-              textAlign: 'center',
-              textShadow: '1px 1px 2px rgba(0,0,0,0.1)'
-            }}
-          >
-            Your Profile
-          </Typography>
-        </Slide>
-        
-        <Grid container spacing={4} justifyContent="center">
-          {/* Profile Image Section */}
-          <Grid item xs={12} md={4}>
-            <Grow in={true} timeout={1000}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <StyledAvatar
-                  src={imagePreview || (teacherDetails.teacher_image ? `/images/uploaded/teacher/${teacherDetails.teacher_image}` : undefined)}
-                />
-                
-                {editMode && (
-                  <Grow in={editMode} timeout={500}>
-                    <Box sx={{ mt: 3, width: '100%', textAlign: 'center' }}>
-                      <Button 
-                        variant="outlined" 
-                        component="label" 
-                        fullWidth
-                        sx={{ mb: 1 }}
-                        startIcon={<PersonIcon />}
-                      >
-                        Change Photo
-                        <input 
-                          type="file" 
-                          hidden 
-                          accept="image/*"
-                          onChange={handleImageChange}
-                        />
-                      </Button>
-                      {selectedFile && (
-                        <Typography variant="caption" color="text.secondary">
-                          Selected: {selectedFile.name}
-                        </Typography>
-                      )}
-                    </Box>
-                  </Grow>
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography 
+              variant="h4" 
+              gutterBottom 
+              sx={{ 
+                fontWeight: 'bold',
+                color: theme.palette.primary.main,
+              }}
+            >
+              Teacher Profile
+            </Typography>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <ProfileAvatar
+                src={imagePreview || (teacherDetails.teacher_image ? `/images/uploaded/teacher/${teacherDetails.teacher_image}` : undefined)}
+              />
+            </Box>
+            
+            {!editMode && (
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={handleEditClick}
+                color="primary"
+              >
+                Edit Profile
+              </Button>
+            )}
+            
+            {editMode && (
+              <Box sx={{ mb: 3 }}>
+                <Button 
+                  variant="outlined" 
+                  component="label"
+                  startIcon={<PersonIcon />}
+                >
+                  Change Photo
+                  <input 
+                    type="file" 
+                    hidden 
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                </Button>
+                {selectedFile && (
+                  <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
+                    Selected: {selectedFile.name}
+                  </Typography>
                 )}
               </Box>
-            </Grow>
-          </Grid>
-          
-          {/* Details Section */}
-          <Grid item xs={12} md={8}>
-            <ProfileCard>
-              <CardHeader 
-                title="Personal Information" 
-                titleTypographyProps={{ variant: 'h5', fontWeight: 'bold' }}
-                action={
-                  !editMode ? (
+            )}
+          </Box>
+        </Slide>
+        
+        <ProfileCard>
+          {editMode ? (
+            <Box component="form" noValidate>
+              <Grid container spacing={3}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    error={!!errors.name}
+                    helperText={errors.name}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PersonIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    name="email"
+                    value={formData.email}
+                    disabled
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <EmailIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Qualification"
+                    name="qualification"
+                    value={formData.qualification}
+                    onChange={handleInputChange}
+                    error={!!errors.qualification}
+                    helperText={errors.qualification}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SchoolIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Age"
+                    name="age"
+                    type="number"
+                    value={formData.age}
+                    onChange={handleInputChange}
+                    error={!!errors.age}
+                    helperText={errors.age}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <CakeIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    select
+                    label="Gender"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    error={!!errors.gender}
+                    helperText={errors.gender}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <TransgenderIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  >
+                    <MenuItem value="male">Male</MenuItem>
+                    <MenuItem value="female">Female</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </TextField>
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
+                    Password Update (Leave blank to keep current password)
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="New Password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    error={!!errors.password}
+                    helperText={errors.password}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockIcon color="action" />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle password visibility"
+                            onClick={togglePasswordVisibility}
+                            edge="end"
+                          >
+                            {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Confirm Password"
+                    name="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    error={!!errors.confirmPassword}
+                    helperText={errors.confirmPassword}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <LockIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+                
+                <Grid item xs={12}>
+                  <Stack direction="row" spacing={2} justifyContent="flex-end">
+                    <Button
+                      variant="outlined"
+                      startIcon={<CancelIcon />}
+                      onClick={handleCancelEdit}
+                      disabled={loading}
+                      color="secondary"
+                    >
+                      Cancel
+                    </Button>
                     <Button
                       variant="contained"
-                      startIcon={<EditIcon />}
-                      onClick={handleEditClick}
+                      startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                      onClick={handleSubmit}
+                      disabled={loading}
                       color="primary"
-                      size={isMobile ? "small" : "medium"}
                     >
-                      Edit Profile
+                      Save Changes
                     </Button>
-                  ) : null
-                }
+                  </Stack>
+                </Grid>
+              </Grid>
+            </Box>
+          ) : (
+            <Box>
+              <DetailItem 
+                icon={<PersonIcon />} 
+                label="Name" 
+                value={teacherDetails.name} 
               />
-              <Divider />
-              <CardContent>
-                {editMode ? (
-                  <Box component="form" noValidate sx={{ mt: 1 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Name"
-                          name="name"
-                          value={formData.name}
-                          onChange={handleInputChange}
-                          error={!!errors.name}
-                          helperText={errors.name}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <PersonIcon color="action" />
-                              </InputAdornment>
-                            ),
-                          }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Email"
-                          name="email"
-                          value={formData.email}
-                          disabled
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <EmailIcon color="action" />
-                              </InputAdornment>
-                            ),
-                          }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Qualification"
-                          name="qualification"
-                          value={formData.qualification}
-                          onChange={handleInputChange}
-                          error={!!errors.qualification}
-                          helperText={errors.qualification}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <SchoolIcon color="action" />
-                              </InputAdornment>
-                            ),
-                          }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Age"
-                          name="age"
-                          type="number"
-                          value={formData.age}
-                          onChange={handleInputChange}
-                          error={!!errors.age}
-                          helperText={errors.age}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <CakeIcon color="action" />
-                              </InputAdornment>
-                            ),
-                          }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          select
-                          label="Gender"
-                          name="gender"
-                          value={formData.gender}
-                          onChange={handleInputChange}
-                          error={!!errors.gender}
-                          helperText={errors.gender}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <TransgenderIcon color="action" />
-                              </InputAdornment>
-                            ),
-                          }}
-                        >
-                          <MenuItem value="male">Male</MenuItem>
-                          <MenuItem value="female">Female</MenuItem>
-                          <MenuItem value="other">Other</MenuItem>
-                        </TextField>
-                      </Grid>
-                      
-                      <Grid item xs={12}>
-                        <Divider sx={{ my: 2 }} />
-                        <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 1 }}>
-                          Password Update (Leave blank to keep current password)
-                        </Typography>
-                      </Grid>
-                      
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="New Password"
-                          name="password"
-                          type={showPassword ? "text" : "password"}
-                          value={formData.password}
-                          onChange={handleInputChange}
-                          error={!!errors.password}
-                          helperText={errors.password}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <LockIcon color="action" />
-                              </InputAdornment>
-                            ),
-                            endAdornment: (
-                              <InputAdornment position="end">
-                                <IconButton
-                                  aria-label="toggle password visibility"
-                                  onClick={togglePasswordVisibility}
-                                  edge="end"
-                                >
-                                  {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                                </IconButton>
-                              </InputAdornment>
-                            ),
-                          }}
-                        />
-                      </Grid>
-                      
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          fullWidth
-                          label="Confirm Password"
-                          name="confirmPassword"
-                          type={showPassword ? "text" : "password"}
-                          value={formData.confirmPassword}
-                          onChange={handleInputChange}
-                          error={!!errors.confirmPassword}
-                          helperText={errors.confirmPassword}
-                          InputProps={{
-                            startAdornment: (
-                              <InputAdornment position="start">
-                                <LockIcon color="action" />
-                              </InputAdornment>
-                            ),
-                          }}
-                        />
-                      </Grid>
-                    </Grid>
-                    
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-                      <Button
-                        variant="outlined"
-                        startIcon={<CancelIcon />}
-                        onClick={handleCancelEdit}
-                        disabled={loading}
-                        color="secondary"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="contained"
-                        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        color="primary"
-                      >
-                        Save Changes
-                      </Button>
-                    </Box>
-                  </Box>
-                ) : (
-                  <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2 }}>
-                    <Table>
-                      <TableBody>
-                        <DetailRow 
-                          icon={<PersonIcon color="primary" />} 
-                          label="Name" 
-                          value={teacherDetails.name} 
-                        />
-                        <DetailRow 
-                          icon={<EmailIcon color="primary" />} 
-                          label="Email" 
-                          value={teacherDetails.email} 
-                        />
-                        <DetailRow 
-                          icon={<SchoolIcon color="primary" />} 
-                          label="Qualification" 
-                          value={teacherDetails.qualification} 
-                        />
-                        <DetailRow 
-                          icon={<CakeIcon color="primary" />} 
-                          label="Age" 
-                          value={teacherDetails.age} 
-                        />
-                        <DetailRow 
-                          icon={<TransgenderIcon color="primary" />} 
-                          label="Gender" 
-                          value={teacherDetails.gender.charAt(0).toUpperCase() + teacherDetails.gender.slice(1)} 
-                        />
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-              </CardContent>
-            </ProfileCard>
-          </Grid>
-        </Grid>
+              <Divider sx={{ my: 2 }} />
+              <DetailItem 
+                icon={<EmailIcon />} 
+                label="Email" 
+                value={teacherDetails.email} 
+              />
+              <Divider sx={{ my: 2 }} />
+              <DetailItem 
+                icon={<SchoolIcon />} 
+                label="Qualification" 
+                value={teacherDetails.qualification} 
+              />
+              <Divider sx={{ my: 2 }} />
+              <DetailItem 
+                icon={<CakeIcon />} 
+                label="Age" 
+                value={teacherDetails.age} 
+              />
+              <Divider sx={{ my: 2 }} />
+              <DetailItem 
+                icon={<TransgenderIcon />} 
+                label="Gender" 
+                value={teacherDetails.gender.charAt(0).toUpperCase() + teacherDetails.gender.slice(1)} 
+              />
+            </Box>
+          )}
+        </ProfileCard>
         
         {/* Snackbar for notifications */}
         <Snackbar
