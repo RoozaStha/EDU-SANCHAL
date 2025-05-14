@@ -1,46 +1,28 @@
-import { useTheme } from "@mui/material/styles";
+import { useTheme, keyframes } from "@mui/material/styles";
 import {
   Box,
-  Button,
   Stack,
-  TextField,
-  InputAdornment,
   Typography,
-  IconButton,
   Card,
   CardContent,
-  CardActions,
-  Select,
-  MenuItem,
   FormControl,
   InputLabel,
-  FormHelperText,
-  keyframes,
-  Grow,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Select,
+  MenuItem,
+  CircularProgress,
+  InputAdornment
 } from "@mui/material";
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { useFormik } from "formik";
-import * as Yup from "yup";
 import axios from "axios";
 import { baseApi } from "../../../environment";
 import React, { useEffect, useState } from "react";
-import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
 
 // Icons
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import CloseIcon from "@mui/icons-material/Close";
-import CheckIcon from "@mui/icons-material/Check";
 import EventIcon from "@mui/icons-material/Event";
 import SubjectIcon from "@mui/icons-material/Subject";
 import AssignmentIcon from "@mui/icons-material/Assignment";
-import AddIcon from "@mui/icons-material/Add";
 import ClassIcon from "@mui/icons-material/Class";
 
 // Animations
@@ -49,90 +31,19 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
-const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
-`;
-
 const gradientFlow = keyframes`
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 `;
 
-// Validation schema
-const examinationSchema = Yup.object().shape({
-  date: Yup.date().required("Exam date is required"),
-  subject: Yup.string().required("Subject is required"),
-  examType: Yup.string().required("Exam type is required"),
-  classId: Yup.string().required("Class is required"),
-});
-
 export default function ExaminationTeacher() {
   const theme = useTheme();
   const [examinations, setExaminations] = useState([]);
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [editMode, setEditMode] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("success");
+  const [loading, setLoading] = useState(true);
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [deleteId, setDeleteId] = useState(null);
-
-  const handleMessageClose = () => {
-    setMessage("");
-  };
-
-  const formik = useFormik({
-    initialValues: {
-      date: null,
-      subject: "",
-      examType: "",
-      classId: "",
-    },
-    validationSchema: examinationSchema,
-    onSubmit: async (values, { resetForm }) => {
-      try {
-        // Format the date properly
-        const formattedDate = values.date ? new Date(values.date).toISOString() : null;
-
-        let response;
-        if (editMode) {
-          response = await axios.patch(
-            `${baseApi}/examination/update/${editingId}`,
-            {
-              date: formattedDate,
-              subject: values.subject,
-              examType: values.examType,
-            }
-          );
-          setMessage("Examination updated successfully");
-        } else {
-          const apiData = {
-            date: formattedDate,
-            subject: values.subject,
-            examType: values.examType,
-            classId: values.classId,
-          };
-          response = await axios.post(`${baseApi}/examination/create`, apiData);
-          setMessage("Examination created successfully");
-        }
-
-        setMessageType("success");
-        resetForm();
-        fetchExaminationsByClass(selectedClass);
-        setEditMode(false);
-        setEditingId(null);
-      } catch (error) {
-        console.error("Error:", error);
-        setMessage(error.response?.data?.message || "An error occurred");
-        setMessageType("error");
-      }
-    },
-  });
 
   const fetchAllClasses = async () => {
     try {
@@ -141,12 +52,9 @@ export default function ExaminationTeacher() {
       
       if (response.data.data.length > 0 && !selectedClass) {
         setSelectedClass(response.data.data[0]._id);
-        formik.setFieldValue("classId", response.data.data[0]._id);
       }
     } catch (error) {
       console.error("Error fetching classes:", error);
-      setMessage("Failed to fetch classes");
-      setMessageType("error");
     }
   };
 
@@ -154,63 +62,20 @@ export default function ExaminationTeacher() {
     if (!classId) return;
     
     try {
+      setLoading(true);
       const response = await axios.get(`${baseApi}/examination/class/${classId}`);
       setExaminations(response.data.examinations);
     } catch (error) {
       console.error("Error fetching examinations:", error);
-      setMessage("Failed to fetch examinations");
-      setMessageType("error");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleClassChange = (event) => {
     const classId = event.target.value;
     setSelectedClass(classId);
-    formik.setFieldValue("classId", classId);
     fetchExaminationsByClass(classId);
-  };
-
-  const handleEdit = (exam) => {
-    setEditMode(true);
-    setEditingId(exam._id);
-    formik.setValues({
-      date: exam.examDate ? new Date(exam.examDate) : null,
-      subject: exam.subject,
-      examType: exam.examType,
-      classId: exam.class?._id || selectedClass,
-    });
-  };
-
-  const cancelEdit = () => {
-    setEditMode(false);
-    setEditingId(null);
-    formik.resetForm();
-    formik.setFieldValue("classId", selectedClass);
-  };
-
-  const confirmDelete = (id) => {
-    setDeleteId(id);
-    setOpenDialog(true);
-  };
-
-  const handleDelete = async () => {
-    try {
-      await axios.delete(`${baseApi}/examination/delete/${deleteId}`);
-      setMessage("Examination deleted successfully");
-      setMessageType("success");
-      fetchExaminationsByClass(selectedClass);
-      setOpenDialog(false);
-    } catch (error) {
-      console.error("Error deleting examination:", error);
-      setMessage("Failed to delete examination");
-      setMessageType("error");
-      setOpenDialog(false);
-    }
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setDeleteId(null);
   };
 
   const formatDate = (dateString) => {
@@ -242,17 +107,9 @@ export default function ExaminationTeacher() {
         animation: `${fadeIn} 0.5s ease-out`,
       }}
     >
-      {message && (
-        <MessageSnackbar
-          message={message}
-          messageType={messageType}
-          handleClose={handleMessageClose}
-        />
-      )}
-
       {/* Title */}
       <Typography
-        variant="h3"
+        variant="h4"
         component="h1"
         sx={{
           textAlign: "center",
@@ -262,25 +119,26 @@ export default function ExaminationTeacher() {
           WebkitTextFillColor: "transparent",
           animation: `${gradientFlow} 6s ease infinite`,
           backgroundSize: "200% 200%",
+          fontWeight: 700,
+          letterSpacing: 1
         }}
       >
-        {editMode ? "Edit Examination" : "Assign Examination"}
+        Examination Schedule
       </Typography>
 
       {/* Class Selector */}
       <Box sx={{ mb: 4 }}>
-        <Typography variant="subtitle1" sx={{ mb: 1 }}>Change Class</Typography>
         <FormControl fullWidth variant="outlined">
-          <InputLabel id="class-select-label">Class</InputLabel>
+          <InputLabel id="class-select-label">Select Class</InputLabel>
           <Select
             labelId="class-select-label"
             id="class-select"
             value={selectedClass}
             onChange={handleClassChange}
-            label="Class"
+            label="Select Class"
             startAdornment={
               <InputAdornment position="start">
-                <ClassIcon />
+                <ClassIcon color="primary" />
               </InputAdornment>
             }
             sx={{
@@ -289,6 +147,11 @@ export default function ExaminationTeacher() {
               "&:hover": {
                 boxShadow: theme.shadows[2],
               },
+              "& .MuiSelect-select": {
+                display: "flex",
+                alignItems: "center",
+                gap: 1
+              }
             }}
           >
             {classes.map((classItem) => (
@@ -298,142 +161,6 @@ export default function ExaminationTeacher() {
             ))}
           </Select>
         </FormControl>
-      </Box>
-
-      {/* Form */}
-      <Box component="form" onSubmit={formik.handleSubmit}>
-        <Stack spacing={3} sx={{ mb: 4 }}>
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DatePicker
-              label="Exam Date"
-              value={formik.values.date}
-              onChange={(newValue) => {
-                formik.setFieldValue("date", newValue);
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  variant="outlined"
-                  error={formik.touched.date && Boolean(formik.errors.date)}
-                  helperText={formik.touched.date && formik.errors.date}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EventIcon />
-                      </InputAdornment>
-                    ),
-                    sx: {
-                      borderRadius: 2,
-                      transition: "all 0.3s ease",
-                      "&:hover": {
-                        boxShadow: theme.shadows[2],
-                      },
-                    },
-                  }}
-                />
-              )}
-            />
-          </LocalizationProvider>
-
-          <TextField
-            fullWidth
-            variant="outlined"
-            label="Subject"
-            name="subject"
-            value={formik.values.subject}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            error={formik.touched.subject && Boolean(formik.errors.subject)}
-            helperText={formik.touched.subject && formik.errors.subject}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SubjectIcon />
-                </InputAdornment>
-              ),
-              sx: {
-                borderRadius: 2,
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  boxShadow: theme.shadows[2],
-                },
-              },
-            }}
-          />
-
-          <TextField
-            fullWidth
-            variant="outlined"
-            label="Exam Type"
-            name="examType"
-            value={formik.values.examType}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            error={formik.touched.examType && Boolean(formik.errors.examType)}
-            helperText={formik.touched.examType && formik.errors.examType}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <AssignmentIcon />
-                </InputAdornment>
-              ),
-              sx: {
-                borderRadius: 2,
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  boxShadow: theme.shadows[2],
-                },
-              },
-            }}
-          />
-
-          <Stack direction="row" spacing={2}>
-            <Button
-              fullWidth
-              variant="contained"
-              type="submit"
-              size="large"
-              startIcon={<CheckIcon />}
-              sx={{
-                py: 1.5,
-                borderRadius: 2,
-                fontWeight: "bold",
-                background: theme.palette.primary.main,
-                transition: "all 0.3s ease",
-                "&:hover": {
-                  background: theme.palette.primary.dark,
-                  transform: "translateY(-2px)",
-                  boxShadow: theme.shadows[4],
-                },
-              }}
-            >
-              {editMode ? "Update Examination" : "Assign Examination"}
-            </Button>
-
-            {editMode && (
-              <Button
-                fullWidth
-                variant="outlined"
-                size="large"
-                onClick={cancelEdit}
-                startIcon={<CloseIcon />}
-                sx={{
-                  py: 1.5,
-                  borderRadius: 2,
-                  fontWeight: "bold",
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    transform: "translateY(-2px)",
-                    boxShadow: theme.shadows[1],
-                  },
-                }}
-              >
-                Cancel
-              </Button>
-            )}
-          </Stack>
-        </Stack>
       </Box>
 
       {/* Examinations List */}
@@ -452,88 +179,66 @@ export default function ExaminationTeacher() {
               marginTop: "8px",
               borderRadius: "3px",
             },
+            fontWeight: 600,
+            color: theme.palette.text.primary
           }}
         >
-          Examinations
+          Upcoming Examinations
         </Typography>
 
-        <Stack spacing={2}>
-          {examinations.length > 0 ? (
-            examinations.map((exam, index) => (
-              <Grow in={true} key={exam._id} timeout={index * 150}>
+        {loading ? (
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            py: 4,
+            alignItems: 'center',
+            minHeight: 200
+          }}>
+            <CircularProgress color="primary" size={60} />
+          </Box>
+        ) : (
+          <Stack spacing={2}>
+            {examinations.length > 0 ? (
+              examinations.map((exam, index) => (
                 <Card
+                  key={exam._id}
                   variant="outlined"
                   sx={{
-                    borderRadius: 2,
+                    borderRadius: 3,
                     overflow: "hidden",
                     transition: "all 0.3s ease",
-                    animation: `${fadeIn} 0.5s ease-out`,
+                    animation: `${fadeIn} 0.5s ease-out ${index * 0.1}s`,
                     "&:hover": {
-                      transform: "translateY(-5px)",
+                      transform: "translateY(-3px)",
                       boxShadow: theme.shadows[4],
-                      animation: `${pulse} 2s infinite`,
                     },
                     background:
                       hoveredCard === exam._id
                         ? `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.action.hover} 100%)`
                         : theme.palette.background.paper,
                     borderColor: theme.palette.divider,
+                    position: "relative",
+                    borderLeft: `4px solid ${theme.palette.primary.main}`
                   }}
                   onMouseEnter={() => setHoveredCard(exam._id)}
                   onMouseLeave={() => setHoveredCard(null)}
                 >
-                  <CardContent
-                    sx={{
-                      position: "relative",
-                      "&:before": {
-                        content: '""',
-                        position: "absolute",
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: "4px",
-                        background: theme.palette.primary.main,
-                        borderRadius: "0 4px 4px 0",
-                      },
-                    }}
-                  >
-                    <Typography
-                      variant="h6"
-                      sx={{
-                        fontWeight: 600,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                      }}
-                    >
-                      <Box
-                        component="span"
-                        sx={{
-                          width: "12px",
-                          height: "12px",
-                          borderRadius: "50%",
-                          background: theme.palette.primary.main,
-                          display: "inline-block",
-                        }}
-                      />
-                      {exam.subject}
-                    </Typography>
-                    
+                  <CardContent>
                     <Box sx={{ 
                       display: "flex", 
                       justifyContent: "space-between",
-                      mt: 1 
+                      alignItems: "center",
+                      mb: 1
                     }}>
-                      <Box sx={{ 
-                        display: "flex", 
-                        alignItems: "center",
-                        gap: 0.5 
-                      }}>
-                        <EventIcon fontSize="small" color="action" />
-                        <Typography variant="body2" color="text.secondary">
-                          {formatDate(exam.examDate)}
-                        </Typography>
-                      </Box>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 600,
+                          color: theme.palette.primary.dark
+                        }}
+                      >
+                        {exam.subject}
+                      </Typography>
                       
                       <Box
                         component="span"
@@ -543,116 +248,67 @@ export default function ExaminationTeacher() {
                           background: theme.palette.primary.light,
                           color: theme.palette.primary.contrastText,
                           borderRadius: 1,
-                          fontSize: "0.8rem",
+                          fontSize: "0.75rem",
                           fontWeight: 700,
+                          textTransform: "uppercase",
+                          letterSpacing: 0.5
                         }}
                       >
                         {exam.examType}
                       </Box>
                     </Box>
+                    
+                    <Box sx={{ 
+                      display: "flex", 
+                      flexWrap: 'wrap',
+                      alignItems: "center",
+                      gap: 1.5,
+                      mt: 1.5
+                    }}>
+                      <Box sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        gap: 1 
+                      }}>
+                        <EventIcon fontSize="small" color="primary" />
+                        <Typography variant="body2">
+                          <strong>Date:</strong> {formatDate(exam.examDate)}
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        gap: 1 
+                      }}>
+                        <AssignmentIcon fontSize="small" color="primary" />
+                        <Typography variant="body2">
+                          <strong>Type:</strong> {exam.examType}
+                        </Typography>
+                      </Box>
+                    </Box>
                   </CardContent>
-                  <CardActions
-                    sx={{
-                      justifyContent: "flex-end",
-                      background: theme.palette.action.hover,
-                      borderTop: `1px solid ${theme.palette.divider}`,
-                    }}
-                  >
-                    <IconButton
-                      onClick={() => handleEdit(exam)}
-                      color="primary"
-                      sx={{
-                        transition: "all 0.3s ease",
-                        "&:hover": {
-                          background: theme.palette.primary.main,
-                          color: theme.palette.primary.contrastText,
-                          transform: "scale(1.1)",
-                        },
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => confirmDelete(exam._id)}
-                      color="error"
-                      sx={{
-                        transition: "all 0.3s ease",
-                        "&:hover": {
-                          background: theme.palette.error.main,
-                          color: theme.palette.error.contrastText,
-                          transform: "scale(1.1)",
-                        },
-                      }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </CardActions>
                 </Card>
-              </Grow>
-            ))
-          ) : (
-            <Box 
-              sx={{ 
-                textAlign: 'center', 
-                py: 4,
-                bgcolor: theme.palette.action.hover,
-                borderRadius: 2
-              }}
-            >
-              <Typography variant="body1" color="text.secondary">
-                No examinations found for this class
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                sx={{ mt: 2 }}
-                onClick={() => {
-                  const firstInput = document.querySelector('input, select');
-                  if (firstInput) firstInput.focus();
+              ))
+            ) : (
+              <Box 
+                sx={{ 
+                  textAlign: 'center', 
+                  py: 4,
+                  bgcolor: theme.palette.action.hover,
+                  borderRadius: 2,
+                  border: `1px dashed ${theme.palette.divider}`,
+                  animation: `${fadeIn} 0.5s ease-out`
                 }}
               >
-                Add Exam
-              </Button>
-            </Box>
-          )}
-        </Stack>
+                <Typography variant="body1" color="text.secondary">
+                  No examinations scheduled for this class
+                </Typography>
+              </Box>
+            )}
+          </Stack>
+        )}
       </Box>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            boxShadow: theme.shadows[5],
-          },
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 600 }}>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this examination? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button
-            onClick={handleCloseDialog}
-            variant="outlined"
-            sx={{ borderRadius: 1 }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleDelete}
-            variant="contained"
-            color="error"
-            sx={{ borderRadius: 1 }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }
