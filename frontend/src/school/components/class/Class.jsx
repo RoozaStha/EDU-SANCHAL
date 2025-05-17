@@ -13,7 +13,7 @@ import {
   keyframes,
   Grow,
   Slide,
-  Zoom
+  Zoom,
 } from "@mui/material";
 import { useFormik } from "formik";
 import axios from "axios";
@@ -51,12 +51,12 @@ export default function Class() {
   const [classes, setClasses] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('success');
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("success");
   const [hoveredCard, setHoveredCard] = useState(null);
 
   const handleMessageClose = () => {
-    setMessage('');
+    setMessage("");
   };
 
   const formik = useFormik({
@@ -69,22 +69,25 @@ export default function Class() {
       try {
         let response;
         if (editMode) {
-          response = await axios.patch(`${baseApi}/class/update/${editingId}`, values);
-          setMessage('Class updated successfully');
+          response = await axios.patch(
+            `${baseApi}/class/update/${editingId}`,
+            values
+          );
+          setMessage("Class updated successfully");
         } else {
           response = await axios.post(`${baseApi}/class/create`, values);
-          setMessage('Class created successfully');
+          setMessage("Class created successfully");
         }
-        
-        setMessageType('success');
+
+        setMessageType("success");
         resetForm();
         fetchAllClasses();
         setEditMode(false);
         setEditingId(null);
       } catch (error) {
         console.error("Error:", error);
-        setMessage(error.response?.data?.message || 'An error occurred');
-        setMessageType('error');
+        setMessage(error.response?.data?.message || "An error occurred");
+        setMessageType("error");
       }
     },
   });
@@ -95,8 +98,8 @@ export default function Class() {
       setClasses(response.data.data);
     } catch (error) {
       console.error("Error fetching classes:", error);
-      setMessage('Failed to fetch classes');
-      setMessageType('error');
+      setMessage("Failed to fetch classes");
+      setMessageType("error");
     }
   };
 
@@ -105,7 +108,7 @@ export default function Class() {
     setEditingId(classItem._id);
     formik.setValues({
       class_text: classItem.class_text,
-      class_num: classItem.class_num
+      class_num: classItem.class_num,
     });
   };
 
@@ -117,14 +120,18 @@ export default function Class() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.get(`${baseApi}/class/delete/${id}`);
-      setMessage('Class deleted successfully');
-      setMessageType('success');
+      await axios.delete(`${baseApi}/class/delete/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // or however you store your token
+        },
+      });
+      setMessage("Class deleted successfully");
+      setMessageType("success");
       fetchAllClasses();
     } catch (error) {
       console.error("Error deleting class:", error);
-      setMessage('Failed to delete class');
-      setMessageType('error');
+      setMessage(error.response?.data?.message || "Failed to delete class");
+      setMessageType("error");
     }
   };
 
@@ -133,25 +140,27 @@ export default function Class() {
   }, []);
 
   return (
-    <Box sx={{ 
-      maxWidth: 800, 
-      mx: "auto", 
-      p: 3,
-      animation: `${fadeIn} 0.5s ease-out` 
-    }}>
+    <Box
+      sx={{
+        maxWidth: 800,
+        mx: "auto",
+        p: 3,
+        animation: `${fadeIn} 0.5s ease-out`,
+      }}
+    >
       {message && (
-        <MessageSnackbar 
-          message={message} 
-          messageType={messageType} 
+        <MessageSnackbar
+          message={message}
+          messageType={messageType}
           handleClose={handleMessageClose}
         />
       )}
 
       {/* Title */}
-      <Typography 
-        variant="h3" 
-        component="h1" 
-        sx={{ 
+      <Typography
+        variant="h3"
+        component="h1"
+        sx={{
           textAlign: "center",
           mb: 4,
           background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
@@ -161,7 +170,7 @@ export default function Class() {
           backgroundSize: "200% 200%",
         }}
       >
-        {editMode ? 'Edit Class' : 'Add New Class'}
+        {editMode ? "Edit Class" : "Add New Class"}
       </Typography>
 
       {/* Form */}
@@ -175,19 +184,21 @@ export default function Class() {
             value={formik.values.class_text}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            error={formik.touched.class_text && Boolean(formik.errors.class_text)}
+            error={
+              formik.touched.class_text && Boolean(formik.errors.class_text)
+            }
             helperText={formik.touched.class_text && formik.errors.class_text}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">📚</InputAdornment>
               ),
-              sx: { 
+              sx: {
                 borderRadius: 2,
-                transition: 'all 0.3s ease',
-                '&:hover': {
+                transition: "all 0.3s ease",
+                "&:hover": {
                   boxShadow: theme.shadows[2],
-                }
-              }
+                },
+              },
             }}
           />
 
@@ -206,13 +217,13 @@ export default function Class() {
               startAdornment: (
                 <InputAdornment position="start">🔢</InputAdornment>
               ),
-              sx: { 
+              sx: {
                 borderRadius: 2,
-                transition: 'all 0.3s ease',
-                '&:hover': {
+                transition: "all 0.3s ease",
+                "&:hover": {
                   boxShadow: theme.shadows[2],
-                }
-              }
+                },
+              },
             }}
           />
 
@@ -228,15 +239,15 @@ export default function Class() {
                 borderRadius: 2,
                 fontWeight: "bold",
                 background: theme.palette.primary.main,
-                transition: 'all 0.3s ease',
-                '&:hover': {
+                transition: "all 0.3s ease",
+                "&:hover": {
                   background: theme.palette.primary.dark,
-                  transform: 'translateY(-2px)',
+                  transform: "translateY(-2px)",
                   boxShadow: theme.shadows[4],
-                }
+                },
               }}
             >
-              {editMode ? 'Update Class' : 'Create Class'}
+              {editMode ? "Update Class" : "Create Class"}
             </Button>
 
             {editMode && (
@@ -250,11 +261,11 @@ export default function Class() {
                   py: 1.5,
                   borderRadius: 2,
                   fontWeight: "bold",
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
+                  transition: "all 0.3s ease",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
                     boxShadow: theme.shadows[1],
-                  }
+                  },
                 }}
               >
                 Cancel
@@ -265,118 +276,135 @@ export default function Class() {
       </Box>
 
       {/* Class List */}
-      <Typography variant="h5" sx={{ 
-        mb: 2,
-        position: 'relative',
-        '&:after': {
-          content: '""',
-          display: 'block',
-          width: '60px',
-          height: '3px',
-          background: theme.palette.primary.main,
-          marginTop: '8px',
-          borderRadius: '3px'
-        }
-      }}>
+      <Typography
+        variant="h5"
+        sx={{
+          mb: 2,
+          position: "relative",
+          "&:after": {
+            content: '""',
+            display: "block",
+            width: "60px",
+            height: "3px",
+            background: theme.palette.primary.main,
+            marginTop: "8px",
+            borderRadius: "3px",
+          },
+        }}
+      >
         Class List
       </Typography>
-      
+
       <Stack spacing={2}>
         {classes.map((classItem, index) => (
           <Grow in={true} key={classItem._id} timeout={index * 150}>
-            <Card 
+            <Card
               variant="outlined"
               sx={{
                 borderRadius: 2,
-                overflow: 'hidden',
-                transition: 'all 0.3s ease',
+                overflow: "hidden",
+                transition: "all 0.3s ease",
                 animation: `${fadeIn} 0.5s ease-out`,
-                '&:hover': {
-                  transform: 'translateY(-5px)',
+                "&:hover": {
+                  transform: "translateY(-5px)",
                   boxShadow: theme.shadows[4],
                   animation: `${pulse} 2s infinite`,
                 },
-                background: hoveredCard === classItem._id ? 
-                  `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.action.hover} 100%)` : 
-                  theme.palette.background.paper,
+                background:
+                  hoveredCard === classItem._id
+                    ? `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.action.hover} 100%)`
+                    : theme.palette.background.paper,
                 borderColor: theme.palette.divider,
               }}
               onMouseEnter={() => setHoveredCard(classItem._id)}
               onMouseLeave={() => setHoveredCard(null)}
             >
-              <CardContent sx={{ 
-                position: 'relative',
-                '&:before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '4px',
-                  background: theme.palette.primary.main,
-                  borderRadius: '0 4px 4px 0'
-                }
-              }}>
-                <Typography variant="h6" sx={{ 
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}>
-                  <Box component="span" sx={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
+              <CardContent
+                sx={{
+                  position: "relative",
+                  "&:before": {
+                    content: '""',
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "4px",
                     background: theme.palette.primary.main,
-                    display: 'inline-block'
-                  }} />
-                  {classItem.class_text} 
-                  <Box component="span" sx={{ 
-                    ml: 'auto',
-                    px: 1.5,
-                    py: 0.5,
-                    background: theme.palette.primary.light,
-                    color: theme.palette.primary.contrastText,
-                    borderRadius: 1,
-                    fontSize: '0.8rem',
-                    fontWeight: 700
-                  }}>
+                    borderRadius: "0 4px 4px 0",
+                  },
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <Box
+                    component="span"
+                    sx={{
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "50%",
+                      background: theme.palette.primary.main,
+                      display: "inline-block",
+                    }}
+                  />
+                  {classItem.class_text}
+                  <Box
+                    component="span"
+                    sx={{
+                      ml: "auto",
+                      px: 1.5,
+                      py: 0.5,
+                      background: theme.palette.primary.light,
+                      color: theme.palette.primary.contrastText,
+                      borderRadius: 1,
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                    }}
+                  >
                     Grade {classItem.class_num}
                   </Box>
                 </Typography>
               </CardContent>
-              <CardActions sx={{ 
-                justifyContent: 'flex-end',
-                background: theme.palette.action.hover,
-                borderTop: `1px solid ${theme.palette.divider}`
-              }}>
+              <CardActions
+                sx={{
+                  justifyContent: "flex-end",
+                  background: theme.palette.action.hover,
+                  borderTop: `1px solid ${theme.palette.divider}`,
+                }}
+              >
                 <Zoom in={hoveredCard === classItem._id || !hoveredCard}>
-                  <IconButton 
+                  <IconButton
                     onClick={() => handleEdit(classItem)}
                     color="primary"
                     sx={{
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
+                      transition: "all 0.3s ease",
+                      "&:hover": {
                         background: theme.palette.primary.main,
                         color: theme.palette.primary.contrastText,
-                        transform: 'scale(1.1)'
-                      }
+                        transform: "scale(1.1)",
+                      },
                     }}
                   >
                     <EditIcon />
                   </IconButton>
                 </Zoom>
                 <Zoom in={hoveredCard === classItem._id || !hoveredCard}>
-                  <IconButton 
+                  <IconButton
                     onClick={() => handleDelete(classItem._id)}
                     color="error"
                     sx={{
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
+                      transition: "all 0.3s ease",
+                      "&:hover": {
                         background: theme.palette.error.main,
                         color: theme.palette.error.contrastText,
-                        transform: 'scale(1.1)'
-                      }
+                        transform: "scale(1.1)",
+                      },
                     }}
                   >
                     <DeleteIcon />

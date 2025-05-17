@@ -33,11 +33,11 @@ router.post("/mark/bulk", authMiddleware(['TEACHER', 'SCHOOL']), markBulkAttenda
 router.get("/:studentId", authMiddleware(['SCHOOL', 'TEACHER']), getAttendance);
 
 /**
- * @route GET /api/attendance/check/:classId
+ * @route GET /api/attendance/check/:class_num
  * @desc Check if attendance has been taken for a class on a date
  * @access Private (School admins and teachers)
  */
-router.get("/check/:classId", authMiddleware(['SCHOOL', 'TEACHER']), checkAttendance);
+router.get("/check/:class_num", authMiddleware(['SCHOOL', 'TEACHER']), checkAttendance);
 
 /**
  * @route GET /api/attendance/stats/:studentId
@@ -47,11 +47,11 @@ router.get("/check/:classId", authMiddleware(['SCHOOL', 'TEACHER']), checkAttend
 router.get("/stats/:studentId", authMiddleware(['SCHOOL', 'TEACHER']), getAttendanceStats);
 
 /**
- * @route GET /api/attendance/class/:classId
+ * @route GET /api/attendance/class/:class_num
  * @desc Get class attendance for a specific date
  * @access Private (School admins and teachers)
  */
-router.get("/class/:classId", authMiddleware(['SCHOOL', 'TEACHER']), getClassAttendance);
+router.get("/class/:class_num", authMiddleware(['SCHOOL', 'TEACHER']), getClassAttendance);
 
 module.exports = router;
 

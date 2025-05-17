@@ -4,12 +4,12 @@ const moment = require("moment");
 
 const markAttendance = async (req, res) => {
   try {
-    const { studentId, date, status, classId } = req.body;
+    const { studentId, date, status, class_num } = req.body;
 
-    if (!studentId || !date || !status || !classId) {
+    if (!studentId || !date || !status || !class_num) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: studentId, date, status, and classId are required",
+        message: "Missing required fields: studentId, date, status, and class_num are required",
       });
     }
 
@@ -35,7 +35,7 @@ const markAttendance = async (req, res) => {
       student: studentId,
       date: moment(date).startOf("day").toDate(),
       status,
-      class: classId,
+      class: class_num,
       school: schoolId,
       markedBy: req.user.id,
     });
@@ -73,9 +73,9 @@ const markBulkAttendance = async (req, res) => {
 
     for (const record of records) {
       try {
-        const { studentId, date, status, classId } = record;
+        const { studentId, date, status, class_num } = record;
 
-        if (!studentId || !date || !status || !classId) {
+        if (!studentId || !date || !status || !class_num) {
           results.push({
             success: false,
             message: "Missing required fields for student",
@@ -123,7 +123,7 @@ const markBulkAttendance = async (req, res) => {
             student: studentId,
             date: moment(parsedDate).startOf("day").toDate(),
             status,
-            class: classId,
+            class: class_num,
             school: schoolId,
             markedBy: req.user.id,
           });
@@ -197,18 +197,18 @@ const getAttendance = async (req, res) => {
 };
 
 const checkAttendance = async (req, res) => {
-  const { classId } = req.params;
+  const { class_num } = req.params;
   const { date } = req.query;
 
   try {
-    if (!classId) {
+    if (!class_num) {
       return res.status(400).json({ success: false, message: "Class ID is required" });
     }
 
     const targetDate = date ? moment(date).startOf("day") : moment().startOf("day");
 
     const attendanceCount = await Attendance.countDocuments({
-      class: classId,
+      class: class_num,
       date: {
         $gte: targetDate.startOf("day").toDate(),
         $lt: targetDate.endOf("day").toDate(),
@@ -261,21 +261,21 @@ const getAttendanceStats = async (req, res) => {
 
 const getClassAttendance = async (req, res) => {
   try {
-    const { classId } = req.params;
+    const { class_num } = req.params;
     const { date } = req.query;
 
-    if (!classId) {
+    if (!class_num) {
       return res.status(400).json({ success: false, message: "Class ID is required" });
     }
 
     const targetDate = date ? moment(date).startOf("day") : moment().startOf("day");
 
-    const students = await Student.find({ student_class: classId }).select(
+    const students = await Student.find({ student_class: class_num }).select(
       "_id name gender student_class guardian_phone"
     );
 
     const attendanceRecords = await Attendance.find({
-      class: classId,
+      class: class_num,
       date: {
         $gte: targetDate.startOf("day").toDate(),
         $lt: targetDate.endOf("day").toDate(),
@@ -306,7 +306,7 @@ const getClassAttendance = async (req, res) => {
     res.status(200).json({
       success: true,
       date: targetDate.format("YYYY-MM-DD"),
-      class: classId,
+      class: class_num,
       count: response.length,
       data: response,
     });
