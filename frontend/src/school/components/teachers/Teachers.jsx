@@ -25,6 +25,12 @@ import {
   Chip,
   useTheme,
   InputAdornment,
+  DialogContentText,
+  Checkbox,
+  ListItemText,
+  FormControlLabel,
+  Switch,
+  CircularProgress,
 } from "@mui/material";
 import {
   Edit,
@@ -58,33 +64,82 @@ const Teacher = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [teacherToDelete, setTeacherToDelete] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [currentTeacher, setCurrentTeacher] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedQualification, setSelectedQualification] = useState("");
   const [activeTab, setActiveTab] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  const [classesLoading, setClassesLoading] = useState(false);
 
   useEffect(() => {
-    if (authenticated && (user.role === "SCHOOL" || user.role === "ADMIN")) {
+    if (authenticated && user.role === "SCHOOL") {
       fetchTeachers();
+      fetchClasses();
+      fetchSubjects();
     } else if (authenticated && user.role === "TEACHER") {
       fetchTeacherData();
     }
   }, [authenticated, user]);
 
-  const fetchTeachers = async () => {
+  const fetchSubjects = async () => {
     try {
-      setLoading(true);
-      const response = await axios.get(`${baseApi}/teachers`, {
+      setSubjectsLoading(true);
+      const response = await axios.get(`${baseApi}/subjects`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      
+      // Handle different possible response structures
+      const subjectsData = response.data?.data || response.data || [];
+      console.log("Subjects data:", subjectsData);
+      setSubjects(subjectsData);
+    } catch (error) {
+      console.error("Error fetching subjects:", error);
+      setError(error.response?.data?.message || "Failed to fetch subjects");
+    } finally {
+      setSubjectsLoading(false);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      setClassesLoading(true);
+      const response = await axios.get(`${baseApi}/class/all`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setTeachers(response.data.data);
-      setLoading(false);
+      
+      // Handle different possible response structures
+      const classesData = response.data?.data || response.data || [];
+      setClasses(classesData);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to fetch classes");
+    } finally {
+      setClassesLoading(false);
+    }
+  };
+
+  const fetchTeachers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${baseApi}/teachers/all`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      
+      // Handle different possible response structures
+      const teachersData = response.data?.data || response.data || [];
+      setTeachers(teachersData);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch teachers");
+    } finally {
       setLoading(false);
     }
   };
@@ -97,10 +152,13 @@ const Teacher = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setCurrentTeacher(response.data.data);
-      setLoading(false);
+      
+      // Handle different possible response structures
+      const teacherData = response.data?.data || response.data;
+      setCurrentTeacher(teacherData);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch teacher data");
+    } finally {
       setLoading(false);
     }
   };
@@ -115,13 +173,16 @@ const Teacher = () => {
       .integer("Age must be integer"),
     gender: Yup.string().required("Gender is required"),
     password: editMode
-      ? Yup.string()
+      ? Yup.string().min(8, "Password must be at least 8 characters")
       : Yup.string()
           .required("Password is required")
           .min(8, "Password must be at least 8 characters"),
     teacher_image: editMode
       ? Yup.mixed()
       : Yup.mixed().required("Teacher image is required"),
+    classes: Yup.array().of(Yup.string()),
+    is_class_teacher: Yup.boolean(),
+    subjects: Yup.array().of(Yup.string()),
   });
 
   const formik = useFormik({
@@ -133,25 +194,34 @@ const Teacher = () => {
       gender: "",
       password: "",
       teacher_image: null,
+      classes: [],
+      is_class_teacher: false,
+      subjects: [],
     },
     validationSchema,
     onSubmit: async (values) => {
       try {
         setLoading(true);
         const formData = new FormData();
+
+        // Append all fields to formData
         Object.keys(values).forEach((key) => {
           if (key === "teacher_image" && values[key]) {
             formData.append(key, values[key]);
-          } else if (values[key] !== "" && key !== "teacher_image") {
+          } else if (key === "subjects" || key === "classes") {
+            // Handle arrays
+            if (values[key] && values[key].length > 0) {
+              values[key].forEach((item) => {
+                formData.append(`${key}[]`, item);
+              });
+            }
+          } else if (values[key] !== "" && values[key] !== null) {
             formData.append(key, values[key]);
           }
         });
 
-        if (editMode && user.role === "SCHOOL") {
-          formData.append("teacherId", currentTeacher._id);
-        }
-
         if (editMode) {
+          formData.append("teacherId", currentTeacher._id);
           const response = await axios.patch(
             `${baseApi}/teachers/update`,
             formData,
@@ -192,72 +262,50 @@ const Teacher = () => {
     setEditMode(true);
     setCurrentTeacher(teacher);
     formik.setValues({
-      name: teacher.name,
-      email: teacher.email,
-      qualification: teacher.qualification,
-      age: teacher.age,
-      gender: teacher.gender,
+      name: teacher.name || "",
+      email: teacher.email || "",
+      qualification: teacher.qualification || "",
+      age: teacher.age || "",
+      gender: teacher.gender || "",
       password: "",
       teacher_image: null,
+      classes: teacher.classes?.map((cls) => cls._id) || [],
+      is_class_teacher: teacher.is_class_teacher || false,
+      subjects: teacher.subjects?.map((subject) => subject._id) || [],
     });
     setOpenDialog(true);
   };
-const handleDelete = async () => {
-  try {
-    setLoading(true);
-    
-    if (!teacherDetails || !teacherDetails._id) {
-      throw new Error("Teacher ID not found");
-    }
-    
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error("No authentication token found");
-    }
-    
-    await axios.delete(
-      `http://localhost:5000/api/teachers/delete/${teacherDetails._id}`, 
-      {
+
+  const handleDelete = (teacherId) => {
+    setTeacherToDelete(teacherId);
+    setOpenDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      setLoading(true);
+      await axios.delete(`${baseApi}/teachers/delete/${teacherToDelete}`, {
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-        withCredentials: true // If using cookies/CSRF
-      }
-    );
-    
-    setSnackbar({
-      open: true,
-      message: "Account deleted successfully",
-      severity: "success"
-    });
-    
-    setTimeout(() => {
-      localStorage.removeItem('token');
-      window.location.href = "/login";
-    }, 1500);
-  } catch (error) {
-    console.error("Detailed error:", {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status
-    });
-    
-    setSnackbar({
-      open: true,
-      message: error.response?.data?.message || 
-              `Delete failed: ${error.message}`,
-      severity: "error"
-    });
-  } finally {
-    setLoading(false);
-    setOpenDeleteDialog(false);
-  }
-};
+      });
+
+      setSuccess("Teacher deleted successfully");
+      fetchTeachers();
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to delete teacher");
+    } finally {
+      setLoading(false);
+      setOpenDeleteDialog(false);
+    }
+  };
 
   const filteredTeachers = teachers.filter((teacher) => {
-    const matchesSearch = teacher.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesQualification = selectedQualification === "" || 
+    const matchesSearch = teacher.name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    const matchesQualification =
+      selectedQualification === "" ||
       teacher.qualification === selectedQualification;
     return matchesSearch && matchesQualification;
   });
@@ -280,21 +328,32 @@ const handleDelete = async () => {
   const renderTeacherProfile = () => (
     <Card sx={{ mb: 4 }}>
       <CardContent>
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
           <Avatar
-            src={`/images/uploaded/teacher/${currentTeacher.teacher_image}`}
+            src={
+              currentTeacher?.teacher_image
+                ? `/images/uploaded/teacher/${currentTeacher.teacher_image}`
+                : ""
+            }
             sx={{ width: 120, height: 120, mb: 2 }}
           >
-            {!currentTeacher.teacher_image && <Person fontSize="large" />}
+            {!currentTeacher?.teacher_image && <Person fontSize="large" />}
           </Avatar>
           <Typography variant="h5" component="div">
-            {currentTeacher.name}
+            {currentTeacher?.name}
           </Typography>
           <Typography color="text.secondary">
-            {currentTeacher.email}
+            {currentTeacher?.email}
           </Typography>
           <Chip
-            label={currentTeacher.qualification}
+            label={currentTeacher?.qualification}
             icon={<Work />}
             sx={{ mt: 1 }}
             color="primary"
@@ -307,23 +366,63 @@ const handleDelete = async () => {
           <Grid item xs={12} sm={6}>
             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
               <Cake sx={{ mr: 1, color: "text.secondary" }} />
-              <Typography><strong>Age:</strong> {currentTeacher.age}</Typography>
+              <Typography>
+                <strong>Age:</strong> {currentTeacher?.age}
+              </Typography>
             </Box>
           </Grid>
           <Grid item xs={12} sm={6}>
             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              {currentTeacher.gender === "Male" ? (
+              {currentTeacher?.gender === "Male" ? (
                 <Male sx={{ mr: 1, color: "text.secondary" }} />
-              ) : currentTeacher.gender === "Female" ? (
+              ) : currentTeacher?.gender === "Female" ? (
                 <Female sx={{ mr: 1, color: "text.secondary" }} />
               ) : (
                 <Transgender sx={{ mr: 1, color: "text.secondary" }} />
               )}
               <Typography>
-                <strong>Gender:</strong> {currentTeacher.gender}
+                <strong>Gender:</strong> {currentTeacher?.gender}
               </Typography>
             </Box>
           </Grid>
+          {currentTeacher?.classes && currentTeacher.classes.length > 0 && (
+            <Grid item xs={12}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  <strong>Classes:</strong>
+                </Typography>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {currentTeacher.classes.map((cls) => (
+                    <Chip
+                      key={cls._id}
+                      label={cls.class_text || cls.name}
+                      size="small"
+                      color="primary"
+                    />
+                  ))}
+                </Box>
+              </Box>
+            </Grid>
+          )}
+          {currentTeacher?.subjects && currentTeacher.subjects.length > 0 && (
+            <Grid item xs={12}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  <strong>Subjects:</strong>
+                </Typography>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {currentTeacher.subjects.map((subject) => (
+                    <Chip
+                      key={subject._id}
+                      label={subject.name}
+                      size="small"
+                      color="secondary"
+                    />
+                  ))}
+                </Box>
+              </Box>
+            </Grid>
+          )}
         </Grid>
 
         <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
@@ -340,7 +439,12 @@ const handleDelete = async () => {
   );
 
   const renderTeacherForm = () => (
-    <Dialog open={openDialog} onClose={handleDialogClose} fullWidth maxWidth="md">
+    <Dialog
+      open={openDialog}
+      onClose={handleDialogClose}
+      fullWidth
+      maxWidth="md"
+    >
       <DialogTitle>{editMode ? "Edit Teacher" : "Add New Teacher"}</DialogTitle>
       <DialogContent>
         <Box component="form" onSubmit={formik.handleSubmit} sx={{ mt: 2 }}>
@@ -352,6 +456,7 @@ const handleDelete = async () => {
                 name="name"
                 value={formik.values.name}
                 onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 error={formik.touched.name && Boolean(formik.errors.name)}
                 helperText={formik.touched.name && formik.errors.name}
                 InputProps={{
@@ -372,6 +477,7 @@ const handleDelete = async () => {
                 type="email"
                 value={formik.values.email}
                 onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 disabled={editMode}
                 error={formik.touched.email && Boolean(formik.errors.email)}
                 helperText={formik.touched.email && formik.errors.email}
@@ -392,8 +498,14 @@ const handleDelete = async () => {
                 name="qualification"
                 value={formik.values.qualification}
                 onChange={formik.handleChange}
-                error={formik.touched.qualification && Boolean(formik.errors.qualification)}
-                helperText={formik.touched.qualification && formik.errors.qualification}
+                onBlur={formik.handleBlur}
+                error={
+                  formik.touched.qualification &&
+                  Boolean(formik.errors.qualification)
+                }
+                helperText={
+                  formik.touched.qualification && formik.errors.qualification
+                }
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -412,6 +524,7 @@ const handleDelete = async () => {
                 type="number"
                 value={formik.values.age}
                 onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 error={formik.touched.age && Boolean(formik.errors.age)}
                 helperText={formik.touched.age && formik.errors.age}
               />
@@ -424,6 +537,7 @@ const handleDelete = async () => {
                   name="gender"
                   value={formik.values.gender}
                   onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
                   error={formik.touched.gender && Boolean(formik.errors.gender)}
                   label="Gender"
                 >
@@ -437,12 +551,19 @@ const handleDelete = async () => {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label={editMode ? "New Password" : "Password"}
+                label={
+                  editMode
+                    ? "New Password (leave blank to keep current)"
+                    : "Password"
+                }
                 name="password"
                 type={showPassword ? "text" : "password"}
                 value={formik.values.password}
                 onChange={formik.handleChange}
-                error={formik.touched.password && Boolean(formik.errors.password)}
+                onBlur={formik.handleBlur}
+                error={
+                  formik.touched.password && Boolean(formik.errors.password)
+                }
                 helperText={formik.touched.password && formik.errors.password}
                 InputProps={{
                   endAdornment: (
@@ -457,6 +578,105 @@ const handleDelete = async () => {
                   ),
                 }}
               />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Assigned Classes</InputLabel>
+                <Select
+                  multiple
+                  name="classes"
+                  value={formik.values.classes}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  label="Assigned Classes"
+                  disabled={classesLoading}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                      {selected.map((value) => {
+                        const cls = classes.find((c) => c._id === value);
+                        return cls ? (
+                          <Chip
+                            key={value}
+                            label={cls.class_text || cls.name}
+                          />
+                        ) : null;
+                      })}
+                    </Box>
+                  )}
+                >
+                  {classesLoading ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={24} />
+                    </MenuItem>
+                  ) : (
+                    classes.map((cls) => (
+                      <MenuItem key={cls._id} value={cls._id}>
+                        <Checkbox
+                          checked={formik.values.classes.indexOf(cls._id) > -1}
+                        />
+                        <ListItemText primary={cls.class_text || cls.name} />
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    name="is_class_teacher"
+                    checked={formik.values.is_class_teacher}
+                    onChange={formik.handleChange}
+                    color="primary"
+                  />
+                }
+                label="Is Class Teacher"
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Subjects</InputLabel>
+                <Select
+                  multiple
+                  name="subjects"
+                  value={formik.values.subjects}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  label="Subjects"
+                  disabled={subjectsLoading}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                      {selected.map((value) => {
+                        const subject = subjects.find((s) => s._id === value);
+                        return subject ? (
+                          <Chip key={value} label={subject.name} />
+                        ) : null;
+                      })}
+                    </Box>
+                  )}
+                >
+                  {subjectsLoading ? (
+                    <MenuItem disabled>
+                      <CircularProgress size={24} />
+                    </MenuItem>
+                  ) : (
+                    subjects.map((subject) => (
+                      <MenuItem key={subject._id} value={subject._id}>
+                        <Checkbox
+                          checked={
+                            formik.values.subjects.indexOf(subject._id) > -1
+                          }
+                        />
+                        <ListItemText primary={subject.name} />
+                      </MenuItem>
+                    ))
+                  )}
+                </Select>
+              </FormControl>
             </Grid>
 
             <Grid item xs={12}>
@@ -474,7 +694,9 @@ const handleDelete = async () => {
               </label>
               {formik.values.teacher_image && (
                 <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                  {formik.values.teacher_image.name}
+                  {typeof formik.values.teacher_image === "object"
+                    ? formik.values.teacher_image.name
+                    : formik.values.teacher_image}
                 </Typography>
               )}
               {formik.touched.teacher_image && formik.errors.teacher_image && (
@@ -548,7 +770,13 @@ const handleDelete = async () => {
         <Grid container spacing={3}>
           {filteredTeachers.map((teacher) => (
             <Grid item xs={12} sm={6} md={4} key={teacher._id}>
-              <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <Card
+                sx={{
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
                 <Box sx={{ position: "relative", pt: "100%" }}>
                   <Avatar
                     src={`/images/uploaded/teacher/${teacher.teacher_image}`}
@@ -593,10 +821,50 @@ const handleDelete = async () => {
                       )}
                       {teacher.gender}
                     </Box>
+                    {teacher.class && (
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mt: 1 }}
+                      >
+                        <School fontSize="small" sx={{ mr: 1 }} />
+                        Class: {teacher.class.name || teacher.class.class_text}
+                        {teacher.is_class_teacher && " (Class Teacher)"}
+                      </Box>
+                    )}
+                    {teacher.subjects && teacher.subjects.length > 0 && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" display="block">
+                          Subjects:
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: 0.5,
+                            mt: 0.5,
+                          }}
+                        >
+                          {teacher.subjects.map((subject) => (
+                            <Chip
+                              key={subject._id}
+                              label={subject.name}
+                              size="small"
+                              color="secondary"
+                            />
+                          ))}
+                        </Box>
+                      </Box>
+                    )}
                   </Typography>
                 </CardContent>
                 {user.role !== "TEACHER" && (
-                  <Box sx={{ p: 2, display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{
+                      p: 2,
+                      mt: "auto",
+                      display: "flex",
+                      justifyContent: "space-between",
+                    }}
+                  >
                     <Button
                       size="small"
                       startIcon={<Edit />}
@@ -640,6 +908,29 @@ const handleDelete = async () => {
     </Box>
   );
 
+  const renderDeleteDialog = () => (
+    <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+      <DialogTitle>Confirm Delete</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          Are you sure you want to delete this teacher? This action cannot be
+          undone.
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+        <Button
+          onClick={confirmDelete}
+          color="error"
+          variant="contained"
+          disabled={loading}
+        >
+          Delete
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography
@@ -654,7 +945,7 @@ const handleDelete = async () => {
       {loading && <LinearProgress />}
 
       {user.role === "TEACHER" ? (
-        renderTeacherProfile()
+        currentTeacher && renderTeacherProfile()
       ) : (
         <>
           <Tabs
@@ -682,6 +973,7 @@ const handleDelete = async () => {
       )}
 
       {renderTeacherForm()}
+      {renderDeleteDialog()}
 
       <MessageSnackbar
         message={error || success}

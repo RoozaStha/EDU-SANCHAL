@@ -1,15 +1,25 @@
 const Attendance = require("../models/attendance.model");
 const Student = require("../models/student.model");
+const Class = require("../models/class.model"); // Add this import
 const moment = require("moment");
+const mongoose = require('mongoose');
 
 const markAttendance = async (req, res) => {
   try {
-    const { studentId, date, status, class_num } = req.body;
+    const { studentId, date, status, classId } = req.body; // Changed from class_num to classId
 
-    if (!studentId || !date || !status || !class_num) {
+    if (!studentId || !date || !status || !classId) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: studentId, date, status, and class_num are required",
+        message: "Missing required fields: studentId, date, status, and classId are required",
+      });
+    }
+
+    // Validate classId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(classId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class ID format",
       });
     }
 
@@ -35,7 +45,7 @@ const markAttendance = async (req, res) => {
       student: studentId,
       date: moment(date).startOf("day").toDate(),
       status,
-      class: class_num,
+      class: classId, // Now using ObjectId
       school: schoolId,
       markedBy: req.user.id,
     });
@@ -73,13 +83,23 @@ const markBulkAttendance = async (req, res) => {
 
     for (const record of records) {
       try {
-        const { studentId, date, status, class_num } = record;
+        const { studentId, date, status, classId } = record; // Changed from class_num to classId
 
-        if (!studentId || !date || !status || !class_num) {
+        if (!studentId || !date || !status || !classId) {
           results.push({
             success: false,
             message: "Missing required fields for student",
             studentId: studentId || "unknown",
+          });
+          continue;
+        }
+
+        // Validate classId is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(classId)) {
+          results.push({
+            success: false,
+            message: "Invalid class ID format",
+            studentId,
           });
           continue;
         }
@@ -123,7 +143,7 @@ const markBulkAttendance = async (req, res) => {
             student: studentId,
             date: moment(parsedDate).startOf("day").toDate(),
             status,
-            class: class_num,
+            class: classId, // Now using ObjectId
             school: schoolId,
             markedBy: req.user.id,
           });
@@ -180,6 +200,7 @@ const getAttendance = async (req, res) => {
     const attendance = await Attendance.find({ student: studentId })
       .populate("student", "name student_class gender")
       .populate("markedBy", "name")
+      .populate("class", "class_text") // Added population for class
       .sort({ date: -1 });
 
     res.status(200).json({
@@ -197,18 +218,26 @@ const getAttendance = async (req, res) => {
 };
 
 const checkAttendance = async (req, res) => {
-  const { class_num } = req.params;
+  const { classId } = req.params; // Changed from class_num to classId
   const { date } = req.query;
 
   try {
-    if (!class_num) {
+    if (!classId) {
       return res.status(400).json({ success: false, message: "Class ID is required" });
+    }
+
+    // Validate classId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(classId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid class ID format" 
+      });
     }
 
     const targetDate = date ? moment(date).startOf("day") : moment().startOf("day");
 
     const attendanceCount = await Attendance.countDocuments({
-      class: class_num,
+      class: classId, // Now using ObjectId
       date: {
         $gte: targetDate.startOf("day").toDate(),
         $lt: targetDate.endOf("day").toDate(),
@@ -261,28 +290,37 @@ const getAttendanceStats = async (req, res) => {
 
 const getClassAttendance = async (req, res) => {
   try {
-    const { class_num } = req.params;
+    const { classId } = req.params; // Changed from class_num to classId
     const { date } = req.query;
 
-    if (!class_num) {
+    if (!classId) {
       return res.status(400).json({ success: false, message: "Class ID is required" });
+    }
+
+    // Validate classId is a valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(classId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid class ID format" 
+      });
     }
 
     const targetDate = date ? moment(date).startOf("day") : moment().startOf("day");
 
-    const students = await Student.find({ student_class: class_num }).select(
+    const students = await Student.find({ student_class: classId }).select(
       "_id name gender student_class guardian_phone"
     );
 
     const attendanceRecords = await Attendance.find({
-      class: class_num,
+      class: classId, // Now using ObjectId
       date: {
         $gte: targetDate.startOf("day").toDate(),
         $lt: targetDate.endOf("day").toDate(),
       },
     })
       .populate("student", "name gender student_class")
-      .populate("markedBy", "name");
+      .populate("markedBy", "name")
+      .populate("class", "class_text"); // Added population for class
 
     const response = students.map((student) => {
       const record = attendanceRecords.find(
@@ -306,7 +344,7 @@ const getClassAttendance = async (req, res) => {
     res.status(200).json({
       success: true,
       date: targetDate.format("YYYY-MM-DD"),
-      class: class_num,
+      class: classId,
       count: response.length,
       data: response,
     });

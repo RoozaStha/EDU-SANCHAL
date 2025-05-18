@@ -1,13 +1,12 @@
-require("dotenv").config();
-const formidable = require("formidable");
-const Teacher = require("../models/teacher.model");
-const path = require("path");
-const fs = require("fs");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
+const formidable = require('formidable');
+const Teacher = require('../models/teacher.model');
+const path = require('path');
+const fs = require('fs');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
-// Reuse the existing file upload helper function
+// Helper function for file uploads
 const handleFileUpload = (files, uploadPath, fieldName) => {
     if (!files?.[fieldName]) {
         throw new Error(`${fieldName} is required`);
@@ -43,10 +42,10 @@ exports.registerTeacher = async (req, res) => {
                     });
                 }
 
-                // Process credentials
                 const email = fields.email[0].trim().toLowerCase();
                 const rawPassword = fields.password[0].trim();
 
+                // Email validation
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                     return res.status(400).json({
                         success: false,
@@ -54,6 +53,7 @@ exports.registerTeacher = async (req, res) => {
                     });
                 }
 
+                // Password validation
                 if (rawPassword.length < 8) {
                     return res.status(400).json({
                         success: false,
@@ -61,7 +61,7 @@ exports.registerTeacher = async (req, res) => {
                     });
                 }
 
-                // Check existing teacher
+                // Check if teacher already exists
                 const existingTeacher = await Teacher.findOne({
                     email: { $regex: new RegExp(`^${email}$`, "i") }
                 });
@@ -74,18 +74,14 @@ exports.registerTeacher = async (req, res) => {
                 }
 
                 // Handle image upload
-                const uploadDir = path.join(
-                    process.cwd(),
-                    process.env.TEACHER_IMAGE_PATH
-                );
-
+                const uploadDir = path.join(process.cwd(), process.env.TEACHER_IMAGE_PATH);
                 if (!fs.existsSync(uploadDir)) {
                     fs.mkdirSync(uploadDir, { recursive: true, mode: 0o755 });
                 }
 
                 const teacherImage = handleFileUpload(files, uploadDir, 'teacher_image');
 
-                // Create teacher entry
+                // Create new teacher
                 const hashedPassword = bcrypt.hashSync(rawPassword, 10);
 
                 const newTeacher = new Teacher({
@@ -96,7 +92,10 @@ exports.registerTeacher = async (req, res) => {
                     age: fields.age[0],
                     gender: fields.gender[0],
                     teacher_image: teacherImage,
-                    password: hashedPassword
+                    password: hashedPassword,
+                    classes: fields.classes?.[0]?.split(',') || [],
+                    is_class_teacher: fields.is_class_teacher?.[0] === 'true',
+                    subjects: fields.subjects?.[0]?.split(',') || []
                 });
 
                 const savedTeacher = await newTeacher.save();
@@ -113,14 +112,6 @@ exports.registerTeacher = async (req, res) => {
 
             } catch (error) {
                 console.error("Teacher registration error:", error);
-
-                if (error.code === 11000) {
-                    return res.status(400).json({
-                        success: false,
-                        message: "Email already exists in the system"
-                    });
-                }
-
                 res.status(500).json({
                     success: false,
                     message: "Teacher registration failed",
@@ -151,7 +142,7 @@ exports.loginTeacher = async (req, res) => {
 
         const teacher = await Teacher.findOne({ 
             email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
-        }).populate('school');
+        }).populate('school classes subjects');
 
         if (!teacher) {
             return res.status(401).json({ 
@@ -170,7 +161,7 @@ exports.loginTeacher = async (req, res) => {
 
         const payload = {
             id: teacher._id.toString(),
-            schoolId: teacher.school._id.toString(),
+            schoolId: teacher.school?._id.toString(),
             name: teacher.name,
             image_url: teacher.teacher_image,
             role: "TEACHER",
@@ -200,7 +191,7 @@ exports.loginTeacher = async (req, res) => {
     }
 };
 
-// Get all teachers (for admin/school)
+// Get all teachers
 exports.getAllTeachers = async (req, res) => {
     try {
         const filter = {};
@@ -210,6 +201,8 @@ exports.getAllTeachers = async (req, res) => {
 
         const teachers = await Teacher.find(filter)
             .select('-password -__v')
+            .populate('classes', 'name class_text')
+            .populate('subjects', 'name')
             .lean();
 
         res.status(200).json({
@@ -228,7 +221,7 @@ exports.getAllTeachers = async (req, res) => {
     }
 };
 
-// Get single teacher data
+// Get teacher by ID
 exports.getTeacherById = async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -245,6 +238,8 @@ exports.getTeacherById = async (req, res) => {
 
         const teacher = await Teacher.findOne(filter)
             .select('-password')
+            .populate('classes', 'name class_text')
+            .populate('subjects', 'name')
             .lean();
 
         if (!teacher) {
@@ -261,14 +256,6 @@ exports.getTeacherById = async (req, res) => {
 
     } catch (error) {
         console.error("Get teacher error:", error);
-        
-        if (error.name === 'CastError') {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid teacher ID format"
-            });
-        }
-        
         res.status(500).json({
             success: false,
             message: "Failed to fetch teacher data",
@@ -277,7 +264,7 @@ exports.getTeacherById = async (req, res) => {
     }
 };
 
-// Update teacher details
+// Update teacher
 exports.updateTeacher = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
@@ -288,13 +275,7 @@ exports.updateTeacher = async (req, res) => {
                 if (req.user.role === 'TEACHER') {
                     teacher = await Teacher.findById(req.user.id);
                 } else if (req.user.role === 'SCHOOL') {
-                    const teacherId = fields.teacherId?.[0] || req.user.id; 
-                    if (!teacherId) {
-                        return res.status(400).json({
-                            success: false,
-                            message: "Teacher ID is required for school users"
-                        });
-                    }
+                    const teacherId = fields.teacherId?.[0] || req.user.id;
                     teacher = await Teacher.findOne({
                         _id: teacherId,
                         school: req.user.schoolId
@@ -329,11 +310,21 @@ exports.updateTeacher = async (req, res) => {
                     teacher.teacher_image = teacherImage;
                 }
 
-                // Update allowed fields
-                const allowedUpdates = ['name', 'qualification', 'age', 'gender'];
+                // Update fields
+                const allowedUpdates = [
+                    'name', 'qualification', 'age', 'gender',
+                    'classes', 'is_class_teacher', 'subjects'
+                ];
+                
                 allowedUpdates.forEach(field => {
                     if (fields[field]) {
-                        teacher[field] = fields[field][0].trim();
+                        if (field === 'is_class_teacher') {
+                            teacher[field] = fields[field][0] === 'true';
+                        } else if (field === 'classes' || field === 'subjects') {
+                            teacher[field] = fields[field][0]?.split(',') || [];
+                        } else {
+                            teacher[field] = fields[field][0].trim();
+                        }
                     }
                 });
 
@@ -351,14 +342,16 @@ exports.updateTeacher = async (req, res) => {
 
                 await teacher.save();
 
-                const teacherData = teacher.toObject();
-                delete teacherData.password;
-                delete teacherData.__v;
+                const updatedTeacher = await Teacher.findById(teacher._id)
+                    .select('-password -__v')
+                    .populate('classes', 'name class_text')
+                    .populate('subjects', 'name')
+                    .lean();
 
                 res.status(200).json({
                     success: true,
                     message: "Teacher updated successfully",
-                    data: teacherData
+                    data: updatedTeacher
                 });
 
             } catch (error) {
@@ -380,37 +373,7 @@ exports.updateTeacher = async (req, res) => {
     }
 };
 
-// Get teachers with query filters (search and qualification)
-exports.getTeachersWithQuery = async (req, res) => {
-    try {
-        const filterQuery = { school: req.user.schoolId };
-
-        if (req.query.search) {
-            filterQuery['name'] = { $regex: req.query.search, $options: 'i' };
-        }
-
-        if (req.query.qualification) {
-            filterQuery['qualification'] = req.query.qualification;
-        }
-
-        const teachers = await Teacher.find(filterQuery).select('-password');
-        
-        res.status(200).json({
-            success: true,
-            message: "Successfully fetched filtered teachers",
-            data: teachers
-        });
-    } catch (error) {
-        console.error("Filter teachers error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal Server Error",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-        });
-    }
-};
-
-// Delete teacher by ID
+// Delete teacher
 exports.deleteTeacherWithId = async (req, res) => {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -432,7 +395,7 @@ exports.deleteTeacherWithId = async (req, res) => {
             });
         }
 
-        // Delete associated image if exists
+        // Delete associated image
         if (teacher.teacher_image) {
             const imagePath = path.join(
                 process.cwd(),
@@ -460,11 +423,13 @@ exports.deleteTeacherWithId = async (req, res) => {
     }
 };
 
-// Get logged-in teacher's own data
+// Get teacher's own data
 exports.getTeacherOwnData = async (req, res) => {
     try {
         const teacher = await Teacher.findById(req.user.id)
             .select('-password')
+            .populate('classes', 'name class_text')
+            .populate('subjects', 'name')
             .lean();
 
         if (!teacher) {

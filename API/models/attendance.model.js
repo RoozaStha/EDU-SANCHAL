@@ -18,7 +18,8 @@ const attendanceSchema = new mongoose.Schema({
     default: 'present'
   },
   class: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,  // Changed from String to ObjectId
+    ref: 'Class',
     required: true
   },
   school: {
@@ -55,6 +56,13 @@ attendanceSchema.virtual('studentDetails', {
 attendanceSchema.virtual('markedByDetails', {
   ref: 'User',
   localField: 'markedBy',
+  foreignField: '_id',
+  justOne: true
+});
+
+attendanceSchema.virtual('classDetails', {
+  ref: 'Class',
+  localField: 'class',
   foreignField: '_id',
   justOne: true
 });

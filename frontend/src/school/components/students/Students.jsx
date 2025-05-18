@@ -63,6 +63,7 @@ const Student = () => {
   const theme = useTheme();
   const { user, authenticated } = useContext(AuthContext);
   const [students, setStudents] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -74,10 +75,11 @@ const Student = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Fetch students data
+  // Fetch students and classes data
   useEffect(() => {
     if (authenticated && (user.role === "SCHOOL" || user.role === "ADMIN")) {
       fetchStudents();
+      fetchClasses();
     } else if (authenticated && user.role === "STUDENT") {
       fetchStudentData();
     }
@@ -96,6 +98,19 @@ const Student = () => {
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch students");
       setLoading(false);
+    }
+  };
+
+  const fetchClasses = async () => {
+    try {
+      const response = await axios.get(`${baseApi}/class/all`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setClasses(response.data.data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to fetch classes");
     }
   };
 
@@ -267,11 +282,6 @@ const Student = () => {
     formik.setFieldValue("student_image", event.currentTarget.files[0]);
   };
 
-  // Get unique classes for filter
-  const uniqueClasses = [
-    ...new Set(students.map((student) => student.student_class)),
-  ].sort();
-
   // Render student profile
   const renderStudentProfile = () => {
     if (!currentStudent) return null;
@@ -422,28 +432,31 @@ const Student = () => {
             </Grid>
 
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Class"
-                name="student_class"
-                value={formik.values.student_class}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={
-                  formik.touched.student_class &&
-                  Boolean(formik.errors.student_class)
-                }
-                helperText={
-                  formik.touched.student_class && formik.errors.student_class
-                }
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <School />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+              <FormControl fullWidth>
+                <InputLabel>Class</InputLabel>
+                <Select
+                  name="student_class"
+                  value={formik.values.student_class}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.student_class &&
+                    Boolean(formik.errors.student_class)
+                  }
+                  label="Class"
+                >
+                  {classes.map((cls) => (
+                    <MenuItem key={cls._id} value={cls.class_text}>
+                      {cls.class_text}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {formik.touched.student_class && formik.errors.student_class && (
+                  <Typography color="error" variant="caption">
+                    {formik.errors.student_class}
+                  </Typography>
+                )}
+              </FormControl>
             </Grid>
 
             <Grid item xs={12} sm={6}>
@@ -624,9 +637,9 @@ const Student = () => {
               label="Class"
             >
               <MenuItem value="">All Classes</MenuItem>
-              {uniqueClasses.map((cls) => (
-                <MenuItem key={cls} value={cls}>
-                  {cls}
+              {classes.map((cls) => (
+                <MenuItem key={cls._id} value={cls.class_text}>
+                  {cls.class_text}
                 </MenuItem>
               ))}
             </Select>

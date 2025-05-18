@@ -67,10 +67,9 @@ export default function AttendanceStudentList() {
         });
 
         setStudents(response.data.data || []);
-        const uniqueClasses = [
-          ...new Set(response.data.data.map((s) => s.student_class)),
-        ];
-        setClasses(uniqueClasses);
+        // Extract class IDs from students
+        const classIds = [...new Set(response.data.data.map(s => s.student_class._id))];
+        setClasses(classIds);
         setLoading(false);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to fetch students");
@@ -94,46 +93,45 @@ export default function AttendanceStudentList() {
     fetchTeachers();
   }, []);
 
- React.useEffect(() => {
-  const checkAttendance = async () => {
-    if (filterClass && date) {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(
-          `http://localhost:5000/api/attendance/check/${filterClass}?date=${date}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setAttendanceAlreadyTaken(response.data.attendanceTaken);
-
-        if (response.data.attendanceTaken) {
-          // Fetch detailed attendance for the class on this date
-          const detailsResponse = await axios.get(
-            `http://localhost:5000/api/attendance/class/${filterClass}?date=${date}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+  React.useEffect(() => {
+    const checkAttendance = async () => {
+      if (filterClass && date) {
+        try {
+          const token = localStorage.getItem("token");
+          const response = await axios.get(
+            `http://localhost:5000/api/attendance/check/${filterClass}?date=${date}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
           );
+          setAttendanceAlreadyTaken(response.data.attendanceTaken);
 
-          const attendanceMap = {};
-          detailsResponse.data.data.forEach((record) => {
-            attendanceMap[record.student._id] = {
-              status: record.status,
-              markedBy: record.markedBy?.name || "Unknown",
-            };
-          });
+          if (response.data.attendanceTaken) {
+            const detailsResponse = await axios.get(
+              `http://localhost:5000/api/attendance/class/${filterClass}?date=${date}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
 
-          setAttendanceDetails(attendanceMap);
+            const attendanceMap = {};
+            detailsResponse.data.data.forEach((record) => {
+              attendanceMap[record.student._id] = {
+                status: record.status,
+                markedBy: record.markedBy?.name || "Unknown",
+              };
+            });
+
+            setAttendanceDetails(attendanceMap);
+          }
+        } catch (err) {
+          setSnackbarMessage("Error checking attendance status");
+          setSnackbarSeverity("error");
+          setSnackbarOpen(true);
         }
-      } catch (err) {
-        setSnackbarMessage("Error checking attendance status");
-        setSnackbarSeverity("error");
-        setSnackbarOpen(true);
       }
-    }
-  };
+    };
 
-  checkAttendance();
-}, [filterClass, date]);
+    checkAttendance();
+  }, [filterClass, date]);
 
   React.useEffect(() => {
     const fetchAttendanceStats = async () => {
@@ -170,7 +168,7 @@ export default function AttendanceStudentList() {
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.guardian_phone?.includes(searchTerm);
       const matchesClass =
-        !filterClass || student.student_class === filterClass;
+        !filterClass || student.student_class._id === filterClass;
       const matchesGender =
         !filterGender ||
         student.gender?.toLowerCase() === filterGender.toLowerCase();
@@ -220,7 +218,7 @@ export default function AttendanceStudentList() {
           studentId: currentStudent._id,
           date,
           status: attendanceStatus,
-          class_num: currentStudent.student_class, // Changed from class_num to class_num
+          classId: currentStudent.student_class._id, // Changed to use class ObjectId
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -231,8 +229,6 @@ export default function AttendanceStudentList() {
       setSnackbarSeverity("success");
       setSnackbarOpen(true);
       setSingleStudentDialogOpen(false);
-
-      // Update attendance details...
       refreshAttendanceStats();
     } catch (err) {
       setSnackbarMessage(err.response?.data?.message || err.message);
@@ -267,8 +263,8 @@ export default function AttendanceStudentList() {
           studentId: id,
           date,
           status: attendanceStatus,
-          class_num: student.student_class,
-          teacherId: selectedTeacher, // Include the teacher ID
+          classId: student.student_class._id, // Changed to use class ObjectId
+          teacherId: selectedTeacher,
         };
       });
 
@@ -285,7 +281,6 @@ export default function AttendanceStudentList() {
       setSnackbarOpen(true);
       setSelectedStudents({});
 
-      // Update attendance details for the marked students
       const teacherName =
         teachers.find((t) => t._id === selectedTeacher)?.name || "Unknown";
       const newAttendanceDetails = { ...attendanceDetails };
@@ -297,7 +292,6 @@ export default function AttendanceStudentList() {
       });
       setAttendanceDetails(newAttendanceDetails);
 
-      // Only set the entire class as marked if we're filtering by class
       if (filterClass) {
         setAttendanceAlreadyTaken(true);
       }
@@ -398,11 +392,15 @@ export default function AttendanceStudentList() {
             <MenuItem value="">
               <em>All</em>
             </MenuItem>
-            {classes.map((c) => (
-              <MenuItem key={c} value={c}>
-                {c}
-              </MenuItem>
-            ))}
+            {classes.map((classId) => {
+              // Find the first student with this class to get the class name
+              const studentWithClass = students.find(s => s.student_class._id === classId);
+              return (
+                <MenuItem key={classId} value={classId}>
+                  {studentWithClass?.student_class?.class_text || classId}
+                </MenuItem>
+              );
+            })}
           </Select>
         </FormControl>
 
@@ -520,7 +518,7 @@ export default function AttendanceStudentList() {
                   <TableCell>{student.name}</TableCell>
                   <TableCell>{student.gender}</TableCell>
                   <TableCell>{student.guardian_phone}</TableCell>
-                  <TableCell>{student.student_class}</TableCell>
+                  <TableCell>{student.student_class?.class_text || "N/A"}</TableCell>
                   <TableCell>
                     {getAttendanceStatusDisplay(student._id)}
                   </TableCell>
@@ -560,7 +558,7 @@ export default function AttendanceStudentList() {
                 Student: {currentStudent.name}
               </Typography>
               <Typography variant="body2">
-                Class: {currentStudent.student_class}
+                Class: {currentStudent.student_class?.class_text || "N/A"}
               </Typography>
               <Typography variant="body2">Date: {date}</Typography>
 
