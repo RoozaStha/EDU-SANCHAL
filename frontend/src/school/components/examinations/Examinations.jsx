@@ -73,6 +73,7 @@ export default function Examinations() {
   const theme = useTheme();
   const [examinations, setExaminations] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [subjects, setSubjects] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [editMode, setEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -96,7 +97,6 @@ export default function Examinations() {
     validationSchema: examinationSchema,
     onSubmit: async (values, { resetForm }) => {
       try {
-        // Format the date properly
         const formattedDate = values.date ? new Date(values.date).toISOString() : null;
 
         let response;
@@ -150,6 +150,17 @@ export default function Examinations() {
     }
   };
 
+  const fetchAllSubjects = async () => {
+    try {
+      const response = await axios.get(`${baseApi}/subjects`);
+      setSubjects(response.data.data);
+    } catch (error) {
+      console.error("Error fetching subjects:", error);
+      setMessage("Failed to fetch subjects");
+      setMessageType("error");
+    }
+  };
+
   const fetchExaminationsByClass = async (classId) => {
     if (!classId) return;
     
@@ -175,7 +186,7 @@ export default function Examinations() {
     setEditingId(exam._id);
     formik.setValues({
       date: exam.examDate ? new Date(exam.examDate) : null,
-      subject: exam.subject,
+      subject: exam.subject._id,
       examType: exam.examType,
       classId: exam.class?._id || selectedClass,
     });
@@ -225,6 +236,7 @@ export default function Examinations() {
 
   useEffect(() => {
     fetchAllClasses();
+    fetchAllSubjects();
   }, []);
 
   useEffect(() => {
@@ -336,31 +348,40 @@ export default function Examinations() {
             />
           </LocalizationProvider>
 
-          <TextField
-            fullWidth
-            variant="outlined"
-            label="Subject"
-            name="subject"
-            value={formik.values.subject}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            error={formik.touched.subject && Boolean(formik.errors.subject)}
-            helperText={formik.touched.subject && formik.errors.subject}
-            InputProps={{
-              startAdornment: (
+          <FormControl fullWidth variant="outlined">
+            <InputLabel id="subject-select-label">Subject</InputLabel>
+            <Select
+              labelId="subject-select-label"
+              id="subject-select"
+              name="subject"
+              value={formik.values.subject}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              error={formik.touched.subject && Boolean(formik.errors.subject)}
+              label="Subject"
+              startAdornment={
                 <InputAdornment position="start">
                   <SubjectIcon />
                 </InputAdornment>
-              ),
-              sx: {
+              }
+              sx={{
                 borderRadius: 2,
                 transition: "all 0.3s ease",
                 "&:hover": {
                   boxShadow: theme.shadows[2],
                 },
-              },
-            }}
-          />
+              }}
+            >
+              {subjects.map((subject) => (
+                <MenuItem key={subject._id} value={subject._id}>
+                  {subject.subject_name}
+                </MenuItem>
+              ))}
+            </Select>
+            {formik.touched.subject && formik.errors.subject && (
+              <FormHelperText error>{formik.errors.subject}</FormHelperText>
+            )}
+          </FormControl>
 
           <TextField
             fullWidth
@@ -516,7 +537,7 @@ export default function Examinations() {
                           display: "inline-block",
                         }}
                       />
-                      {exam.subject}
+                      {exam.subject?.subject_name || 'Unknown Subject'}
                     </Typography>
                     
                     <Box sx={{ 

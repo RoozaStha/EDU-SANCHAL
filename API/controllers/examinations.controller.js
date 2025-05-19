@@ -25,14 +25,14 @@ module.exports = {
             const savedData = await newExamination.save();
             return res.status(200).json({
                 success: true,
-                message: "Success in creating new Examination.",
+                message: "Examination created successfully",
                 data: savedData
             });
         } catch (error) {
             console.error("Create Error:", error);
             return res.status(500).json({
                 success: false,
-                message: "Error in Creating New Examination."
+                message: "Error in creating examination"
             });
         }
     },
@@ -40,11 +40,16 @@ module.exports = {
     getAllExaminations: async (req, res) => {
         try {
             const schoolId = req.user.schoolId;
-            const examinations = await Examination.find({ school: schoolId });
+            const examinations = await Examination.find({ school: schoolId })
+                .populate('subject', 'subject_name')
+                .populate('class', 'class_text');
             return res.status(200).json({ success: true, examinations });
         } catch (error) {
             console.error("Fetch All Error:", error);
-            return res.status(500).json({ success: false, message: "Error in Fetching Examinations." });
+            return res.status(500).json({ 
+                success: false, 
+                message: "Error in fetching examinations" 
+            });
         }
     },
 
@@ -52,11 +57,23 @@ module.exports = {
         try {
             const schoolId = req.user.schoolId;
             const classId = req.params.id;
-            const examinations = await Examination.find({ class: classId, school: schoolId });
-            return res.status(200).json({ success: true, examinations });
+            const examinations = await Examination.find({ 
+                class: classId, 
+                school: schoolId 
+            })
+            .populate('subject', 'subject_name')
+            .populate('class', 'class_text');
+            
+            return res.status(200).json({ 
+                success: true, 
+                examinations 
+            });
         } catch (error) {
             console.error("Fetch by Class Error:", error);
-            return res.status(500).json({ success: false, message: "Error in Fetching Examinations." });
+            return res.status(500).json({ 
+                success: false, 
+                message: "Error in fetching examinations" 
+            });
         }
     },
 
@@ -76,22 +93,26 @@ module.exports = {
                     } 
                 },
                 { new: true }
-            );
+            ).populate('subject', 'subject_name')
+             .populate('class', 'class_text');
 
             if (!updated) {
-                return res.status(404).json({ success: false, message: "Examination not found." });
+                return res.status(404).json({ 
+                    success: false, 
+                    message: "Examination not found" 
+                });
             }
 
             return res.status(200).json({ 
                 success: true, 
-                message: "Examination is updated successfully.", 
+                message: "Examination updated successfully", 
                 data: updated 
             });
         } catch (error) {
             console.error("Update Error:", error);
             return res.status(500).json({ 
                 success: false, 
-                message: "Error in Updating Examination." 
+                message: "Error in updating examination" 
             });
         }
     },
@@ -109,19 +130,19 @@ module.exports = {
             if (!deleted) {
                 return res.status(404).json({ 
                     success: false, 
-                    message: "Examination not found." 
+                    message: "Examination not found" 
                 });
             }
 
             return res.status(200).json({ 
                 success: true, 
-                message: "Examination is deleted successfully." 
+                message: "Examination deleted successfully" 
             });
         } catch (error) {
             console.error("Delete Error:", error);
             return res.status(500).json({ 
                 success: false, 
-                message: "Error in Deleting Examination." 
+                message: "Error in deleting examination" 
             });
         }
     }
