@@ -94,8 +94,14 @@ const Teacher = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       
-      // Handle different possible response structures
-      const subjectsData = response.data?.data || response.data || [];
+      // Ensure we're getting the subjects array properly
+      let subjectsData = [];
+      if (Array.isArray(response.data)) {
+        subjectsData = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        subjectsData = response.data.data;
+      }
+      
       console.log("Subjects data:", subjectsData);
       setSubjects(subjectsData);
     } catch (error) {
@@ -115,8 +121,13 @@ const Teacher = () => {
         },
       });
       
-      // Handle different possible response structures
-      const classesData = response.data?.data || response.data || [];
+      let classesData = [];
+      if (Array.isArray(response.data)) {
+        classesData = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        classesData = response.data.data;
+      }
+      
       setClasses(classesData);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch classes");
@@ -134,8 +145,13 @@ const Teacher = () => {
         },
       });
       
-      // Handle different possible response structures
-      const teachersData = response.data?.data || response.data || [];
+      let teachersData = [];
+      if (Array.isArray(response.data)) {
+        teachersData = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        teachersData = response.data.data;
+      }
+      
       setTeachers(teachersData);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch teachers");
@@ -153,7 +169,6 @@ const Teacher = () => {
         },
       });
       
-      // Handle different possible response structures
       const teacherData = response.data?.data || response.data;
       setCurrentTeacher(teacherData);
     } catch (err) {
@@ -414,7 +429,7 @@ const Teacher = () => {
                   {currentTeacher.subjects.map((subject) => (
                     <Chip
                       key={subject._id}
-                      label={subject.name}
+                      label={subject.name || subject.subject_name}
                       size="small"
                       color="secondary"
                     />
@@ -653,7 +668,10 @@ const Teacher = () => {
                       {selected.map((value) => {
                         const subject = subjects.find((s) => s._id === value);
                         return subject ? (
-                          <Chip key={value} label={subject.name} />
+                          <Chip 
+                            key={value} 
+                            label={subject.name || subject.subject_name} 
+                          />
                         ) : null;
                       })}
                     </Box>
@@ -671,7 +689,9 @@ const Teacher = () => {
                             formik.values.subjects.indexOf(subject._id) > -1
                           }
                         />
-                        <ListItemText primary={subject.name} />
+                        <ListItemText 
+                          primary={subject.name || subject.subject_name} 
+                        />
                       </MenuItem>
                     ))
                   )}
@@ -821,12 +841,12 @@ const Teacher = () => {
                       )}
                       {teacher.gender}
                     </Box>
-                    {teacher.class && (
+                    {teacher.classes && teacher.classes.length > 0 && (
                       <Box
                         sx={{ display: "flex", alignItems: "center", mt: 1 }}
                       >
                         <School fontSize="small" sx={{ mr: 1 }} />
-                        Class: {teacher.class.name || teacher.class.class_text}
+                        Classes: {teacher.classes.map(cls => cls.class_text || cls.name).join(", ")}
                         {teacher.is_class_teacher && " (Class Teacher)"}
                       </Box>
                     )}
@@ -846,7 +866,7 @@ const Teacher = () => {
                           {teacher.subjects.map((subject) => (
                             <Chip
                               key={subject._id}
-                              label={subject.name}
+                              label={subject.name || subject.subject_name}
                               size="small"
                               color="secondary"
                             />
