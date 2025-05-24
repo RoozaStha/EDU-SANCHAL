@@ -72,6 +72,23 @@ exports.registerStudent = async (req, res) => {
                         message: "Email already registered"
                     });
                 }
+                // In registerStudent and updateStudent
+                if (fields.student_class) {
+                    if (!mongoose.Types.ObjectId.isValid(fields.student_class[0])) {
+                        return res.status(400).json({
+                            success: false,
+                            message: "Invalid class ID format"
+                        });
+                    }
+                }
+
+                // Validate class ID
+                if (!mongoose.Types.ObjectId.isValid(fields.student_class[0])) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid class ID format"
+                    });
+                }
 
                 // Handle image upload
                 const uploadDir = path.join(
@@ -92,8 +109,7 @@ exports.registerStudent = async (req, res) => {
                     school: req.user.schoolId,
                     email: email,
                     name: fields.name[0],
-                    student_class: fields.student_class[0],
-                    age: fields.age[0],
+                    student_class: fields.student_class[0], age: fields.age[0],
                     gender: fields.gender[0],
                     guardian: fields.guardian[0],
                     guardian_phone: fields.guardian_phone[0],
@@ -145,28 +161,28 @@ exports.loginStudent = async (req, res) => {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Email and password are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Email and password are required"
             });
         }
 
-        const student = await Student.findOne({ 
-            email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
+        const student = await Student.findOne({
+            email: { $regex: new RegExp(`^${email.trim()}$`, 'i') }
         }).populate('school');
 
         if (!student) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Invalid credentials" 
+            return res.status(401).json({
+                success: false,
+                message: "Invalid credentials"
             });
         }
 
         const isMatch = await bcrypt.compare(password.trim(), student.password);
         if (!isMatch) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Invalid credentials" 
+            return res.status(401).json({
+                success: false,
+                message: "Invalid credentials"
             });
         }
 
@@ -202,17 +218,30 @@ exports.loginStudent = async (req, res) => {
     }
 };
 
-// Get all students (for admin/school)
+// Get all students (updated to populate class)
 exports.getAllStudents = async (req, res) => {
     try {
+        console.log('User making request:', req.user); // Debug log
+
         const filter = {};
         if (req.user.role === 'SCHOOL') {
+            if (!req.user.schoolId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "School ID is missing in token"
+                });
+            }
             filter.school = req.user.schoolId;
         }
 
+        console.log('Database query filter:', filter); // Debug lFog
+
         const students = await Student.find(filter)
+            .populate('student_class', 'class_text')
             .select('-password -__v')
             .lean();
+
+        console.log('Found students:', students.length); // Debug log
 
         res.status(200).json({
             success: true,
@@ -225,11 +254,10 @@ exports.getAllStudents = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to fetch students",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            error: error.message // Always include error message in development
         });
     }
 };
-
 // Get single student data
 exports.getStudentById = async (req, res) => {
     try {
@@ -246,6 +274,7 @@ exports.getStudentById = async (req, res) => {
         }
 
         const student = await Student.findOne(filter)
+            .populate('student_class', 'class_text') // Populate class with only class_text
             .select('-password')
             .lean();
 
@@ -263,14 +292,14 @@ exports.getStudentById = async (req, res) => {
 
     } catch (error) {
         console.error("Get student error:", error);
-        
+
         if (error.name === 'CastError') {
             return res.status(400).json({
                 success: false,
                 message: "Invalid student ID format"
             });
         }
-        
+
         res.status(500).json({
             success: false,
             message: "Failed to fetch student data",
@@ -290,7 +319,7 @@ exports.updateStudent = async (req, res) => {
                 if (req.user.role === 'STUDENT') {
                     student = await Student.findById(req.user.id);
                 } else if (req.user.role === 'SCHOOL') {
-                    const studentId = fields.studentId?.[0] || req.user.id; 
+                    const studentId = fields.studentId?.[0] || req.user.id;
                     if (!studentId) {
                         return res.status(400).json({
                             success: false,
@@ -314,11 +343,19 @@ exports.updateStudent = async (req, res) => {
                         message: "Student not found"
                     });
                 }
-
+                // In registerStudent and updateStudent
+                if (fields.student_class) {
+                    if (!mongoose.Types.ObjectId.isValid(fields.student_class[0])) {
+                        return res.status(400).json({
+                            success: false,
+                            message: "Invalid class ID format"
+                        });
+                    }
+                }
                 // Handle image update
                 if (files?.student_image) {
                     const uploadDir = path.join(process.cwd(), process.env.STUDENT_IMAGE_PATH);
-                    
+
                     // Delete old image
                     if (student.student_image) {
                         const oldPath = path.join(uploadDir, student.student_image);
@@ -335,7 +372,14 @@ exports.updateStudent = async (req, res) => {
                 const allowedUpdates = ['name', 'student_class', 'age', 'gender', 'guardian', 'guardian_phone'];
                 allowedUpdates.forEach(field => {
                     if (fields[field]) {
-                        student[field] = fields[field][0].trim();
+                        // Special handling for student_class
+                        if (field === 'student_class') {
+                            if (mongoose.Types.ObjectId.isValid(fields[field][0])) {
+                                student.student_class = fields.student_class[0];
+                            }
+                        } else {
+                            student[field] = fields[field][0].trim();
+                        }
                     }
                 });
 
@@ -353,9 +397,11 @@ exports.updateStudent = async (req, res) => {
 
                 await student.save();
 
-                const studentData = student.toObject();
-                delete studentData.password;
-                delete studentData.__v;
+                // Populate class before returning
+                const studentData = await Student.findById(student._id)
+                    .populate('student_class', 'class_text')
+                    .select('-password -__v')
+                    .lean();
 
                 res.status(200).json({
                     success: true,
@@ -381,7 +427,6 @@ exports.updateStudent = async (req, res) => {
         });
     }
 };
-
 // Get students with query filters (search and class)
 exports.getStudentsWithQuery = async (req, res) => {
     try {
@@ -392,11 +437,20 @@ exports.getStudentsWithQuery = async (req, res) => {
         }
 
         if (req.query.student_class) {
-            filterQuery['student_class'] = req.query.student_class;
+            if (mongoose.Types.ObjectId.isValid(req.query.student_class)) {
+                filterQuery['student_class'] = new mongoose.Types.ObjectId(req.query.student_class);
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid class ID format"
+                });
+            }
         }
 
-        const students = await Student.find(filterQuery).select('-password');
-        
+        const students = await Student.find(filterQuery)
+            .populate('student_class', 'class_text')
+            .select('-password');
+
         res.status(200).json({
             success: true,
             message: "Successfully fetched filtered students",
@@ -441,7 +495,7 @@ exports.deleteStudentWithId = async (req, res) => {
                 process.env.STUDENT_IMAGE_PATH,
                 student.student_image
             );
-            
+
             if (fs.existsSync(imagePath)) {
                 fs.unlinkSync(imagePath);
             }
@@ -466,6 +520,7 @@ exports.deleteStudentWithId = async (req, res) => {
 exports.getStudentOwnData = async (req, res) => {
     try {
         const student = await Student.findById(req.user.id)
+            .populate('student_class', 'class_text')
             .select('-password')
             .lean();
 

@@ -93,7 +93,7 @@ const Teacher = () => {
       const response = await axios.get(`${baseApi}/subjects`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      
+
       // Ensure we're getting the subjects array properly
       let subjectsData = [];
       if (Array.isArray(response.data)) {
@@ -101,7 +101,7 @@ const Teacher = () => {
       } else if (response.data && Array.isArray(response.data.data)) {
         subjectsData = response.data.data;
       }
-      
+
       console.log("Subjects data:", subjectsData);
       setSubjects(subjectsData);
     } catch (error) {
@@ -120,14 +120,14 @@ const Teacher = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      
+
       let classesData = [];
       if (Array.isArray(response.data)) {
         classesData = response.data;
       } else if (response.data && Array.isArray(response.data.data)) {
         classesData = response.data.data;
       }
-      
+
       setClasses(classesData);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch classes");
@@ -144,14 +144,14 @@ const Teacher = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      
+
       let teachersData = [];
       if (Array.isArray(response.data)) {
         teachersData = response.data;
       } else if (response.data && Array.isArray(response.data.data)) {
         teachersData = response.data.data;
       }
-      
+
       setTeachers(teachersData);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch teachers");
@@ -168,7 +168,7 @@ const Teacher = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      
+
       const teacherData = response.data?.data || response.data;
       setCurrentTeacher(teacherData);
     } catch (err) {
@@ -195,7 +195,7 @@ const Teacher = () => {
     teacher_image: editMode
       ? Yup.mixed()
       : Yup.mixed().required("Teacher image is required"),
-    classes: Yup.array().of(Yup.string()),
+    class: Yup.string().nullable(),
     is_class_teacher: Yup.boolean(),
     subjects: Yup.array().of(Yup.string()),
   });
@@ -209,8 +209,8 @@ const Teacher = () => {
       gender: "",
       password: "",
       teacher_image: null,
-      classes: [],
-      is_class_teacher: false,
+      class: null,
+      is_class_teacher: false, // New field
       subjects: [],
     },
     validationSchema,
@@ -223,7 +223,7 @@ const Teacher = () => {
         Object.keys(values).forEach((key) => {
           if (key === "teacher_image" && values[key]) {
             formData.append(key, values[key]);
-          } else if (key === "subjects" || key === "classes") {
+          } else if (key === "subjects" ) {
             // Handle arrays
             if (values[key] && values[key].length > 0) {
               values[key].forEach((item) => {
@@ -284,8 +284,8 @@ const Teacher = () => {
       gender: teacher.gender || "",
       password: "",
       teacher_image: null,
-      classes: teacher.classes?.map((cls) => cls._id) || [],
-      is_class_teacher: teacher.is_class_teacher || false,
+      class: teacher.class?._id || null, // Changed from classes array
+      is_class_teacher: teacher.is_class_teacher || false, // New field
       subjects: teacher.subjects?.map((subject) => subject._id) || [],
     });
     setOpenDialog(true);
@@ -597,29 +597,16 @@ const Teacher = () => {
 
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Assigned Classes</InputLabel>
+                <InputLabel>Class</InputLabel>
                 <Select
-                  multiple
-                  name="classes"
-                  value={formik.values.classes}
+                  name="class"
+                  value={formik.values.class}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  label="Assigned Classes"
+                  label="Class"
                   disabled={classesLoading}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                      {selected.map((value) => {
-                        const cls = classes.find((c) => c._id === value);
-                        return cls ? (
-                          <Chip
-                            key={value}
-                            label={cls.class_text || cls.name}
-                          />
-                        ) : null;
-                      })}
-                    </Box>
-                  )}
                 >
+                  <MenuItem value={null}>Not assigned to a class</MenuItem>
                   {classesLoading ? (
                     <MenuItem disabled>
                       <CircularProgress size={24} />
@@ -627,10 +614,7 @@ const Teacher = () => {
                   ) : (
                     classes.map((cls) => (
                       <MenuItem key={cls._id} value={cls._id}>
-                        <Checkbox
-                          checked={formik.values.classes.indexOf(cls._id) > -1}
-                        />
-                        <ListItemText primary={cls.class_text || cls.name} />
+                        {cls.class_text || cls.name}
                       </MenuItem>
                     ))
                   )}
@@ -646,9 +630,12 @@ const Teacher = () => {
                     checked={formik.values.is_class_teacher}
                     onChange={formik.handleChange}
                     color="primary"
+                    disabled={!formik.values.class}
                   />
                 }
                 label="Is Class Teacher"
+                labelPlacement="start"
+                sx={{ justifyContent: "space-between", ml: 0, width: "100%" }}
               />
             </Grid>
 
@@ -668,9 +655,9 @@ const Teacher = () => {
                       {selected.map((value) => {
                         const subject = subjects.find((s) => s._id === value);
                         return subject ? (
-                          <Chip 
-                            key={value} 
-                            label={subject.name || subject.subject_name} 
+                          <Chip
+                            key={value}
+                            label={subject.name || subject.subject_name}
                           />
                         ) : null;
                       })}
@@ -689,8 +676,8 @@ const Teacher = () => {
                             formik.values.subjects.indexOf(subject._id) > -1
                           }
                         />
-                        <ListItemText 
-                          primary={subject.name || subject.subject_name} 
+                        <ListItemText
+                          primary={subject.name || subject.subject_name}
                         />
                       </MenuItem>
                     ))
@@ -841,15 +828,16 @@ const Teacher = () => {
                       )}
                       {teacher.gender}
                     </Box>
-                    {teacher.classes && teacher.classes.length > 0 && (
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mt: 1 }}
-                      >
-                        <School fontSize="small" sx={{ mr: 1 }} />
-                        Classes: {teacher.classes.map(cls => cls.class_text || cls.name).join(", ")}
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                      <School fontSize="small" sx={{ mr: 1 }} />
+                      <Typography variant="body2">
+                        Class:{" "}
+                        {teacher.class?.class_text ||
+                          teacher.class?.name ||
+                          "Not assigned"}
                         {teacher.is_class_teacher && " (Class Teacher)"}
-                      </Box>
-                    )}
+                      </Typography>
+                    </Box>
                     {teacher.subjects && teacher.subjects.length > 0 && (
                       <Box sx={{ mt: 1 }}>
                         <Typography variant="caption" display="block">

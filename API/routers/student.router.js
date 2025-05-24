@@ -9,12 +9,12 @@ router.post('/login', studentController.loginStudent);
 
 // Protected routes
 router.get('/all', authMiddleware(['SCHOOL']), studentController.getStudentsWithQuery);
-router.get('/fetch-single', authMiddleware(['STUDENT']), studentController.getStudentOwnData);
-router.get('/:id', authMiddleware(['SCHOOL', 'ADMIN']), studentController.getStudentById);
+router.get('/fetch-single', authMiddleware(['STUDENT','SCHOOL']), studentController.getStudentOwnData);
+router.get('/:id', authMiddleware(['SCHOOL']), studentController.getStudentById);
 router.patch('/update', authMiddleware(['STUDENT', 'SCHOOL']), studentController.updateStudent);
 router.delete('/delete/:id', authMiddleware(['SCHOOL']), studentController.deleteStudentWithId);
 
 // Additional route
-router.get('/', authMiddleware(['SCHOOL', 'ADMIN']), studentController.getAllStudents);
+router.get('/', authMiddleware(['SCHOOL']), studentController.getAllStudents);
 
 module.exports = router;

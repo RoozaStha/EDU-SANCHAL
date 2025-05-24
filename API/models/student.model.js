@@ -21,9 +21,14 @@ const studentSchema = new mongoose.Schema(
       trim: true,
     },
     student_class: {
-      type: String,
-      required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Class',
+    validate: {
+      validator: mongoose.Types.ObjectId.isValid,
+      message: props => `${props.value} is not a valid class id!`
     },
+    default: null
+  },
     age: {
       type: String,
       required: true,

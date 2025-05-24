@@ -57,7 +57,6 @@ import * as Yup from "yup";
 import axios from "axios";
 import { AuthContext } from "../../../context/AuthContext";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
-import { baseApi } from "../../../environment";
 
 const Student = () => {
   const theme = useTheme();
@@ -88,7 +87,7 @@ const Student = () => {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${baseApi}/students`, {
+      const response = await axios.get(`http://localhost:5000/api/students/`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -103,7 +102,7 @@ const Student = () => {
 
   const fetchClasses = async () => {
     try {
-      const response = await axios.get(`${baseApi}/class/all`, {
+      const response = await axios.get(`http://localhost:5000/api/class/all`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -117,7 +116,7 @@ const Student = () => {
   const fetchStudentData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${baseApi}/students/fetch-single`, {
+      const response = await axios.get(`http://localhost:5000/api/students/fetch-single`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -135,10 +134,8 @@ const Student = () => {
     name: Yup.string().required("Name is required"),
     email: Yup.string().email("Invalid email").required("Email is required"),
     student_class: Yup.string().required("Class is required"),
-    age: Yup.number()
-      .required("Age is required")
-      .positive("Age must be positive")
-      .integer("Age must be integer"),
+    age: Yup.string()  // Changed to string to match backend
+      .required("Age is required"),
     gender: Yup.string().required("Gender is required"),
     guardian: Yup.string().required("Guardian name is required"),
     guardian_phone: Yup.string().required("Guardian phone is required"),
@@ -178,6 +175,7 @@ const Student = () => {
             formData.append(key, values[key]);
           }
         });
+        
         if (editMode && user.role === "SCHOOL") {
           formData.append("studentId", currentStudent._id);
         }
@@ -185,7 +183,7 @@ const Student = () => {
         if (editMode) {
           // Update student
           const response = await axios.patch(
-            `${baseApi}/students/update`,
+            `http://localhost:5000/api/students/update`,
             formData,
             {
               headers: {
@@ -202,7 +200,7 @@ const Student = () => {
           }
         } else {
           // Create new student
-          await axios.post(`${baseApi}/students/register`, formData, {
+          await axios.post(`http://localhost:5000/api/students/register`, formData, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
               "Content-Type": "multipart/form-data",
@@ -228,7 +226,7 @@ const Student = () => {
     formik.setValues({
       name: student.name,
       email: student.email,
-      student_class: student.student_class,
+      student_class: student.student_class?._id || "",
       age: student.age,
       gender: student.gender,
       guardian: student.guardian,
@@ -244,7 +242,7 @@ const Student = () => {
     if (window.confirm("Are you sure you want to delete this student?")) {
       try {
         setLoading(true);
-        await axios.delete(`${baseApi}/students/delete/${id}`, {
+        await axios.delete(`http://localhost:5000/api/students/delete/${id}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
@@ -264,8 +262,11 @@ const Student = () => {
     const matchesSearch =
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
     const matchesClass =
-      selectedClass === "" || student.student_class === selectedClass;
+      selectedClass === "" || 
+      (student.student_class && student.student_class._id === selectedClass);
+    
     return matchesSearch && matchesClass;
   });
 
@@ -309,14 +310,15 @@ const Student = () => {
             <Typography color="text.secondary">
               {currentStudent.email}
             </Typography>
-            <Chip
-              label={currentStudent.student_class}
-              icon={<Class />}
-              sx={{ mt: 1 }}
-              color="primary"
-            />
+            {currentStudent.student_class && (
+              <Chip
+                label={currentStudent.student_class.class_text}
+                icon={<Class />}
+                sx={{ mt: 1 }}
+                color="primary"
+              />
+            )}
           </Box>
-
           <Divider sx={{ my: 2 }} />
 
           <Grid container spacing={2}>
@@ -338,9 +340,7 @@ const Student = () => {
                   <Transgender sx={{ mr: 1, color: "text.secondary" }} />
                 )}
                 <Typography>
-                  <strong>Gender:</strong>{" "}
-                  {currentStudent.gender.charAt(0).toUpperCase() +
-                    currentStudent.gender.slice(1)}
+                  <strong>Gender:</strong> {currentStudent.gender}
                 </Typography>
               </Box>
             </Grid>
@@ -356,8 +356,7 @@ const Student = () => {
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                 <Phone sx={{ mr: 1, color: "text.secondary" }} />
                 <Typography>
-                  <strong>Guardian Phone:</strong>{" "}
-                  {currentStudent.guardian_phone}
+                  <strong>Guardian Phone:</strong> {currentStudent.guardian_phone}
                 </Typography>
               </Box>
             </Grid>
@@ -446,7 +445,7 @@ const Student = () => {
                   label="Class"
                 >
                   {classes.map((cls) => (
-                    <MenuItem key={cls._id} value={cls.class_text}>
+                    <MenuItem key={cls._id} value={cls._id}>
                       {cls.class_text}
                     </MenuItem>
                   ))}
@@ -464,7 +463,6 @@ const Student = () => {
                 fullWidth
                 label="Age"
                 name="age"
-                type="number"
                 value={formik.values.age}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
@@ -638,7 +636,7 @@ const Student = () => {
             >
               <MenuItem value="">All Classes</MenuItem>
               {classes.map((cls) => (
-                <MenuItem key={cls._id} value={cls.class_text}>
+                <MenuItem key={cls._id} value={cls._id}>
                   {cls.class_text}
                 </MenuItem>
               ))}
@@ -701,7 +699,7 @@ const Student = () => {
                       sx={{ display: "flex", alignItems: "center", mb: 1 }}
                     >
                       <Class fontSize="small" sx={{ mr: 1 }} />
-                      Class: {student.student_class}
+                      Class: {student.student_class?.class_text || "Not assigned"}
                     </Box>
                     <Box
                       component="span"

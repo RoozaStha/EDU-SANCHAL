@@ -44,6 +44,8 @@ exports.registerTeacher = async (req, res) => {
 
                 const email = fields.email[0].trim().toLowerCase();
                 const rawPassword = fields.password[0].trim();
+                const classId = fields.class?.[0] || null;
+                const isClassTeacher = fields.is_class_teacher?.[0] === 'true';
 
                 // Email validation
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -73,6 +75,21 @@ exports.registerTeacher = async (req, res) => {
                     });
                 }
 
+                // Check if class teacher assignment is valid
+                if (isClassTeacher && classId) {
+                    const existingClassTeacher = await Teacher.findOne({ 
+                        class: classId,
+                        is_class_teacher: true
+                    });
+                    
+                    if (existingClassTeacher) {
+                        return res.status(400).json({
+                            success: false,
+                            message: `Class already has a class teacher: ${existingClassTeacher.name}`
+                        });
+                    }
+                }
+
                 // Handle image upload
                 const uploadDir = path.join(process.cwd(), process.env.TEACHER_IMAGE_PATH);
                 if (!fs.existsSync(uploadDir)) {
@@ -93,8 +110,8 @@ exports.registerTeacher = async (req, res) => {
                     gender: fields.gender[0],
                     teacher_image: teacherImage,
                     password: hashedPassword,
-                    classes: fields.classes?.[0]?.split(',') || [],
-                    is_class_teacher: fields.is_class_teacher?.[0] === 'true',
+                    class: classId,
+                    is_class_teacher: isClassTeacher,
                     subjects: fields.subjects?.[0]?.split(',') || []
                 });
 
@@ -105,7 +122,8 @@ exports.registerTeacher = async (req, res) => {
                     data: {
                         id: savedTeacher._id,
                         email: savedTeacher.email,
-                        name: savedTeacher.name
+                        name: savedTeacher.name,
+                        is_class_teacher: savedTeacher.is_class_teacher
                     },
                     message: "Teacher registered successfully"
                 });
@@ -142,7 +160,7 @@ exports.loginTeacher = async (req, res) => {
 
         const teacher = await Teacher.findOne({ 
             email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
-        }).populate('school classes subjects');
+        }).populate('school class subjects');
 
         if (!teacher) {
             return res.status(401).json({ 
@@ -201,7 +219,7 @@ exports.getAllTeachers = async (req, res) => {
 
         const teachers = await Teacher.find(filter)
             .select('-password -__v')
-            .populate('classes', 'name class_text')
+            .populate('class', 'name class_text')
             .populate('subjects', 'name')
             .lean();
 
@@ -238,7 +256,7 @@ exports.getTeacherById = async (req, res) => {
 
         const teacher = await Teacher.findOne(filter)
             .select('-password')
-            .populate('classes', 'name class_text')
+            .populate('class', 'name class_text')
             .populate('subjects', 'name')
             .lean();
 
@@ -294,6 +312,26 @@ exports.updateTeacher = async (req, res) => {
                     });
                 }
 
+                // Handle class teacher assignment
+                const newClassId = fields.class?.[0] || null;
+                const newIsClassTeacher = fields.is_class_teacher?.[0] === 'true';
+                
+                if (newIsClassTeacher && newClassId) {
+                    // Check if another teacher is already class teacher of this class
+                    const existingClassTeacher = await Teacher.findOne({
+                        class: newClassId,
+                        is_class_teacher: true,
+                        _id: { $ne: teacher._id }
+                    });
+                    
+                    if (existingClassTeacher) {
+                        return res.status(400).json({
+                            success: false,
+                            message: `Class already has a class teacher: ${existingClassTeacher.name}`
+                        });
+                    }
+                }
+
                 // Handle image update
                 if (files?.teacher_image) {
                     const uploadDir = path.join(process.cwd(), process.env.TEACHER_IMAGE_PATH);
@@ -313,15 +351,17 @@ exports.updateTeacher = async (req, res) => {
                 // Update fields
                 const allowedUpdates = [
                     'name', 'qualification', 'age', 'gender',
-                    'classes', 'is_class_teacher', 'subjects'
+                    'class', 'is_class_teacher', 'subjects'
                 ];
                 
                 allowedUpdates.forEach(field => {
                     if (fields[field]) {
-                        if (field === 'is_class_teacher') {
-                            teacher[field] = fields[field][0] === 'true';
-                        } else if (field === 'classes' || field === 'subjects') {
+                        if (field === 'subjects') {
                             teacher[field] = fields[field][0]?.split(',') || [];
+                        } else if (field === 'class') {
+                            teacher[field] = fields[field][0] || null;
+                        } else if (field === 'is_class_teacher') {
+                            teacher[field] = fields[field][0] === 'true';
                         } else {
                             teacher[field] = fields[field][0].trim();
                         }
@@ -344,7 +384,7 @@ exports.updateTeacher = async (req, res) => {
 
                 const updatedTeacher = await Teacher.findById(teacher._id)
                     .select('-password -__v')
-                    .populate('classes', 'name class_text')
+                    .populate('class', 'name class_text')
                     .populate('subjects', 'name')
                     .lean();
 
@@ -368,6 +408,48 @@ exports.updateTeacher = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Internal server error",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// Get class teacher for a class
+exports.getClassTeacher = async (req, res) => {
+    try {
+        const classId = req.params.classId;
+        
+        if (!mongoose.Types.ObjectId.isValid(classId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid class ID format"
+            });
+        }
+
+        const classTeacher = await Teacher.findOne({
+            class: classId,
+            is_class_teacher: true,
+            school: req.user.schoolId
+        })
+        .select('_id name email teacher_image')
+        .lean();
+
+        if (!classTeacher) {
+            return res.status(404).json({
+                success: false,
+                message: "No class teacher assigned for this class"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: classTeacher
+        });
+
+    } catch (error) {
+        console.error("Get class teacher error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch class teacher",
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
@@ -428,7 +510,7 @@ exports.getTeacherOwnData = async (req, res) => {
     try {
         const teacher = await Teacher.findById(req.user.id)
             .select('-password')
-            .populate('classes', 'name class_text')
+            .populate('class', 'name class_text')
             .populate('subjects', 'name')
             .lean();
 

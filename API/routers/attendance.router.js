@@ -1,56 +1,39 @@
 const express = require("express");
-const authMiddleware = require('../auth/auth');
+const router = express.Router();
+const authMiddleware = require("../auth/auth");
 const {
-  markAttendance,
   markBulkAttendance,
-  getAttendance,
-  checkAttendance,
-  getAttendanceStats,
-  getClassAttendance
+  getClassAttendance,
+  getStudentAttendanceStats,
+  getClassAttendanceSummary,
 } = require("../controllers/attendance.controller");
 
-const router = express.Router();
+// Mark attendance for multiple students
+router.post(
+  "/bulk",
+  authMiddleware(["TEACHER", "SCHOOL"]),
+  markBulkAttendance
+);
 
-/**
- * @route POST /api/attendance/mark
- * @desc Mark attendance for a single student
- * @access Private (Teachers only)
- */
-router.post("/mark", authMiddleware(['TEACHER', 'SCHOOL']), markAttendance);
+// Get attendance for a class on a specific date
+router.get(
+  "/class/:classId",
+  authMiddleware(["TEACHER", "SCHOOL"]),
+  getClassAttendance
+);
 
-/**
- * @route POST /api/attendance/mark/bulk
- * @desc Mark attendance for multiple students
- * @access Private (Teachers only)
- */
-router.post("/mark/bulk", authMiddleware(['TEACHER', 'SCHOOL']), markBulkAttendance);
+// Get attendance statistics for a student
+router.get(
+  "/stats/:studentId",
+  authMiddleware(["TEACHER", "SCHOOL"]),
+  getStudentAttendanceStats
+);
 
-/**
- * @route GET /api/attendance/:studentId
- * @desc Get attendance records for a specific student
- * @access Private (School admins and teachers)
- */
-router.get("/:studentId", authMiddleware(['SCHOOL', 'TEACHER']), getAttendance);
-
-/**
- * @route GET /api/attendance/check/:classId
- * @desc Check if attendance has been taken for a class on a date
- * @access Private (School admins and teachers)
- */
-router.get("/check/:classId", authMiddleware(['SCHOOL', 'TEACHER']), checkAttendance);
-
-/**
- * @route GET /api/attendance/stats/:studentId
- * @desc Get attendance statistics for a student
- * @access Private (School admins and teachers)
- */
-router.get("/stats/:studentId", authMiddleware(['SCHOOL', 'TEACHER']), getAttendanceStats);
-
-/**
- * @route GET /api/attendance/class/:classId
- * @desc Get class attendance for a specific date
- * @access Private (School admins and teachers)
- */
-router.get("/class/:classId", authMiddleware(['SCHOOL', 'TEACHER']), getClassAttendance);
+// Get attendance summary for a class
+router.get(
+  "/summary/:classId",
+  authMiddleware(["TEACHER", "SCHOOL"]),
+  getClassAttendanceSummary
+);
 
 module.exports = router;

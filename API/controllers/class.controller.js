@@ -33,9 +33,20 @@ module.exports = {
 
         }
     },
+    // In your class controller when creating/updating a class
     updateClassWithId: async (req, res) => {
         try {
             let id = req.params.id;
+            const { class_teacher } = req.body;
+
+            // If updating class teacher, verify the teacher exists
+            if (class_teacher) {
+                const teacher = await Teacher.findById(class_teacher);
+                if (!teacher) {
+                    return res.status(400).json({ success: false, message: "Teacher not found" });
+                }
+            }
+
             await Class.findOneAndUpdate({ _id: id }, { $set: { ...req.body } });
             const classAfterUpdate = await Class.findOne({ _id: id });
             res.status(200).json({ success: true, message: 'Class Updated.', data: classAfterUpdate });
