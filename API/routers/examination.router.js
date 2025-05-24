@@ -11,7 +11,7 @@ const {
 const router = express.Router();
 
 router.post("/create", authMiddleware(['SCHOOL']), newExamination);
-router.get("/all", authMiddleware(['SCHOOL']), getAllExaminations);
+router.get("/all", authMiddleware(['SCHOOL','STUDENT','TEACHER']), getAllExaminations);
 router.get("/class/:id", authMiddleware(['SCHOOL', 'TEACHER', 'STUDENT']), getExaminationsByClass);
 router.patch("/update/:id", authMiddleware(['SCHOOL']), updateExaminationWithId);
 router.delete("/delete/:id", authMiddleware(['SCHOOL']), deleteExaminationWithId);

@@ -5,7 +5,7 @@ const { createClass, getAllClasses, updateClassWithId, deleteClassWithId } = req
 const router = express.Router();
 
 router.post("/create", authMiddleware(['SCHOOL']), createClass);
-router.get("/all", authMiddleware(['SCHOOL','TEACHER']), getAllClasses);
+router.get("/all", authMiddleware(['SCHOOL','TEACHER','STUDENT']), getAllClasses);
 router.patch("/update/:id", authMiddleware(['SCHOOL','TEACHER']), updateClassWithId); // AUTHENTICATED USER FOR UPDATE
 router.delete("/delete/:id", authMiddleware(['SCHOOL','TEACHER']), deleteClassWithId);
 
