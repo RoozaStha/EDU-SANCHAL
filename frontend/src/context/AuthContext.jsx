@@ -5,6 +5,7 @@ export const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
     const [authenticated, setAuthenticated] = useState(false);
     const [user, setUser] = useState(null);
+    const [dark, setDark] = useState(false);
 
     const login = (userData, token) => {
         localStorage.setItem('token', token);
@@ -20,9 +21,21 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const modeChange = () => {
+        const newMode = !dark;
+        localStorage.setItem("mode", newMode);
+        setDark(newMode);
+    };
+
     useEffect(() => {
+        const mode = localStorage.getItem("mode");
         const token = localStorage.getItem('token');
         const userStr = localStorage.getItem('user');
+        
+        if (mode !== null) {
+            setDark(JSON.parse(mode));
+        }
+        
         if (token && userStr) {
             try {
                 setAuthenticated(true);
@@ -35,7 +48,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ authenticated, user, login, logout }}>
+        <AuthContext.Provider value={{ authenticated, user, dark, login, logout, modeChange }}>
             {children}
         </AuthContext.Provider>
     );

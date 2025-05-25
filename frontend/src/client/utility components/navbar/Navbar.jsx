@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useContext } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -11,21 +12,17 @@ import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import { useNavigate } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
-
-const pages = [
-  { link: '/', component: 'Home' },
-  { link: '/login', component: 'Login' },
-  { link: '/register', component: 'Register' }
-];
+import { AuthContext } from '../../../context/AuthContext';
 
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
-  background: '#ffffff',
-  boxShadow: '0px 2px 12px rgba(0, 0, 0, 0.08)',
-  borderBottom: `1px solid ${theme.palette.grey[200]}`,
+  backgroundColor: theme.palette.background.paper,
+  boxShadow: theme.shadows[1],
+  borderBottom: `1px solid ${theme.palette.divider}`,
+  color: theme.palette.text.primary,
 }));
 
 const StyledButton = styled(Button)(({ theme }) => ({
-  color: theme.palette.primary.dark,
+  color: theme.palette.text.primary,
   fontSize: '16px',
   textTransform: 'none',
   fontWeight: 500,
@@ -40,16 +37,16 @@ const StyledButton = styled(Button)(({ theme }) => ({
     left: 0,
     width: '100%',
     height: '100%',
-    background: 'linear-gradient(45deg, #1976d2 0%, #2196f3 100%)',
+    background: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
     zIndex: 0,
     opacity: 0,
     transform: 'translateY(100%)',
     transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   '&:hover': {
-    color: '#fff',
+    color: theme.palette.primary.contrastText,
     transform: 'translateY(-2px)',
-    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.2)',
+    boxShadow: `0 4px 12px rgba(${theme.palette.primary.main}, 0.2)`,
     '&:before': {
       opacity: 1,
       transform: 'translateY(0)',
@@ -72,7 +69,7 @@ const LogoImage = styled('img')({
 
 const LogoText = styled(Typography)(({ theme }) => ({
   fontWeight: 700,
-  color: theme.palette.primary.dark,
+  color: theme.palette.text.primary,
   fontSize: '1.75rem',
   letterSpacing: '-0.5px',
   '& span': {
@@ -82,8 +79,30 @@ const LogoText = styled(Typography)(({ theme }) => ({
 }));
 
 const Navbar = () => {
+  const { user, authenticated } = useContext(AuthContext);
+  const [pages, setPages] = React.useState([
+    { link: '/', component: 'Home' },
+    { link: '/login', component: 'Login' },
+    { link: '/register', component: 'Register' }
+  ]);
   const [anchorElNav, setAnchorElNav] = React.useState(null);
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (authenticated && user?.role) {
+      setPages([
+        { link: "/", component: "Home" },
+        { link: "/logout", component: "Log Out" },
+        { link: `/${user.role.toLowerCase()}`, component: "Dashboard" },
+      ]);
+    } else {
+      setPages([
+        { link: '/', component: 'Home' },
+        { link: '/login', component: 'Login' },
+        { link: '/register', component: 'Register' }
+      ]);
+    }
+  }, [authenticated, user]);
 
   const handleOpenNavMenu = (event) => {
     setAnchorElNav(event.currentTarget);
@@ -104,14 +123,16 @@ const Navbar = () => {
               display: 'flex', 
               alignItems: 'center', 
               cursor: 'pointer',
-              '&:hover $LogoText': {
-                color: theme => theme.palette.primary.main
+              '&:hover': {
+                '& .LogoText': {
+                  color: (theme) => theme.palette.primary.main
+                }
               }
             }}
             onClick={() => navigate('/')}
           >
             <LogoImage src="/logo.png" alt="EDU-SANCHAL" />
-            <LogoText variant="h1">
+            <LogoText variant="h1" className="LogoText">
               EDU<span>SANCHAL</span>
               <Typography 
                 component="div" 
@@ -137,7 +158,7 @@ const Navbar = () => {
             ml: 'auto'
           }}>
             {pages.map((page, i) => (
-              <StyledButton key={i} onClick={() => navigate(page.link)}>
+              <StyledButton key={i} onClick={() => handleCloseNavMenu(page.link)}>
                 <span>{page.component}</span>
               </StyledButton>
             ))}
@@ -159,14 +180,24 @@ const Navbar = () => {
           {/* Mobile Menu */}
           <Menu
             anchorEl={anchorElNav}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
             open={Boolean(anchorElNav)}
-            onClose={() => setAnchorElNav(null)}
+            onClose={() => handleCloseNavMenu(null)}
             sx={{ 
               '& .MuiPaper-root': {
                 minWidth: 200,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                border: '1px solid rgba(0, 0, 0, 0.05)',
-                borderRadius: 2
+                boxShadow: 4,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+                backgroundColor: 'background.paper'
               }
             }}
           >
@@ -178,7 +209,7 @@ const Navbar = () => {
                   py: 1.5,
                   transition: 'all 0.2s ease',
                   '&:hover': {
-                    background: 'linear-gradient(90deg, rgba(25, 118, 210, 0.08), transparent)',
+                    background: 'rgba(0, 0, 0, 0.04)',
                     paddingLeft: 3
                   }
                 }}
@@ -187,7 +218,8 @@ const Navbar = () => {
                   variant="body1" 
                   sx={{ 
                     fontWeight: 500,
-                    background: 'linear-gradient(45deg, #1976d2 0%, #2196f3 100%)',
+                    background: (theme) => 
+                      `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent'
                   }}

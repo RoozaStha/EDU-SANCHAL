@@ -1,94 +1,126 @@
-import './App.css';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { useContext } from 'react';
+import { AuthContext } from './context/AuthContext';
+import { ThemeProvider } from '@mui/material/styles';
+import { darkTheme, lightTheme } from './basic utility components/dark theme/darkTheme';
+import CssBaseline from '@mui/material/CssBaseline';
+import DraggableButton from './basic utility components/draggable/DraggableButton';
+
+// School Components
 import School from './school/School';
-import Class from './school/components/class/Class';
 import Dashboard from './school/components/dashboard/Dashboard';
+import Class from './school/components/class/Class';
 import Examinations from './school/components/examinations/Examinations';
 import Notice from './school/components/notice/Notice';
 import Schedule from './school/components/schedule/Schedule';
 import Students from './school/components/students/Students';
 import Subjects from './school/components/subjects/Subjects';
 import Teachers from './school/components/teachers/Teachers';
+import AttendanceStudentList from './school/components/attendance/AttendanceStudentList';
+
+// Client Components
 import Client from './client/Client';
 import Home from './client/components/home/Home';
 import Login from './client/components/login/Login';
 import Register from './client/components/register/Register';
+import LogOut from './client/components/logout/LogOut';
+
+// Teacher Components
 import Teacher from './teacher/Teacher';
 import TeacherDetails from './teacher/components/teacher details/TeacherDetails';
-
 import ScheduleTeacher from './teacher/components/schedule/ScheduleTeacher';
 import AttendanceTeacher from './teacher/components/attendance/AttendanceTeacher';
 import ExaminationsTeacher from './teacher/components/examinations/ExaminationTeacher';
 import NoticeTeacher from './teacher/components/notice/NoticeTeacher';
+
+// Student Components
 import Student from './student/Student';
 import StudentDetails from './student/components/student Details/StudentDetails';
 import AttendanceStudent from './student/components/attendance/AttendanceStudent';
 import ScheduleStudent from './student/components/schedule/ScheduleStudent';
 import ExaminationsStudent from './student/components/examinations/ExaminationsStudent';
 import NoticeStudent from './student/components/notice/NoticeStudent';
+
+// Other Components
 import ProtectedRoute from './guard/ProtectedRoute';
-import { AuthProvider } from './context/AuthContext';
-import AttendanceStudentList from './school/components/attendance/AttendanceStudentList';
-import LogOut from './client/components/logout/LogOut';
 
-function App() {
+function AppContent() {
   return (
-    <AuthProvider>
     <BrowserRouter>
-  <Routes>
-    {/* SCHOOL ROUTE - Main Parent */}
-    <Route path="/school" element={<ProtectedRoute allowedRoles={['SCHOOL']}><School /></ProtectedRoute>}>
-      <Route index element={<Dashboard />} />
-      <Route path="dashboard" element={<Dashboard />} />
-      <Route path="attendance" element={<AttendanceStudentList />} />
-      <Route path="class" element={<Class />} /> {/* Correct path */}
-      <Route path="examinations" element={<Examinations />} />
-      <Route path="notice" element={<Notice />} />
-      <Route path="schedule" element={<Schedule />} />
-      <Route path="students" element={<Students />} />
-      <Route path="subjects" element={<Subjects />} />
-      <Route path="teachers" element={<Teachers />} />
-    </Route>
+      <Routes>
+        {/* School Routes */}
+        <Route 
+          path="/school" 
+          element={
+            <ProtectedRoute allowedRoles={['SCHOOL']}>
+              <School />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="attendance" element={<AttendanceStudentList />} />
+          <Route path="class" element={<Class />} />
+          <Route path="examinations" element={<Examinations />} />
+          <Route path="notice" element={<Notice />} />
+          <Route path="schedule" element={<Schedule />} />
+          <Route path="students" element={<Students />} />
+          <Route path="subjects" element={<Subjects />} />
+          <Route path="teachers" element={<Teachers />} />
+        </Route>
 
+        {/* Student Routes */}
+        <Route 
+          path="/student" 
+          element={
+            <ProtectedRoute allowedRoles={['STUDENT']}>
+              <Student />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<StudentDetails />} />
+          <Route path="schedule" element={<ScheduleStudent />} />
+          <Route path="attendance" element={<AttendanceStudent />} />
+          <Route path="examinations" element={<ExaminationsStudent />} />
+          <Route path="notice" element={<NoticeStudent />} />
+        </Route>
 
-      {/*STUDENT */}
-      <Route path="student" element={<ProtectedRoute allowedRoles={['STUDENT']}><Student/></ProtectedRoute>}>
-    <Route index element={<StudentDetails/>}/>
+        {/* Teacher Routes */}
+        <Route 
+          path="/teacher" 
+          element={
+            <ProtectedRoute allowedRoles={['TEACHER']}>
+              <Teacher />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<TeacherDetails />} />
+          <Route path="schedule" element={<ScheduleTeacher />} />
+          <Route path="attendance" element={<AttendanceTeacher />} />
+          <Route path="examinations" element={<ExaminationsTeacher />} />
+          <Route path="notice" element={<NoticeTeacher />} />
+        </Route>
 
-      <Route path="schedule" element={<ScheduleStudent/>}/>
-      <Route path="attendance" element={<AttendanceStudent/>}/>
-      <Route path="examinations" element={<ExaminationsStudent/>}/>
-      <Route path="notice" element={<NoticeStudent/>}/>
-    </Route>
-
-
-    {/*TEACHER */}
-    <Route path="teacher" element={<ProtectedRoute allowedRoles={['TEACHER']}><Teacher/></ProtectedRoute>}>
-    <Route index element={<TeacherDetails/>}/>
-
-      <Route path="schedule" element={<ScheduleTeacher/>}/>
-      <Route path="attendance" element={<AttendanceTeacher/>}/>
-      <Route path="examinations" element={<ExaminationsTeacher/>}/>
-      <Route path="notice" element={<NoticeTeacher/>}/>
-    </Route>
-
-
-    {/* CLIENT */}
-    <Route path='/' element={<Client/>}>
-      <Route index element={<Home/>} />
-      <Route path='/login' element={<Login/>} />
-      <Route path='/register' element={<Register/>} />
-      <Route path='logout' element={<LogOut/>} />
-
-
-
-
-    </Route>
-  </Routes>
-</BrowserRouter>
-</AuthProvider>
-
+        {/* Client Routes */}
+        <Route path="/" element={<Client />}>
+          <Route index element={<Home />} />
+          <Route path="login" element={<Login />} />
+          <Route path="register" element={<Register />} />
+          <Route path="logout" element={<LogOut />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
 
-export default App;
+export default function App() {
+  const { dark } = useContext(AuthContext);
+
+  return (
+    <ThemeProvider theme={dark ? darkTheme : lightTheme}>
+      <CssBaseline />
+      <DraggableButton />
+      <AppContent />
+    </ThemeProvider>
+  );
+}
