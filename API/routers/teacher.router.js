@@ -8,7 +8,7 @@ router.post('/register', authMiddleware(['SCHOOL']), teacherController.registerT
 router.post('/login', teacherController.loginTeacher);
 
 // Protected routes
-router.get('/all', authMiddleware(['SCHOOL']), teacherController.getAllTeachers);
+router.get('/all', authMiddleware(['SCHOOL','TEACHER']), teacherController.getAllTeachers);
 router.get('/fetch-single', authMiddleware(['TEACHER','SCHOOL']), teacherController.getTeacherOwnData);
 router.get('/class-teacher/:classId', authMiddleware(['SCHOOL', 'TEACHER']), teacherController.getClassTeacher);
 router.get('/:id', authMiddleware(['SCHOOL', 'ADMIN']), teacherController.getTeacherById);

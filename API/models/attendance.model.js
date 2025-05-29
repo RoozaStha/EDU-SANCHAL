@@ -1,64 +1,72 @@
-const mongoose = require("mongoose");
-const moment = require("moment");
+const mongoose = require('mongoose');
 
-const attendanceSchema = new mongoose.Schema(
-  {
-    student: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Student",
-      required: true,
-    },
-    class: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Class",
-      required: true,
-    },
-    school: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "School",
-      required: true,
-    },
-    date: {
-      type: Date,
-      required: true,
-      get: (v) => moment(v).format("YYYY-MM-DD"),
-    },
-    status: {
-      type: String,
-      enum: ["present", "absent", "late", "half_day", "excused"],
-      default: "present",
-    },
-    markedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Teacher",
-      required: true,
-    },
-    remarks: {
-      type: String,
-      maxlength: 200,
-    },
+const attendanceSchema = new mongoose.Schema({
+  student: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Student',
+    required: true
   },
-  {
-    timestamps: true,
-    toJSON: { getters: true },
-    toObject: { getters: true },
+  teacher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Teacher',
+    required: true
+  },
+  class: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Class',
+    required: true
+  },
+  school: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'School',
+    required: true
+  },
+  date: {
+    type: Date,
+    required: true,
+    index: true
+  },
+  status: {
+    type: String,
+    required: true,
+    enum: ['present', 'absent', 'late', 'excused'],
+    default: 'present'
+  },
+  notes: {
+    type: String,
+    trim: true
   }
-);
-
-attendanceSchema.index(
-  { student: 1, date: 1, school: 1 },
-  { unique: true }
-);
-
-attendanceSchema.virtual("formattedDate").get(function () {
-  return moment(this.date).format("MMMM Do, YYYY");
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-attendanceSchema.pre("save", function (next) {
-  if (this.isModified("date")) {
-    this.date = moment(this.date).startOf("day").toDate();
-  }
-  next();
+// Compound index to ensure one attendance record per student per day
+attendanceSchema.index({ student: 1, date: 1, school: 1 }, { unique: true });
+
+// Virtual population
+attendanceSchema.virtual('studentDetails', {
+  ref: 'Student',
+  localField: 'student',
+  foreignField: '_id',
+  justOne: true
 });
 
-module.exports = mongoose.model("Attendance", attendanceSchema);
+attendanceSchema.virtual('teacherDetails', {
+  ref: 'Teacher',
+  localField: 'teacher',
+  foreignField: '_id',
+  justOne: true
+});
+
+attendanceSchema.virtual('classDetails', {
+  ref: 'Class',
+  localField: 'class',
+  foreignField: '_id',
+  justOne: true
+});
+
+const Attendance = mongoose.model('Attendance', attendanceSchema);
+
+module.exports = Attendance;

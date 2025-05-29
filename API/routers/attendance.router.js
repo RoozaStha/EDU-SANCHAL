@@ -1,39 +1,11 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const authMiddleware = require("../auth/auth");
-const {
-  markBulkAttendance,
-  getClassAttendance,
-  getStudentAttendanceStats,
-  getClassAttendanceSummary,
-} = require("../controllers/attendance.controller");
+const attendanceController = require('../controllers/attendance.controller');
+const authMiddleware = require('../auth/auth');
 
-// Mark attendance for multiple students
-router.post(
-  "/bulk",
-  authMiddleware(["TEACHER", "SCHOOL"]),
-  markBulkAttendance
-);
-
-// Get attendance for a class on a specific date
-router.get(
-  "/class/:classId",
-  authMiddleware(["TEACHER", "SCHOOL"]),
-  getClassAttendance
-);
-
-// Get attendance statistics for a student
-router.get(
-  "/stats/:studentId",
-  authMiddleware(["TEACHER", "SCHOOL"]),
-  getStudentAttendanceStats
-);
-
-// Get attendance summary for a class
-router.get(
-  "/summary/:classId",
-  authMiddleware(["TEACHER", "SCHOOL"]),
-  getClassAttendanceSummary
-);
+router.post('/student/mark', authMiddleware(['SCHOOL']), attendanceController.markStudentAttendance);
+router.post('/teacher/mark', authMiddleware(['SCHOOL']), attendanceController.markTeacherAttendance);
+router.get('/student/summary/:classId', authMiddleware(['SCHOOL']), attendanceController.getStudentAttendanceSummary);
+router.get('/teacher/summary', authMiddleware(['SCHOOL']), attendanceController.getTeacherAttendanceSummary);
 
 module.exports = router;
