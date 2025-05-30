@@ -7,5 +7,6 @@ router.post('/student/mark', authMiddleware(['SCHOOL']), attendanceController.ma
 router.post('/teacher/mark', authMiddleware(['SCHOOL']), attendanceController.markTeacherAttendance);
 router.get('/student/summary/:classId', authMiddleware(['SCHOOL']), attendanceController.getStudentAttendanceSummary);
 router.get('/teacher/summary', authMiddleware(['SCHOOL']), attendanceController.getTeacherAttendanceSummary);
-
+// In attendance.routes.js
+router.post('/all/mark', authMiddleware(['SCHOOL']), attendanceController.markAllAttendance);
 module.exports = router;
