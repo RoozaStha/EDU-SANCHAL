@@ -23,28 +23,28 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
   Legend,
   PieChart,
   Pie,
   Cell,
   CartesianGrid,
   LineChart,
-  Line
+  Line,
 } from "recharts";
 import { AuthContext } from "../../../context/AuthContext";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import moment from "moment";
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 const AttendanceDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -76,6 +76,9 @@ const AttendanceDashboard = () => {
     if (selectedClass) {
       fetchStudents(selectedClass);
       fetchStudentSummary(selectedClass);
+    } else {
+      setStudents([]);
+      setStudentSummary([]);
     }
     fetchTeacherSummary();
   }, [selectedClass]);
@@ -92,15 +95,31 @@ const AttendanceDashboard = () => {
   };
 
   const fetchStudents = async (classId) => {
-    try {
-      const res = await axios.get(`http://localhost:5000/api/students?student_class=${classId}`, {
+  try {
+    setStudentLoading(true);
+    const res = await axios.get(
+      `http://localhost:5000/api/students/all`,
+      {
         headers: { Authorization: `Bearer ${token}` },
-      });
-      setStudents(Array.isArray(res.data.data) ? res.data.data : []);
-    } catch (err) {
-      setError("Failed to load students");
+        params: {
+          student_class: classId
+        }
+      }
+    );
+    
+    if (!res.data.success) {
+      throw new Error(res.data.message || "Failed to fetch students");
     }
-  };
+    
+    setStudents(Array.isArray(res.data.data) ? res.data.data : []);
+  } catch (err) {
+    const errorMsg = err.response?.data?.message || err.message || "Failed to load students";
+    setError(errorMsg);
+    console.error("Error fetching students:", err);
+  } finally {
+    setStudentLoading(false);
+  }
+};
 
   const fetchTeachers = async () => {
     try {
@@ -116,9 +135,12 @@ const AttendanceDashboard = () => {
   const fetchStudentSummary = async (classId) => {
     try {
       setStudentLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/attendance/student/summary/${classId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(
+        `http://localhost:5000/api/attendance/student/summary/${classId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setStudentSummary(res.data.data || []);
     } catch (err) {
       setError("Failed to load student summary");
@@ -130,9 +152,12 @@ const AttendanceDashboard = () => {
   const fetchTeacherSummary = async () => {
     try {
       setTeacherLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/attendance/teacher/summary`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(
+        `http://localhost:5000/api/attendance/teacher/summary`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setTeacherSummary(res.data.data || []);
     } catch (err) {
       setError("Failed to load teacher summary");
@@ -144,75 +169,83 @@ const AttendanceDashboard = () => {
   // Process student data for charts
   const getStudentChartData = () => {
     if (!studentSummary.length) return [];
-    
+
     // Count presents and absents
-    const presentCount = studentSummary.filter(s => s.status === "Present").length;
-    const absentCount = studentSummary.filter(s => s.status === "Absent").length;
-    
+    const presentCount = studentSummary.filter(
+      (s) => s.status === "Present"
+    ).length;
+    const absentCount = studentSummary.filter(
+      (s) => s.status === "Absent"
+    ).length;
+
     // Group by student
     const studentData = studentSummary.reduce((acc, curr) => {
-      const existing = acc.find(item => item.studentId === curr.student._id);
+      const existing = acc.find((item) => item.studentId === curr.student._id);
       if (existing) {
         existing[curr.status] = (existing[curr.status] || 0) + 1;
       } else {
         const newItem = {
           name: curr.student.name,
           studentId: curr.student._id,
-          [curr.status]: 1
+          [curr.status]: 1,
         };
         acc.push(newItem);
       }
       return acc;
     }, []);
-    
+
     return [
       {
         name: "Overall",
         Present: presentCount,
         Absent: absentCount,
       },
-      ...studentData
+      ...studentData,
     ];
   };
 
   // Process teacher data for charts
   const getTeacherChartData = () => {
     if (!teacherSummary.length) return [];
-    
+
     // Count presents and absents
-    const presentCount = teacherSummary.filter(t => t.status === "Present").length;
-    const absentCount = teacherSummary.filter(t => t.status === "Absent").length;
-    
+    const presentCount = teacherSummary.filter(
+      (t) => t.status === "Present"
+    ).length;
+    const absentCount = teacherSummary.filter(
+      (t) => t.status === "Absent"
+    ).length;
+
     // Group by teacher
     const teacherData = teacherSummary.reduce((acc, curr) => {
-      const existing = acc.find(item => item.teacherId === curr.teacher._id);
+      const existing = acc.find((item) => item.teacherId === curr.teacher._id);
       if (existing) {
         existing[curr.status] = (existing[curr.status] || 0) + 1;
       } else {
         const newItem = {
           name: curr.teacher.name,
           teacherId: curr.teacher._id,
-          [curr.status]: 1
+          [curr.status]: 1,
         };
         acc.push(newItem);
       }
       return acc;
     }, []);
-    
+
     return [
       {
         name: "Overall",
         Present: presentCount,
         Absent: absentCount,
       },
-      ...teacherData
+      ...teacherData,
     ];
   };
 
   // Calculate attendance percentage
   const getAttendancePercentage = (data) => {
     if (!data.length) return 0;
-    const present = data.filter(d => d.status === "Present").length;
+    const present = data.filter((d) => d.status === "Present").length;
     return Math.round((present / data.length) * 100);
   };
 
@@ -233,13 +266,15 @@ const AttendanceDashboard = () => {
         classId: selectedClass,
       }));
 
-      await axios.post("http://localhost:5000/api/attendance/student/mark", 
-        { attendances: studentPayload, date }, 
+      await axios.post(
+        "http://localhost:5000/api/attendance/student/mark",
+        { attendances: studentPayload, date },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setSuccess("Student attendance submitted successfully.");
       fetchStudentSummary(selectedClass);
+      setStudentAttendance({});
     } catch (err) {
       setError("Error submitting student attendance");
     }
@@ -254,13 +289,15 @@ const AttendanceDashboard = () => {
         status: teacherAttendance[id],
       }));
 
-      await axios.post("http://localhost:5000/api/attendance/teacher/mark", 
-        { attendances: teacherPayload, date }, 
+      await axios.post(
+        "http://localhost:5000/api/attendance/teacher/mark",
+        { attendances: teacherPayload, date },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setSuccess("Teacher attendance submitted successfully.");
       fetchTeacherSummary();
+      setTeacherAttendance({});
     } catch (err) {
       setError("Error submitting teacher attendance");
     }
@@ -280,14 +317,21 @@ const AttendanceDashboard = () => {
         status: teacherAttendance[id],
       }));
 
-      await axios.post("http://localhost:5000/api/attendance/all/mark", 
-        { studentAttendances: studentPayload, teacherAttendances: teacherPayload, date }, 
+      await axios.post(
+        "http://localhost:5000/api/attendance/all/mark",
+        {
+          studentAttendances: studentPayload,
+          teacherAttendances: teacherPayload,
+          date,
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setSuccess("All attendance submitted successfully.");
       fetchStudentSummary(selectedClass);
       fetchTeacherSummary();
+      setStudentAttendance({});
+      setTeacherAttendance({});
     } catch (err) {
       setError("Error submitting attendance");
     }
@@ -295,39 +339,121 @@ const AttendanceDashboard = () => {
   };
 
   const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Attendance Summary Report", 14, 15);
-    
-    // Student Summary
-    doc.text("Student Attendance Summary", 14, 25);
-    doc.autoTable({
-      startY: 30,
-      head: [["Name", "Status", "Date"]],
-      body: studentSummary.map(a => [
-        a.student.name, 
-        a.status, 
-        moment(a.date).format("YYYY-MM-DD")
-      ])
-    });
-    
-    // Teacher Summary
-    doc.text("Teacher Attendance Summary", 14, doc.autoTable.previous.finalY + 10);
-    doc.autoTable({
-      startY: doc.autoTable.previous.finalY + 15,
-      head: [["Name", "Status", "Date"]],
-      body: teacherSummary.map(a => [
-        a.teacher.name, 
-        a.status, 
-        moment(a.date).format("YYYY-MM-DD")
-      ])
-    });
-    
-    doc.save("attendance_summary.pdf");
+    try {
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(18);
+      doc.text("Attendance Summary Report", 105, 15, { align: 'center' });
+      
+      // Add date if available
+      if (date) {
+        doc.setFontSize(12);
+        doc.text(`Date: ${moment(date).format("YYYY-MM-DD")}`, 14, 25);
+      }
+      
+      // Class information if selected
+      if (selectedClass) {
+        const selectedClassData = classes.find(c => c._id === selectedClass);
+        if (selectedClassData) {
+          doc.text(`Class: ${selectedClassData.class_text}`, 14, 35);
+        }
+      }
+      
+      // Student Summary Section
+      doc.setFontSize(14);
+      doc.text("Student Attendance Summary", 14, 45);
+      
+      if (studentSummary.length > 0) {
+        const studentData = studentSummary.map(a => [
+          a.student?.name || 'N/A',
+          a.status,
+          moment(a.date).format("YYYY-MM-DD")
+        ]);
+        
+        autoTable(doc, {
+          startY: 50,
+          head: [["Name", "Status", "Date"]],
+          body: studentData,
+          margin: { top: 40 },
+          styles: { fontSize: 10 },
+          headStyles: { fillColor: [41, 128, 185] }
+        });
+      } else {
+        doc.text("No student attendance data available", 14, 55);
+      }
+      
+      // Teacher Summary Section
+      doc.setFontSize(14);
+      const startY = doc.lastAutoTable?.finalY || 60;
+      doc.text("Teacher Attendance Summary", 14, startY + 15);
+      
+      if (teacherSummary.length > 0) {
+        const teacherData = teacherSummary.map(a => [
+          a.teacher?.name || 'N/A',
+          a.status,
+          moment(a.date).format("YYYY-MM-DD")
+        ]);
+        
+        autoTable(doc, {
+          startY: startY + 20,
+          head: [["Name", "Status", "Date"]],
+          body: teacherData,
+          styles: { fontSize: 10 },
+          headStyles: { fillColor: [39, 174, 96] }
+        });
+      } else {
+        doc.text("No teacher attendance data available", 14, startY + 20);
+      }
+      
+      // Add statistics if we have data
+      if (studentSummary.length > 0 || teacherSummary.length > 0) {
+        const finalY = doc.lastAutoTable?.finalY || startY + 30;
+        doc.setFontSize(12);
+        doc.text("Attendance Statistics", 14, finalY + 15);
+        
+        const stats = [
+          ["Category", "Present", "Absent", "Percentage"],
+          [
+            "Students", 
+            studentSummary.filter(s => s.status === "Present").length,
+            studentSummary.filter(s => s.status === "Absent").length,
+            `${Math.round((studentSummary.filter(s => s.status === "Present").length / studentSummary.length) * 100)}%`
+          ],
+          [
+            "Teachers",
+            teacherSummary.filter(t => t.status === "Present").length,
+            teacherSummary.filter(t => t.status === "Absent").length,
+            `${Math.round((teacherSummary.filter(t => t.status === "Present").length / teacherSummary.length) * 100)}%`
+          ]
+        ];
+        
+        autoTable(doc, {
+          startY: finalY + 20,
+          head: stats.slice(0, 1),
+          body: stats.slice(1),
+          styles: { fontSize: 10 },
+          headStyles: { fillColor: [52, 73, 94] },
+          columnStyles: {
+            3: { halign: 'right' }
+          }
+        });
+      }
+      
+      // Save the PDF
+      doc.save(`attendance_report_${moment().format("YYYYMMDD_HHmmss")}.pdf`);
+      setSuccess("PDF exported successfully");
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      setError("Failed to generate PDF");
+    }
   };
 
   return (
     <Container maxWidth="lg">
-      <Typography variant="h4" gutterBottom>Attendance Dashboard</Typography>
+      <Typography variant="h4" gutterBottom>
+        Attendance Dashboard
+      </Typography>
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={3}>
           <TextField
@@ -367,88 +493,135 @@ const AttendanceDashboard = () => {
               label="Select Class"
               onChange={(e) => setSelectedClass(e.target.value)}
             >
-              {Array.isArray(classes) && classes.map((cls) => (
-                <MenuItem key={cls._id} value={cls._id}>{cls.class_text}</MenuItem>
-              ))}
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {Array.isArray(classes) &&
+                classes.map((cls) => (
+                  <MenuItem key={cls._id} value={cls._id}>
+                    {cls.class_text}
+                  </MenuItem>
+                ))}
             </Select>
           </FormControl>
         </Grid>
       </Grid>
 
-      <Divider sx={{ my: 2 }}>Student Attendance</Divider>
-      <Grid container spacing={2}>
-        {Array.isArray(students) && students.map((student) => (
-          <Grid item xs={12} sm={6} md={4} key={student._id}>
-            <Card>
-              <CardContent>
-                <Typography>{student.name}</Typography>
-                <Select
-                  fullWidth
-                  value={studentAttendance[student._id] || ""}
-                  onChange={(e) => handleStudentChange(student._id, e.target.value)}
-                >
-                  <MenuItem value="Present">Present</MenuItem>
-                  <MenuItem value="Absent">Absent</MenuItem>
-                </Select>
-              </CardContent>
-            </Card>
+      {selectedClass && (
+        <>
+          <Divider sx={{ my: 2 }}>Student Attendance</Divider>
+          <Grid container spacing={2}>
+            {students.length > 0 ? (
+              students.map((student) => (
+                <Grid item xs={12} sm={6} md={4} key={student._id}>
+                  <Card>
+                    <CardContent>
+                      <Typography>{student.name}</Typography>
+                      <Select
+                        fullWidth
+                        value={studentAttendance[student._id] || ""}
+                        onChange={(e) =>
+                          handleStudentChange(student._id, e.target.value)
+                        }
+                      >
+                        <MenuItem value="Present">Present</MenuItem>
+                        <MenuItem value="Absent">Absent</MenuItem>
+                      </Select>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))
+            ) : (
+              <Grid item xs={12}>
+                <Typography>No students found for selected class</Typography>
+              </Grid>
+            )}
           </Grid>
-        ))}
-      </Grid>
+        </>
+      )}
 
       <Divider sx={{ my: 2 }}>Teacher Attendance</Divider>
       <Grid container spacing={2}>
-        {Array.isArray(teachers) && teachers.map((teacher) => (
-          <Grid item xs={12} sm={6} md={4} key={teacher._id}>
-            <Card>
-              <CardContent>
-                <Typography>{teacher.name}</Typography>
-                <Select
-                  fullWidth
-                  value={teacherAttendance[teacher._id] || ""}
-                  onChange={(e) => handleTeacherChange(teacher._id, e.target.value)}
-                >
-                  <MenuItem value="Present">Present</MenuItem>
-                  <MenuItem value="Absent">Absent</MenuItem>
-                </Select>
-              </CardContent>
-            </Card>
+        {teachers.length > 0 ? (
+          teachers.map((teacher) => (
+            <Grid item xs={12} sm={6} md={4} key={teacher._id}>
+              <Card>
+                <CardContent>
+                  <Typography>{teacher.name}</Typography>
+                  <Select
+                    fullWidth
+                    value={teacherAttendance[teacher._id] || ""}
+                    onChange={(e) =>
+                      handleTeacherChange(teacher._id, e.target.value)
+                    }
+                  >
+                    <MenuItem value="Present">Present</MenuItem>
+                    <MenuItem value="Absent">Absent</MenuItem>
+                  </Select>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))
+        ) : (
+          <Grid item xs={12}>
+            <Typography>No teachers found</Typography>
           </Grid>
-        ))}
+        )}
       </Grid>
 
       <Box mt={4} display="flex" gap={2} flexWrap="wrap">
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={submitStudentAttendance}
-          disabled={studentLoading || !date || !selectedClass}
-        >
-          {studentLoading ? <CircularProgress size={24} /> : "Submit Student Attendance"}
-        </Button>
-        
+        {selectedClass && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={submitStudentAttendance}
+            disabled={studentLoading || !date || !selectedClass || Object.keys(studentAttendance).length === 0}
+          >
+            {studentLoading ? (
+              <CircularProgress size={24} />
+            ) : (
+              "Submit Student Attendance"
+            )}
+          </Button>
+        )}
+
         <Button
           variant="contained"
           color="secondary"
           onClick={submitTeacherAttendance}
-          disabled={teacherLoading || !date}
+          disabled={teacherLoading || !date || Object.keys(teacherAttendance).length === 0}
         >
-          {teacherLoading ? <CircularProgress size={24} /> : "Submit Teacher Attendance"}
+          {teacherLoading ? (
+            <CircularProgress size={24} />
+          ) : (
+            "Submit Teacher Attendance"
+          )}
         </Button>
-        
+
         <Button
           variant="contained"
           onClick={submitAllAttendance}
-          disabled={loading || !date || (!selectedClass && Object.keys(studentAttendance).length > 0)}
+          disabled={
+            loading ||
+            !date ||
+            (Object.keys(studentAttendance).length === 0 )&& 
+            (Object.keys(teacherAttendance).length === 0)
+          }
         >
           {loading ? <CircularProgress size={24} /> : "Submit All Attendance"}
         </Button>
-        
-        <Button variant="outlined" onClick={exportPDF}>Export PDF</Button>
+
+        <Button 
+          variant="outlined" 
+          onClick={exportPDF}
+          disabled={studentSummary.length === 0 && teacherSummary.length === 0}
+        >
+          Export PDF
+        </Button>
       </Box>
 
       <Divider sx={{ my: 4 }}>Summary Charts</Divider>
-      
+
       {studentLoading || teacherLoading ? (
         <Box display="flex" justifyContent="center" my={4}>
           <CircularProgress />
@@ -456,165 +629,255 @@ const AttendanceDashboard = () => {
       ) : (
         <>
           {/* Student Summary Section */}
-          <Typography variant="h5" gutterBottom>Student Summary</Typography>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={6}>
-              <Paper elevation={3} sx={{ p: 2 }}>
-                <Typography variant="h6" align="center">Attendance Distribution</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: "Present", value: studentSummary.filter(s => s.status === "Present").length },
-                        { name: "Absent", value: studentSummary.filter(s => s.status === "Absent").length }
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      <Cell fill="#0088FE" />
-                      <Cell fill="#FF8042" />
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Paper elevation={3} sx={{ p: 2 }}>
-                <Typography variant="h6" align="center">Attendance by Student</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart
-                    data={getStudentChartData().filter(d => d.name !== "Overall")}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="Present" stackId="a" fill="#0088FE" name="Present" />
-                    <Bar dataKey="Absent" stackId="a" fill="#FF8042" name="Absent" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Paper>
-            </Grid>
-          </Grid>
+          {selectedClass && studentSummary.length > 0 && (
+            <>
+              <Typography variant="h5" gutterBottom>
+                Student Summary
+              </Typography>
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} md={6}>
+                  <Paper elevation={3} sx={{ p: 2 }}>
+                    <Typography variant="h6" align="center">
+                      Attendance Distribution
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            {
+                              name: "Present",
+                              value: studentSummary.filter(
+                                (s) => s.status === "Present"
+                              ).length,
+                            },
+                            {
+                              name: "Absent",
+                              value: studentSummary.filter(
+                                (s) => s.status === "Absent"
+                              ).length,
+                            },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${name}: ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          <Cell fill="#0088FE" />
+                          <Cell fill="#FF8042" />
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper elevation={3} sx={{ p: 2 }}>
+                    <Typography variant="h6" align="center">
+                      Attendance by Student
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={getStudentChartData().filter(
+                          (d) => d.name !== "Overall"
+                        )}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar
+                          dataKey="Present"
+                          stackId="a"
+                          fill="#0088FE"
+                          name="Present"
+                        />
+                        <Bar
+                          dataKey="Absent"
+                          stackId="a"
+                          fill="#FF8042"
+                          name="Absent"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </>
+          )}
 
           {/* Teacher Summary Section */}
-          <Typography variant="h5" gutterBottom>Teacher Summary</Typography>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={6}>
-              <Paper elevation={3} sx={{ p: 2 }}>
-                <Typography variant="h6" align="center">Attendance Distribution</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: "Present", value: teacherSummary.filter(t => t.status === "Present").length },
-                        { name: "Absent", value: teacherSummary.filter(t => t.status === "Absent").length }
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      <Cell fill="#00C49F" />
-                      <Cell fill="#FFBB28" />
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Paper elevation={3} sx={{ p: 2 }}>
-                <Typography variant="h6" align="center">Attendance by Teacher</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart
-                    data={getTeacherChartData().filter(d => d.name !== "Overall")}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="Present" stackId="a" fill="#00C49F" name="Present" />
-                    <Bar dataKey="Absent" stackId="a" fill="#FFBB28" name="Absent" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Paper>
-            </Grid>
-          </Grid>
+          {teacherSummary.length > 0 && (
+            <>
+              <Typography variant="h5" gutterBottom>
+                Teacher Summary
+              </Typography>
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={12} md={6}>
+                  <Paper elevation={3} sx={{ p: 2 }}>
+                    <Typography variant="h6" align="center">
+                      Attendance Distribution
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            {
+                              name: "Present",
+                              value: teacherSummary.filter(
+                                (t) => t.status === "Present"
+                              ).length,
+                            },
+                            {
+                              name: "Absent",
+                              value: teacherSummary.filter(
+                                (t) => t.status === "Absent"
+                              ).length,
+                            },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${name}: ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          <Cell fill="#00C49F" />
+                          <Cell fill="#FFBB28" />
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper elevation={3} sx={{ p: 2 }}>
+                    <Typography variant="h6" align="center">
+                      Attendance by Teacher
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={getTeacherChartData().filter(
+                          (d) => d.name !== "Overall"
+                        )}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar
+                          dataKey="Present"
+                          stackId="a"
+                          fill="#00C49F"
+                          name="Present"
+                        />
+                        <Bar
+                          dataKey="Absent"
+                          stackId="a"
+                          fill="#FFBB28"
+                          name="Absent"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </>
+          )}
 
           {/* Detailed Summary Tables */}
-          <Typography variant="h5" gutterBottom>Detailed Summary</Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Paper elevation={3} sx={{ p: 2 }}>
-                <Typography variant="h6" align="center">Student Attendance</Typography>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell align="right">Status</TableCell>
-                        <TableCell align="right">Date</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {studentSummary.slice(0, 5).map((attendance) => (
-                        <TableRow key={`${attendance.student._id}-${attendance.date}`}>
-                          <TableCell>{attendance.student.name}</TableCell>
-                          <TableCell align="right">{attendance.status}</TableCell>
-                          <TableCell align="right">
-                            {moment(attendance.date).format("YYYY-MM-DD")}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Paper elevation={3} sx={{ p: 2 }}>
-                <Typography variant="h6" align="center">Teacher Attendance</Typography>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Name</TableCell>
-                        <TableCell align="right">Status</TableCell>
-                        <TableCell align="right">Date</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {teacherSummary.slice(0, 5).map((attendance) => (
-                        <TableRow key={`${attendance.teacher._id}-${attendance.date}`}>
-                          <TableCell>{attendance.teacher.name}</TableCell>
-                          <TableCell align="right">{attendance.status}</TableCell>
-                          <TableCell align="right">
-                            {moment(attendance.date).format("YYYY-MM-DD")}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
-            </Grid>
-          </Grid>
+          {(studentSummary.length > 0 || teacherSummary.length > 0) && (
+            <>
+              <Typography variant="h5" gutterBottom>
+                Detailed Summary
+              </Typography>
+              <Grid container spacing={3}>
+                {studentSummary.length > 0 && (
+                  <Grid item xs={12} md={6}>
+                    <Paper elevation={3} sx={{ p: 2 }}>
+                      <Typography variant="h6" align="center">
+                        Student Attendance
+                      </Typography>
+                      <TableContainer>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Name</TableCell>
+                              <TableCell align="right">Status</TableCell>
+                              <TableCell align="right">Date</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {studentSummary.slice(0, 5).map((attendance) => (
+                              <TableRow
+                                key={`${attendance.student._id}-${attendance.date}`}
+                              >
+                                <TableCell>{attendance.student.name}</TableCell>
+                                <TableCell align="right">
+                                  {attendance.status}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {moment(attendance.date).format("YYYY-MM-DD")}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Paper>
+                  </Grid>
+                )}
+                {teacherSummary.length > 0 && (
+                  <Grid item xs={12} md={6}>
+                    <Paper elevation={3} sx={{ p: 2 }}>
+                      <Typography variant="h6" align="center">
+                        Teacher Attendance
+                      </Typography>
+                      <TableContainer>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Name</TableCell>
+                              <TableCell align="right">Status</TableCell>
+                              <TableCell align="right">Date</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {teacherSummary.slice(0, 5).map((attendance) => (
+                              <TableRow
+                                key={`${attendance.teacher._id}-${attendance.date}`}
+                              >
+                                <TableCell>{attendance.teacher.name}</TableCell>
+                                <TableCell align="right">
+                                  {attendance.status}
+                                </TableCell>
+                                <TableCell align="right">
+                                  {moment(attendance.date).format("YYYY-MM-DD")}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Paper>
+                  </Grid>
+                )}
+              </Grid>
+            </>
+          )}
         </>
       )}
 
