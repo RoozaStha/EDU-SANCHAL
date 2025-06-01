@@ -1,12 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const attendanceController = require('../controllers/attendance.controller');
-const authMiddleware = require('../auth/auth');
+const auth = require('../auth/auth');
+const controller = require('../controllers/attendance.controller');
 
-router.post('/student/mark', authMiddleware(['SCHOOL']), attendanceController.markStudentAttendance);
-router.post('/teacher/mark', authMiddleware(['SCHOOL']), attendanceController.markTeacherAttendance);
-router.get('/student/summary/:classId', authMiddleware(['SCHOOL']), attendanceController.getStudentAttendanceSummary);
-router.get('/teacher/summary', authMiddleware(['SCHOOL']), attendanceController.getTeacherAttendanceSummary);
-// In attendance.routes.js
-router.post('/all/mark', authMiddleware(['SCHOOL']), attendanceController.markAllAttendance);
+// STUDENT ROUTES
+router.post('/student/mark', auth(['SCHOOL']), controller.markStudentAttendance);
+router.get('/student/summary/:classId', auth(['SCHOOL']), controller.getStudentAttendanceSummary);
+
+// TEACHER ROUTES
+router.post('/teacher/mark', auth(['SCHOOL']), controller.markTeacherAttendance);
+router.get('/teacher/summary', auth(['SCHOOL']), controller.getTeacherAttendanceSummary);
+
+// COMBINED
+router.post('/all/mark', auth(['SCHOOL']), controller.markAllAttendance);
+
 module.exports = router;
