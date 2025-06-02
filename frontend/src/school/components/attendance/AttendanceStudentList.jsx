@@ -22,13 +22,29 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Chip,
+  Avatar,
+  Tabs,
+  Tab,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Badge,
+  useTheme,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  LinearProgress,
 } from "@mui/material";
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
-  Tooltip,
+  Tooltip as ChartTooltip,
   ResponsiveContainer,
   Legend,
   PieChart,
@@ -37,21 +53,61 @@ import {
   CartesianGrid,
   LineChart,
   Line,
+  AreaChart,
+  Area,
 } from "recharts";
+import {
+  Today as TodayIcon,
+  DateRange as DateRangeIcon,
+  Class as ClassIcon,
+  People as PeopleIcon,
+  School as SchoolIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  PictureAsPdf as PdfIcon,
+  Refresh as RefreshIcon,
+  ExpandMore as ExpandMoreIcon,
+  FilterList as FilterIcon,
+  Dashboard as DashboardIcon,
+  InsertChart as ChartIcon,
+  ListAlt as ListIcon,
+  HelpOutline as HelpIcon,
+} from "@mui/icons-material";
 import { AuthContext } from "../../../context/AuthContext";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import moment from "moment";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+// Custom theme colors
+const COLORS = {
+  present: "#4caf50",
+  absent: "#f44336",
+  primary: "#3f51b5",
+  secondary: "#9c27b0",
+  warning: "#ff9800",
+  info: "#2196f3",
+};
+
+const AttendanceStatusChip = ({ status }) => {
+  return (
+    <Chip
+      label={status}
+      size="small"
+      icon={status === "Present" ? <CheckCircleIcon /> : <CancelIcon />}
+      color={status === "Present" ? "success" : "error"}
+      variant="outlined"
+    />
+  );
+};
 
 const AttendanceDashboard = () => {
+  const theme = useTheme();
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [teacherLoading, setTeacherLoading] = useState(false);
   const [studentLoading, setStudentLoading] = useState(false);
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(moment().format("YYYY-MM-DD"));
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [classes, setClasses] = useState([]);
@@ -64,6 +120,15 @@ const AttendanceDashboard = () => {
   const [teacherSummary, setTeacherSummary] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [activeTab, setActiveTab] = useState(0);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [stats, setStats] = useState({
+    studentPresent: 0,
+    studentAbsent: 0,
+    teacherPresent: 0,
+    teacherAbsent: 0,
+  });
+  const [viewMode, setViewMode] = useState("cards"); // 'cards' or 'table'
 
   const token = localStorage.getItem("token");
 
@@ -83,6 +148,26 @@ const AttendanceDashboard = () => {
     fetchTeacherSummary();
   }, [selectedClass]);
 
+  useEffect(() => {
+    if (studentSummary.length > 0 || teacherSummary.length > 0) {
+      calculateStats();
+    }
+  }, [studentSummary, teacherSummary]);
+
+  const calculateStats = () => {
+    const studentPresent = studentSummary.filter(s => s.status === "Present").length;
+    const studentAbsent = studentSummary.filter(s => s.status === "Absent").length;
+    const teacherPresent = teacherSummary.filter(t => t.status === "Present").length;
+    const teacherAbsent = teacherSummary.filter(t => t.status === "Absent").length;
+    
+    setStats({
+      studentPresent,
+      studentAbsent,
+      teacherPresent,
+      teacherAbsent,
+    });
+  };
+
   const fetchClasses = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/class/all", {
@@ -95,31 +180,29 @@ const AttendanceDashboard = () => {
   };
 
   const fetchStudents = async (classId) => {
-  try {
-    setStudentLoading(true);
-    const res = await axios.get(
-      `http://localhost:5000/api/students/all`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        params: {
-          student_class: classId
+    try {
+      setStudentLoading(true);
+      const res = await axios.get(
+        `http://localhost:5000/api/students/all`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { student_class: classId }
         }
+      );
+      
+      if (!res.data.success) {
+        throw new Error(res.data.message || "Failed to fetch students");
       }
-    );
-    
-    if (!res.data.success) {
-      throw new Error(res.data.message || "Failed to fetch students");
+      
+      setStudents(Array.isArray(res.data.data) ? res.data.data : []);
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || "Failed to load students";
+      setError(errorMsg);
+      console.error("Error fetching students:", err);
+    } finally {
+      setStudentLoading(false);
     }
-    
-    setStudents(Array.isArray(res.data.data) ? res.data.data : []);
-  } catch (err) {
-    const errorMsg = err.response?.data?.message || err.message || "Failed to load students";
-    setError(errorMsg);
-    console.error("Error fetching students:", err);
-  } finally {
-    setStudentLoading(false);
-  }
-};
+  };
 
   const fetchTeachers = async () => {
     try {
@@ -137,9 +220,7 @@ const AttendanceDashboard = () => {
       setStudentLoading(true);
       const res = await axios.get(
         `http://localhost:5000/api/attendance/student/summary/${classId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setStudentSummary(res.data.data || []);
     } catch (err) {
@@ -154,9 +235,7 @@ const AttendanceDashboard = () => {
       setTeacherLoading(true);
       const res = await axios.get(
         `http://localhost:5000/api/attendance/teacher/summary`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setTeacherSummary(res.data.data || []);
     } catch (err) {
@@ -166,21 +245,22 @@ const AttendanceDashboard = () => {
     }
   };
 
-  // Process student data for charts
+  const refreshData = () => {
+    if (selectedClass) {
+      fetchStudents(selectedClass);
+      fetchStudentSummary(selectedClass);
+    }
+    fetchTeacherSummary();
+  };
+
   const getStudentChartData = () => {
     if (!studentSummary.length) return [];
 
-    // Count presents and absents
-    const presentCount = studentSummary.filter(
-      (s) => s.status === "Present"
-    ).length;
-    const absentCount = studentSummary.filter(
-      (s) => s.status === "Absent"
-    ).length;
+    const presentCount = studentSummary.filter(s => s.status === "Present").length;
+    const absentCount = studentSummary.filter(s => s.status === "Absent").length;
 
-    // Group by student
     const studentData = studentSummary.reduce((acc, curr) => {
-      const existing = acc.find((item) => item.studentId === curr.student._id);
+      const existing = acc.find(item => item.studentId === curr.student._id);
       if (existing) {
         existing[curr.status] = (existing[curr.status] || 0) + 1;
       } else {
@@ -204,21 +284,14 @@ const AttendanceDashboard = () => {
     ];
   };
 
-  // Process teacher data for charts
   const getTeacherChartData = () => {
     if (!teacherSummary.length) return [];
 
-    // Count presents and absents
-    const presentCount = teacherSummary.filter(
-      (t) => t.status === "Present"
-    ).length;
-    const absentCount = teacherSummary.filter(
-      (t) => t.status === "Absent"
-    ).length;
+    const presentCount = teacherSummary.filter(t => t.status === "Present").length;
+    const absentCount = teacherSummary.filter(t => t.status === "Absent").length;
 
-    // Group by teacher
     const teacherData = teacherSummary.reduce((acc, curr) => {
-      const existing = acc.find((item) => item.teacherId === curr.teacher._id);
+      const existing = acc.find(item => item.teacherId === curr.teacher._id);
       if (existing) {
         existing[curr.status] = (existing[curr.status] || 0) + 1;
       } else {
@@ -242,25 +315,24 @@ const AttendanceDashboard = () => {
     ];
   };
 
-  // Calculate attendance percentage
   const getAttendancePercentage = (data) => {
     if (!data.length) return 0;
-    const present = data.filter((d) => d.status === "Present").length;
+    const present = data.filter(d => d.status === "Present").length;
     return Math.round((present / data.length) * 100);
   };
 
   const handleStudentChange = (id, status) => {
-    setStudentAttendance((prev) => ({ ...prev, [id]: status }));
+    setStudentAttendance(prev => ({ ...prev, [id]: status }));
   };
 
   const handleTeacherChange = (id, status) => {
-    setTeacherAttendance((prev) => ({ ...prev, [id]: status }));
+    setTeacherAttendance(prev => ({ ...prev, [id]: status }));
   };
 
   const submitStudentAttendance = async () => {
     setStudentLoading(true);
     try {
-      const studentPayload = Object.keys(studentAttendance).map((id) => ({
+      const studentPayload = Object.keys(studentAttendance).map(id => ({
         studentId: id,
         status: studentAttendance[id],
         classId: selectedClass,
@@ -284,7 +356,7 @@ const AttendanceDashboard = () => {
   const submitTeacherAttendance = async () => {
     setTeacherLoading(true);
     try {
-      const teacherPayload = Object.keys(teacherAttendance).map((id) => ({
+      const teacherPayload = Object.keys(teacherAttendance).map(id => ({
         teacherId: id,
         status: teacherAttendance[id],
       }));
@@ -307,12 +379,12 @@ const AttendanceDashboard = () => {
   const submitAllAttendance = async () => {
     setLoading(true);
     try {
-      const studentPayload = Object.keys(studentAttendance).map((id) => ({
+      const studentPayload = Object.keys(studentAttendance).map(id => ({
         studentId: id,
         status: studentAttendance[id],
         classId: selectedClass,
       }));
-      const teacherPayload = Object.keys(teacherAttendance).map((id) => ({
+      const teacherPayload = Object.keys(teacherAttendance).map(id => ({
         teacherId: id,
         status: teacherAttendance[id],
       }));
@@ -344,11 +416,13 @@ const AttendanceDashboard = () => {
       
       // Title
       doc.setFontSize(18);
+      doc.setTextColor(63, 81, 181);
       doc.text("Attendance Summary Report", 105, 15, { align: 'center' });
       
       // Add date if available
       if (date) {
         doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
         doc.text(`Date: ${moment(date).format("YYYY-MM-DD")}`, 14, 25);
       }
       
@@ -360,9 +434,49 @@ const AttendanceDashboard = () => {
         }
       }
       
+      // Statistics Section
+      doc.setFontSize(14);
+      doc.setTextColor(63, 81, 181);
+      doc.text("Attendance Statistics", 14, 45);
+      
+      const statsData = [
+        ["Category", "Present", "Absent", "Percentage"],
+        [
+          "Students", 
+          stats.studentPresent,
+          stats.studentAbsent,
+          `${Math.round((stats.studentPresent / (stats.studentPresent + stats.studentAbsent)) * 100)}%`
+        ],
+        [
+          "Teachers",
+          stats.teacherPresent,
+          stats.teacherAbsent,
+          `${Math.round((stats.teacherPresent / (stats.teacherPresent + stats.teacherAbsent)) * 100)}%`
+        ]
+      ];
+      
+      autoTable(doc, {
+        startY: 50,
+        head: [statsData[0]],
+        body: statsData.slice(1),
+        margin: { top: 40 },
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { 
+          fillColor: [63, 81, 181],
+          textColor: 255,
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        columnStyles: {
+          3: { halign: 'right' }
+        }
+      });
+      
       // Student Summary Section
       doc.setFontSize(14);
-      doc.text("Student Attendance Summary", 14, 45);
+      doc.setTextColor(63, 81, 181);
+      const statsEndY = doc.lastAutoTable.finalY + 10;
+      doc.text("Student Attendance Summary", 14, statsEndY);
       
       if (studentSummary.length > 0) {
         const studentData = studentSummary.map(a => [
@@ -372,21 +486,26 @@ const AttendanceDashboard = () => {
         ]);
         
         autoTable(doc, {
-          startY: 50,
+          startY: statsEndY + 5,
           head: [["Name", "Status", "Date"]],
           body: studentData,
-          margin: { top: 40 },
-          styles: { fontSize: 10 },
-          headStyles: { fillColor: [41, 128, 185] }
+          styles: { fontSize: 10, cellPadding: 3 },
+          headStyles: { 
+            fillColor: [76, 175, 80],
+            textColor: 255,
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: { fillColor: [245, 245, 245] }
         });
       } else {
-        doc.text("No student attendance data available", 14, 55);
+        doc.text("No student attendance data available", 14, statsEndY + 5);
       }
       
       // Teacher Summary Section
       doc.setFontSize(14);
-      const startY = doc.lastAutoTable?.finalY || 60;
-      doc.text("Teacher Attendance Summary", 14, startY + 15);
+      doc.setTextColor(63, 81, 181);
+      const studentEndY = doc.lastAutoTable?.finalY || statsEndY + 15;
+      doc.text("Teacher Attendance Summary", 14, studentEndY + 10);
       
       if (teacherSummary.length > 0) {
         const teacherData = teacherSummary.map(a => [
@@ -396,48 +515,19 @@ const AttendanceDashboard = () => {
         ]);
         
         autoTable(doc, {
-          startY: startY + 20,
+          startY: studentEndY + 15,
           head: [["Name", "Status", "Date"]],
           body: teacherData,
-          styles: { fontSize: 10 },
-          headStyles: { fillColor: [39, 174, 96] }
+          styles: { fontSize: 10, cellPadding: 3 },
+          headStyles: { 
+            fillColor: [156, 39, 176],
+            textColor: 255,
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: { fillColor: [245, 245, 245] }
         });
       } else {
-        doc.text("No teacher attendance data available", 14, startY + 20);
-      }
-      
-      // Add statistics if we have data
-      if (studentSummary.length > 0 || teacherSummary.length > 0) {
-        const finalY = doc.lastAutoTable?.finalY || startY + 30;
-        doc.setFontSize(12);
-        doc.text("Attendance Statistics", 14, finalY + 15);
-        
-        const stats = [
-          ["Category", "Present", "Absent", "Percentage"],
-          [
-            "Students", 
-            studentSummary.filter(s => s.status === "Present").length,
-            studentSummary.filter(s => s.status === "Absent").length,
-            `${Math.round((studentSummary.filter(s => s.status === "Present").length / studentSummary.length) * 100)}%`
-          ],
-          [
-            "Teachers",
-            teacherSummary.filter(t => t.status === "Present").length,
-            teacherSummary.filter(t => t.status === "Absent").length,
-            `${Math.round((teacherSummary.filter(t => t.status === "Present").length / teacherSummary.length) * 100)}%`
-          ]
-        ];
-        
-        autoTable(doc, {
-          startY: finalY + 20,
-          head: stats.slice(0, 1),
-          body: stats.slice(1),
-          styles: { fontSize: 10 },
-          headStyles: { fillColor: [52, 73, 94] },
-          columnStyles: {
-            3: { halign: 'right' }
-          }
-        });
+        doc.text("No teacher attendance data available", 14, studentEndY + 15);
       }
       
       // Save the PDF
@@ -449,196 +539,524 @@ const AttendanceDashboard = () => {
     }
   };
 
+  const renderStatsCard = (title, present, absent, icon, color) => {
+    const total = present + absent;
+    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+    
+    return (
+      <Card sx={{ height: '100%' }}>
+        <CardContent>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h6" color="textSecondary" gutterBottom>
+              {title}
+            </Typography>
+            <Avatar sx={{ bgcolor: `${color}.light`, color: `${color}.dark` }}>
+              {icon}
+            </Avatar>
+          </Box>
+          <Box mt={2}>
+            <Typography variant="h4" component="div">
+              {percentage}%
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              {present} Present / {absent} Absent
+            </Typography>
+          </Box>
+          <Box mt={2}>
+            <LinearProgress 
+              variant="determinate" 
+              value={percentage} 
+              color={color}
+              sx={{ height: 8, borderRadius: 4 }}
+            />
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderAttendanceTable = (data, type) => {
+    return (
+      <TableContainer component={Paper}>
+        <Table size="small">
+          <TableHead>
+            <TableRow sx={{ bgcolor: theme.palette.grey[100] }}>
+              <TableCell>Name</TableCell>
+              <TableCell align="center">Status</TableCell>
+              <TableCell align="right">Date</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data.slice(0, 10).map((attendance) => (
+              <TableRow key={`${type === 'student' ? attendance.student._id : attendance.teacher._id}-${attendance.date}`}>
+                <TableCell>
+                  <Box display="flex" alignItems="center">
+                    <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: type === 'student' ? COLORS.primary : COLORS.secondary }}>
+                      {type === 'student' ? <PeopleIcon fontSize="small" /> : <SchoolIcon fontSize="small" />}
+                    </Avatar>
+                    {type === 'student' ? attendance.student.name : attendance.teacher.name}
+                  </Box>
+                </TableCell>
+                <TableCell align="center">
+                  <AttendanceStatusChip status={attendance.status} />
+                </TableCell>
+                <TableCell align="right">
+                  {moment(attendance.date).format("MMM D, YYYY")}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
   return (
-    <Container maxWidth="lg">
-      <Typography variant="h4" gutterBottom>
-        Attendance Dashboard
-      </Typography>
+    <Container maxWidth="xl">
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4" sx={{ fontWeight: 600 }}>
+          <DashboardIcon color="primary" sx={{ verticalAlign: 'middle', mr: 1 }} />
+          Attendance Dashboard
+        </Typography>
+        <Box>
+          <Tooltip title="Refresh Data">
+            <IconButton onClick={refreshData} color="primary" sx={{ mr: 1 }}>
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+          <Button 
+            variant="contained" 
+            startIcon={<PdfIcon />}
+            onClick={exportPDF}
+            disabled={studentSummary.length === 0 && teacherSummary.length === 0}
+            sx={{ ml: 1 }}
+          >
+            Export
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={3}>
-          <TextField
-            fullWidth
-            type="date"
-            label="Date"
-            InputLabelProps={{ shrink: true }}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
+        <Grid item xs={12} sm={6} md={3}>
+          {renderStatsCard(
+            "Student Attendance", 
+            stats.studentPresent, 
+            stats.studentAbsent, 
+            <PeopleIcon />, 
+            "success"
+          )}
         </Grid>
-        <Grid item xs={12} sm={3}>
-          <TextField
-            fullWidth
-            type="date"
-            label="Start Date"
-            InputLabelProps={{ shrink: true }}
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
+        <Grid item xs={12} sm={6} md={3}>
+          {renderStatsCard(
+            "Teacher Attendance", 
+            stats.teacherPresent, 
+            stats.teacherAbsent, 
+            <SchoolIcon />, 
+            "secondary"
+          )}
         </Grid>
-        <Grid item xs={12} sm={3}>
-          <TextField
-            fullWidth
-            type="date"
-            label="End Date"
-            InputLabelProps={{ shrink: true }}
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="h6" color="textSecondary" gutterBottom>
+                  Total Students
+                </Typography>
+                <Avatar sx={{ bgcolor: 'info.light', color: 'info.dark' }}>
+                  <PeopleIcon />
+                </Avatar>
+              </Box>
+              <Typography variant="h4" component="div">
+                {students.length}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {selectedClass ? `In selected class` : 'Select a class to view students'}
+              </Typography>
+            </CardContent>
+          </Card>
         </Grid>
-        <Grid item xs={12} sm={3}>
-          <FormControl fullWidth>
-            <InputLabel>Select Class</InputLabel>
-            <Select
-              value={selectedClass}
-              label="Select Class"
-              onChange={(e) => setSelectedClass(e.target.value)}
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="h6" color="textSecondary" gutterBottom>
+                  Total Teachers
+                </Typography>
+                <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.dark' }}>
+                  <SchoolIcon />
+                </Avatar>
+              </Box>
+              <Typography variant="h4" component="div">
+                {teachers.length}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                All teaching staff
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Filters Section */}
+      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+            <FilterIcon color="action" sx={{ mr: 1 }} />
+            Filters
+          </Typography>
+          <Box>
+            <Button 
+              variant="outlined" 
+              startIcon={<DateRangeIcon />}
+              onClick={() => setFilterDialogOpen(true)}
+              sx={{ mr: 1 }}
             >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {Array.isArray(classes) &&
-                classes.map((cls) => (
-                  <MenuItem key={cls._id} value={cls._id}>
-                    {cls.class_text}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
+              Advanced Filters
+            </Button>
+          </Box>
+        </Box>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={4}>
+            <TextField
+              fullWidth
+              type="date"
+              label="Date"
+              InputLabelProps={{ shrink: true }}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <TodayIcon color="action" sx={{ mr: 1 }} />
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <FormControl fullWidth>
+              <InputLabel>Select Class</InputLabel>
+              <Select
+                value={selectedClass}
+                label="Select Class"
+                onChange={(e) => setSelectedClass(e.target.value)}
+                startAdornment={
+                  <ClassIcon color="action" sx={{ mr: 1 }} />
+                }
+              >
+                <MenuItem value="">
+                  <em>All Classes</em>
+                </MenuItem>
+                {Array.isArray(classes) &&
+                  classes.map((cls) => (
+                    <MenuItem key={cls._id} value={cls._id}>
+                      {cls.class_text}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Box display="flex" gap={1} height="100%">
+              <Button
+                variant={viewMode === 'cards' ? 'contained' : 'outlined'}
+                onClick={() => setViewMode('cards')}
+                fullWidth
+                startIcon={<DashboardIcon />}
+              >
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                onClick={() => setViewMode('table')}
+                fullWidth
+                startIcon={<ListIcon />}
+              >
+                Table
+              </Button>
+            </Box>
+          </Grid>
         </Grid>
-      </Grid>
+      </Paper>
 
-      {selectedClass && (
-        <>
-          <Divider sx={{ my: 2 }}>Student Attendance</Divider>
-          <Grid container spacing={2}>
-            {students.length > 0 ? (
-              students.map((student) => (
-                <Grid item xs={12} sm={6} md={4} key={student._id}>
-                  <Card>
-                    <CardContent>
-                      <Typography>{student.name}</Typography>
-                      <Select
-                        fullWidth
-                        value={studentAttendance[student._id] || ""}
-                        onChange={(e) =>
-                          handleStudentChange(student._id, e.target.value)
-                        }
-                      >
-                        <MenuItem value="Present">Present</MenuItem>
-                        <MenuItem value="Absent">Absent</MenuItem>
-                      </Select>
-                    </CardContent>
-                  </Card>
+      {/* Tabs for Attendance Entry */}
+      <Paper elevation={2} sx={{ mb: 3 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          variant="fullWidth"
+          indicatorColor="secondary"
+          textColor="secondary"
+        >
+          <Tab 
+            label="Student Attendance" 
+            icon={<PeopleIcon />} 
+            iconPosition="start" 
+            disabled={!selectedClass}
+          />
+          <Tab 
+            label="Teacher Attendance" 
+            icon={<SchoolIcon />} 
+            iconPosition="start" 
+          />
+        </Tabs>
+        <Box p={2}>
+          {activeTab === 0 && (
+            <>
+              {selectedClass ? (
+                <>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Mark attendance for {students.length} students in {classes.find(c => c._id === selectedClass)?.class_text || 'selected class'}
+                  </Typography>
+                  {viewMode === 'cards' ? (
+                    <Grid container spacing={2}>
+                      {students.map((student) => (
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={student._id}>
+                          <Card variant="outlined">
+                            <CardContent>
+                              <Box display="flex" alignItems="center" mb={1}>
+                                <Avatar sx={{ width: 40, height: 40, mr: 2, bgcolor: COLORS.primary }}>
+                                  {student.name.charAt(0)}
+                                </Avatar>
+                                <Typography variant="subtitle1">{student.name}</Typography>
+                              </Box>
+                              <FormControl fullWidth size="small">
+                                <Select
+                                  value={studentAttendance[student._id] || ""}
+                                  onChange={(e) =>
+                                    handleStudentChange(student._id, e.target.value)
+                                  }
+                                  displayEmpty
+                                >
+                                  <MenuItem value="" disabled>
+                                    <em>Select status</em>
+                                  </MenuItem>
+                                  <MenuItem value="Present">Present</MenuItem>
+                                  <MenuItem value="Absent">Absent</MenuItem>
+                                </Select>
+                              </FormControl>
+                            </CardContent>
+                          </Card>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  ) : (
+                    <TableContainer component={Paper}>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Student</TableCell>
+                            <TableCell align="center">Status</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {students.map((student) => (
+                            <TableRow key={student._id}>
+                              <TableCell>
+                                <Box display="flex" alignItems="center">
+                                  <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: COLORS.primary }}>
+                                    {student.name.charAt(0)}
+                                  </Avatar>
+                                  {student.name}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  fullWidth
+                                  size="small"
+                                  value={studentAttendance[student._id] || ""}
+                                  onChange={(e) =>
+                                    handleStudentChange(student._id, e.target.value)
+                                  }
+                                >
+                                  <MenuItem value="Present">Present</MenuItem>
+                                  <MenuItem value="Absent">Absent</MenuItem>
+                                </Select>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </>
+              ) : (
+                <Box textAlign="center" py={4}>
+                  <ClassIcon color="action" sx={{ fontSize: 48, mb: 1 }} />
+                  <Typography variant="h6" color="textSecondary">
+                    Please select a class to view students
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+          {activeTab === 1 && (
+            <>
+              <Typography variant="subtitle1" gutterBottom>
+                Mark attendance for {teachers.length} teachers
+              </Typography>
+              {viewMode === 'cards' ? (
+                <Grid container spacing={2}>
+                  {teachers.map((teacher) => (
+                    <Grid item xs={12} sm={6} md={4} lg={3} key={teacher._id}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Box display="flex" alignItems="center" mb={1}>
+                            <Avatar sx={{ width: 40, height: 40, mr: 2, bgcolor: COLORS.secondary }}>
+                              {teacher.name.charAt(0)}
+                            </Avatar>
+                            <Typography variant="subtitle1">{teacher.name}</Typography>
+                          </Box>
+                          <FormControl fullWidth size="small">
+                            <Select
+                              value={teacherAttendance[teacher._id] || ""}
+                              onChange={(e) =>
+                                handleTeacherChange(teacher._id, e.target.value)
+                              }
+                              displayEmpty
+                            >
+                              <MenuItem value="" disabled>
+                                <em>Select status</em>
+                              </MenuItem>
+                              <MenuItem value="Present">Present</MenuItem>
+                              <MenuItem value="Absent">Absent</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
                 </Grid>
-              ))
-            ) : (
-              <Grid item xs={12}>
-                <Typography>No students found for selected class</Typography>
-              </Grid>
-            )}
-          </Grid>
-        </>
-      )}
-
-      <Divider sx={{ my: 2 }}>Teacher Attendance</Divider>
-      <Grid container spacing={2}>
-        {teachers.length > 0 ? (
-          teachers.map((teacher) => (
-            <Grid item xs={12} sm={6} md={4} key={teacher._id}>
-              <Card>
-                <CardContent>
-                  <Typography>{teacher.name}</Typography>
-                  <Select
-                    fullWidth
-                    value={teacherAttendance[teacher._id] || ""}
-                    onChange={(e) =>
-                      handleTeacherChange(teacher._id, e.target.value)
-                    }
-                  >
-                    <MenuItem value="Present">Present</MenuItem>
-                    <MenuItem value="Absent">Absent</MenuItem>
-                  </Select>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))
-        ) : (
-          <Grid item xs={12}>
-            <Typography>No teachers found</Typography>
-          </Grid>
-        )}
-      </Grid>
-
-      <Box mt={4} display="flex" gap={2} flexWrap="wrap">
-        {selectedClass && (
+              ) : (
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Teacher</TableCell>
+                        <TableCell align="center">Status</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {teachers.map((teacher) => (
+                        <TableRow key={teacher._id}>
+                          <TableCell>
+                            <Box display="flex" alignItems="center">
+                              <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: COLORS.secondary }}>
+                                {teacher.name.charAt(0)}
+                              </Avatar>
+                              {teacher.name}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              fullWidth
+                              size="small"
+                              value={teacherAttendance[teacher._id] || ""}
+                              onChange={(e) =>
+                                handleTeacherChange(teacher._id, e.target.value)
+                              }
+                            >
+                              <MenuItem value="Present">Present</MenuItem>
+                              <MenuItem value="Absent">Absent</MenuItem>
+                            </Select>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </>
+          )}
+        </Box>
+        <Box p={2} bgcolor={theme.palette.grey[100]} display="flex" justifyContent="flex-end">
           <Button
             variant="contained"
             color="primary"
-            onClick={submitStudentAttendance}
-            disabled={studentLoading || !date || !selectedClass || Object.keys(studentAttendance).length === 0}
+            onClick={activeTab === 0 ? submitStudentAttendance : submitTeacherAttendance}
+            disabled={
+              activeTab === 0 
+                ? studentLoading || !date || !selectedClass || Object.keys(studentAttendance).length === 0
+                : teacherLoading || !date || Object.keys(teacherAttendance).length === 0
+            }
+            sx={{ mr: 2 }}
           >
-            {studentLoading ? (
+            {studentLoading || teacherLoading ? (
               <CircularProgress size={24} />
             ) : (
-              "Submit Student Attendance"
+              `Submit ${activeTab === 0 ? 'Student' : 'Teacher'} Attendance`
             )}
           </Button>
-        )}
-
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={submitTeacherAttendance}
-          disabled={teacherLoading || !date || Object.keys(teacherAttendance).length === 0}
-        >
-          {teacherLoading ? (
-            <CircularProgress size={24} />
-          ) : (
-            "Submit Teacher Attendance"
-          )}
-        </Button>
-
-        <Button
-          variant="contained"
-          onClick={submitAllAttendance}
-          disabled={
-            loading ||
-            !date ||
-            (Object.keys(studentAttendance).length === 0 )&& 
-            (Object.keys(teacherAttendance).length === 0)
-          }
-        >
-          {loading ? <CircularProgress size={24} /> : "Submit All Attendance"}
-        </Button>
-
-        <Button 
-          variant="outlined" 
-          onClick={exportPDF}
-          disabled={studentSummary.length === 0 && teacherSummary.length === 0}
-        >
-          Export PDF
-        </Button>
-      </Box>
-
-      <Divider sx={{ my: 4 }}>Summary Charts</Divider>
-
-      {studentLoading || teacherLoading ? (
-        <Box display="flex" justifyContent="center" my={4}>
-          <CircularProgress />
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={submitAllAttendance}
+            disabled={
+              loading ||
+              !date ||
+              (Object.keys(studentAttendance).length === 0 )&& 
+              (Object.keys(teacherAttendance).length === 0)
+            }
+          >
+            {loading ? <CircularProgress size={24} /> : "Submit All"}
+          </Button>
         </Box>
-      ) : (
-        <>
-          {/* Student Summary Section */}
-          {selectedClass && studentSummary.length > 0 && (
-            <>
-              <Typography variant="h5" gutterBottom>
-                Student Summary
-              </Typography>
-              <Grid container spacing={3} sx={{ mb: 4 }}>
+      </Paper>
+
+      {/* Charts and Analytics Section */}
+      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+          <ChartIcon color="action" sx={{ mr: 1 }} />
+          Analytics Dashboard
+        </Typography>
+        
+        <Accordion defaultExpanded>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Student Attendance Analytics</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            {studentLoading ? (
+              <Box display="flex" justifyContent="center" my={4}>
+                <CircularProgress />
+              </Box>
+            ) : studentSummary.length > 0 ? (
+              <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <Paper elevation={3} sx={{ p: 2 }}>
-                    <Typography variant="h6" align="center">
-                      Attendance Distribution
+                  <Paper elevation={0} sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom>
+                      Attendance Trend (Last 7 Days)
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <AreaChart
+                        data={studentSummary
+                          .slice(-7)
+                          .sort((a, b) => new Date(a.date) - new Date(b.date))}
+                        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="date" 
+                          tickFormatter={(date) => moment(date).format('MMM D')} 
+                        />
+                        <YAxis />
+                        <ChartTooltip 
+                          labelFormatter={(date) => moment(date).format('MMMM D, YYYY')}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey={d => d.status === "Present" ? 1 : 0}
+                          name="Present"
+                          stackId="1"
+                          stroke={COLORS.present}
+                          fill={COLORS.present}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper elevation={0} sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom>
+                      Student Attendance Distribution
                     </Typography>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
@@ -647,13 +1065,13 @@ const AttendanceDashboard = () => {
                             {
                               name: "Present",
                               value: studentSummary.filter(
-                                (s) => s.status === "Present"
+                                s => s.status === "Present"
                               ).length,
                             },
                             {
                               name: "Absent",
                               value: studentSummary.filter(
-                                (s) => s.status === "Absent"
+                                s => s.status === "Absent"
                               ).length,
                             },
                           ]}
@@ -667,219 +1085,199 @@ const AttendanceDashboard = () => {
                             `${name}: ${(percent * 100).toFixed(0)}%`
                           }
                         >
-                          <Cell fill="#0088FE" />
-                          <Cell fill="#FF8042" />
+                          <Cell fill={COLORS.present} />
+                          <Cell fill={COLORS.absent} />
                         </Pie>
-                        <Tooltip />
+                        <ChartTooltip />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   </Paper>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <Paper elevation={3} sx={{ p: 2 }}>
-                    <Typography variant="h6" align="center">
-                      Attendance by Student
+                <Grid item xs={12}>
+                  <Paper elevation={0} sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom>
+                      Recent Student Attendance Records
                     </Typography>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart
-                        data={getStudentChartData().filter(
-                          (d) => d.name !== "Overall"
-                        )}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar
-                          dataKey="Present"
-                          stackId="a"
-                          fill="#0088FE"
-                          name="Present"
-                        />
-                        <Bar
-                          dataKey="Absent"
-                          stackId="a"
-                          fill="#FF8042"
-                          name="Absent"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {renderAttendanceTable(studentSummary, 'student')}
                   </Paper>
                 </Grid>
               </Grid>
-            </>
-          )}
+            ) : (
+              <Box textAlign="center" py={4}>
+                <HelpIcon color="action" sx={{ fontSize: 48, mb: 1 }} />
+                <Typography variant="h6" color="textSecondary">
+                  No student attendance data available
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Mark attendance to see analytics
+                </Typography>
+              </Box>
+            )}
+          </AccordionDetails>
+        </Accordion>
 
-          {/* Teacher Summary Section */}
-          {teacherSummary.length > 0 && (
-            <>
-              <Typography variant="h5" gutterBottom>
-                Teacher Summary
-              </Typography>
-              <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Accordion defaultExpanded>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography>Teacher Attendance Analytics</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            {teacherLoading ? (
+              <Box display="flex" justifyContent="center" my={4}>
+                <CircularProgress />
+              </Box>
+            ) : teacherSummary.length > 0 ? (
+              <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <Paper elevation={3} sx={{ p: 2 }}>
-                    <Typography variant="h6" align="center">
-                      Attendance Distribution
-                    </Typography>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={[
-                            {
-                              name: "Present",
-                              value: teacherSummary.filter(
-                                (t) => t.status === "Present"
-                              ).length,
-                            },
-                            {
-                              name: "Absent",
-                              value: teacherSummary.filter(
-                                (t) => t.status === "Absent"
-                              ).length,
-                            },
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) =>
-                            `${name}: ${(percent * 100).toFixed(0)}%`
-                          }
-                        >
-                          <Cell fill="#00C49F" />
-                          <Cell fill="#FFBB28" />
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Paper elevation={3} sx={{ p: 2 }}>
-                    <Typography variant="h6" align="center">
+                  <Paper elevation={0} sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom>
                       Attendance by Teacher
                     </Typography>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart
-                        data={getTeacherChartData().filter(
-                          (d) => d.name !== "Overall"
-                        )}
+                        data={getTeacherChartData().filter(d => d.name !== "Overall")}
                         margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
                         <YAxis />
-                        <Tooltip />
+                        <ChartTooltip />
                         <Legend />
                         <Bar
                           dataKey="Present"
                           stackId="a"
-                          fill="#00C49F"
+                          fill={COLORS.present}
                           name="Present"
                         />
                         <Bar
                           dataKey="Absent"
                           stackId="a"
-                          fill="#FFBB28"
+                          fill={COLORS.absent}
                           name="Absent"
                         />
                       </BarChart>
                     </ResponsiveContainer>
                   </Paper>
                 </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper elevation={0} sx={{ p: 2, height: '100%' }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom>
+                      Teacher Attendance Distribution
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            {
+                              name: "Present",
+                              value: teacherSummary.filter(
+                                t => t.status === "Present"
+                              ).length,
+                            },
+                            {
+                              name: "Absent",
+                              value: teacherSummary.filter(
+                                t => t.status === "Absent"
+                              ).length,
+                            },
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${name}: ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          <Cell fill={COLORS.present} />
+                          <Cell fill={COLORS.absent} />
+                        </Pie>
+                        <ChartTooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12}>
+                  <Paper elevation={0} sx={{ p: 2 }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom>
+                      Recent Teacher Attendance Records
+                    </Typography>
+                    {renderAttendanceTable(teacherSummary, 'teacher')}
+                  </Paper>
+                </Grid>
               </Grid>
-            </>
-          )}
+            ) : (
+              <Box textAlign="center" py={4}>
+                <HelpIcon color="action" sx={{ fontSize: 48, mb: 1 }} />
+                <Typography variant="h6" color="textSecondary">
+                  No teacher attendance data available
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Mark attendance to see analytics
+                </Typography>
+              </Box>
+            )}
+          </AccordionDetails>
+        </Accordion>
+      </Paper>
 
-          {/* Detailed Summary Tables */}
-          {(studentSummary.length > 0 || teacherSummary.length > 0) && (
-            <>
-              <Typography variant="h5" gutterBottom>
-                Detailed Summary
-              </Typography>
-              <Grid container spacing={3}>
-                {studentSummary.length > 0 && (
-                  <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ p: 2 }}>
-                      <Typography variant="h6" align="center">
-                        Student Attendance
-                      </Typography>
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Name</TableCell>
-                              <TableCell align="right">Status</TableCell>
-                              <TableCell align="right">Date</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {studentSummary.slice(0, 5).map((attendance) => (
-                              <TableRow
-                                key={`${attendance.student._id}-${attendance.date}`}
-                              >
-                                <TableCell>{attendance.student.name}</TableCell>
-                                <TableCell align="right">
-                                  {attendance.status}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {moment(attendance.date).format("YYYY-MM-DD")}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </Paper>
-                  </Grid>
-                )}
-                {teacherSummary.length > 0 && (
-                  <Grid item xs={12} md={6}>
-                    <Paper elevation={3} sx={{ p: 2 }}>
-                      <Typography variant="h6" align="center">
-                        Teacher Attendance
-                      </Typography>
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Name</TableCell>
-                              <TableCell align="right">Status</TableCell>
-                              <TableCell align="right">Date</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {teacherSummary.slice(0, 5).map((attendance) => (
-                              <TableRow
-                                key={`${attendance.teacher._id}-${attendance.date}`}
-                              >
-                                <TableCell>{attendance.teacher.name}</TableCell>
-                                <TableCell align="right">
-                                  {attendance.status}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {moment(attendance.date).format("YYYY-MM-DD")}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </Paper>
-                  </Grid>
-                )}
-              </Grid>
-            </>
-          )}
-        </>
-      )}
+      {/* Filter Dialog */}
+      <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)}>
+        <DialogTitle>
+          <Box display="flex" alignItems="center">
+            <FilterIcon color="action" sx={{ mr: 1 }} />
+            Advanced Filters
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Start Date"
+                InputLabelProps={{ shrink: true }}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="date"
+                label="End Date"
+                InputLabelProps={{ shrink: true }}
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Status Filter</InputLabel>
+                <Select multiple value={[]} onChange={() => {}}>
+                  <MenuItem value="Present">Present</MenuItem>
+                  <MenuItem value="Absent">Absent</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => {
+              // Apply filters here
+              setFilterDialogOpen(false);
+            }}
+          >
+            Apply Filters
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <MessageSnackbar
         message={error || success}
