@@ -12,8 +12,8 @@ const teacherRouter = require('./routers/teacher.router.js');
 const scheduleRouter = require('./routers/schedule.router.js')
 const attendanceRouter = require('./routers/attendance.router.js');
 const examinationRouter = require("./routers/examination.router.js");
-const noticeRouter = require("./routers/notice.router.js")
-
+const noticeRouter = require("./routers/notice.router.js");
+const teacherAttendanceRouter = require("./routers/teacherAttendance.router.js")
 dotenv.config();
 
 const app = express();
@@ -24,7 +24,8 @@ app.use(cors({
   origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH','OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['Authorization'] 
 }));
 
 app.use('/images/uploaded/school', express.static(
@@ -61,7 +62,7 @@ app.use("/api/schedule",scheduleRouter);
 app.use("/api/attendance",attendanceRouter);
 app.use("/api/examination",examinationRouter);
 app.use("/api/notice",noticeRouter);
-
+app.use("/api/teacherAttendance",teacherAttendanceRouter);
 
 // 7. Enhanced error handling
 app.use((err, req, res, next) => {

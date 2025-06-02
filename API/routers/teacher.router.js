@@ -11,7 +11,7 @@ router.post('/login', teacherController.loginTeacher);
 router.get('/all', authMiddleware(['SCHOOL','TEACHER']), teacherController.getAllTeachers);
 router.get('/fetch-single', authMiddleware(['TEACHER','SCHOOL']), teacherController.getTeacherOwnData);
 router.get('/class-teacher/:classId', authMiddleware(['SCHOOL', 'TEACHER']), teacherController.getClassTeacher);
-router.get('/:id', authMiddleware(['SCHOOL', 'ADMIN']), teacherController.getTeacherById);
+router.get('/:id', authMiddleware(['SCHOOL', 'TEACHER']), teacherController.getTeacherById);
 router.patch('/update', authMiddleware(['TEACHER', 'SCHOOL']), teacherController.updateTeacher);
 router.delete('/delete/:id', authMiddleware(['SCHOOL']), teacherController.deleteTeacherWithId);
 

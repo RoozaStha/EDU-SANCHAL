@@ -1,662 +1,599 @@
-import React, { useState, useEffect, useContext } from 'react';
-import {
-  Box,
-  Typography,
-  Container,
-  Paper,
-  Grid,
-  Button,
-  TextField,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Card,
-  CardContent,
-  Divider,
-  LinearProgress,
-  Chip,
-  useTheme,
-  InputAdornment,
-  FormControlLabel,
-  Switch,
-  CircularProgress,
-  Alert,
-  Snackbar,
-  Tab,
-  Tabs,
-  Avatar,
-  Badge
-} from '@mui/material';
-import {
-  Edit,
-  Delete,
-  Add,
-  Search,
-  Today,
-  CalendarMonth,
-  Person,
-  CheckCircle,
-  Cancel,
-  WatchLater,
-  AccessTime,
-  BeachAccess,
-  Refresh,
-  ArrowBack,
-  ArrowForward,
-  FilterList
-} from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
-import axios from 'axios';
-import { baseApi } from '../../../environment';
+import React, { useState, useEffect, useContext } from "react";
+import { 
+    Container, Typography, Grid, Card, CardContent, 
+    Select, MenuItem, InputLabel, FormControl, Button, 
+    CircularProgress, Divider, Box, Paper, Table, 
+    TableBody, TableCell, TableContainer, TableHead, 
+    TableRow, TextField, Tabs, Tab, Chip
+} from "@mui/material";
+import { 
+    BarChart, Bar, XAxis, YAxis, Tooltip, 
+    ResponsiveContainer, Legend, PieChart, Pie, 
+    Cell, CartesianGrid, LineChart, Line 
+} from "recharts";
 import { AuthContext } from "../../../context/AuthContext";
+import axios from "axios";
+import moment from "moment";
+import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 const TeacherAttendance = () => {
-  const theme = useTheme();
-  const { user} = useContext(AuthContext);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [teachers, setTeachers] = useState([]);
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [selectedTeacher, setSelectedTeacher] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [openMarkDialog, setOpenMarkDialog] = useState(false);
-  const [attendanceStatus, setAttendanceStatus] = useState('Present');
-  const [remarks, setRemarks] = useState('');
-  const [activeTab, setActiveTab] = useState(0);
-  const [summaryData, setSummaryData] = useState(null);
-  const [calendarDays, setCalendarDays] = useState([]);
-  const [filterStatus, setFilterStatus] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
+    const { user } = useContext(AuthContext);
+    const [loading, setLoading] = useState(false);
+    const [studentsLoading, setStudentsLoading] = useState(false);
+    const [attendanceLoading, setAttendanceLoading] = useState(false);
+    const [date, setDate] = useState(moment().format('YYYY-MM-DD'));
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [teacherClass, setTeacherClass] = useState(null);
+    const [students, setStudents] = useState([]);
+    const [studentAttendance, setStudentAttendance] = useState({});
+    const [teacherAttendanceRecords, setTeacherAttendanceRecords] = useState([]);
+    const [studentAttendanceRecords, setStudentAttendanceRecords] = useState([]);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
+    const [activeTab, setActiveTab] = useState(0);
 
-  // Status options with icons and colors
-  const statusOptions = [
-    { value: 'Present', label: 'Present', icon: <CheckCircle color="success" />, color: 'success' },
-    { value: 'Absent', label: 'Absent', icon: <Cancel color="error" />, color: 'error' },
-    { value: 'Late', label: 'Late', icon: <WatchLater color="warning" />, color: 'warning' },
-    { value: 'Half Day', label: 'Half Day', icon: <AccessTime color="info" />, color: 'info' },
-    { value: 'On Leave', label: 'On Leave', icon: <BeachAccess color="secondary" />, color: 'secondary' }
-  ];
+    const token = localStorage.getItem("token");
 
-  // Fetch all teachers
-  const fetchTeachers = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${baseApi}/teachers/all`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+    useEffect(() => {
+        fetchTeacherClass();
+        fetchTeacherAttendance();
+    }, []);
+
+    useEffect(() => {
+        if (teacherClass) {
+            fetchClassStudents(teacherClass._id);
+            fetchClassAttendance(teacherClass._id);
         }
-      });
-      setTeachers(response.data.data);
-      setLoading(false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch teachers');
-      setLoading(false);
-    }
-  };
+    }, [teacherClass]);
 
-  // Fetch attendance records
-  const fetchAttendanceRecords = async () => {
-    try {
-      setLoading(true);
-      let url = `${baseApi}/attendance/teacher`;
-      
-      if (selectedTeacher) {
-        url += `?teacherId=${selectedTeacher}`;
-      } else if (user.role === 'TEACHER') {
-        url += `?teacherId=${user.id}`;
-      }
-
-      // Add date range for monthly view
-      if (activeTab === 1) {
-        const startDate = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-        const endDate = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-        url += `${selectedTeacher || user.role === 'TEACHER' ? '&' : '?'}startDate=${startDate}&endDate=${endDate}`;
-      }
-
-      const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+    const fetchTeacherClass = async () => {
+        try {
+            setLoading(true);
+            const res = await axios.get("http://localhost:5000/api/attendance/teacher/class", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setTeacherClass(res.data.data);
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to load teacher's class");
+        } finally {
+            setLoading(false);
         }
-      });
-      setAttendanceRecords(response.data.data);
-      setLoading(false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch attendance records');
-      setLoading(false);
-    }
-  };
+    };
 
-  // Fetch attendance summary
-  const fetchAttendanceSummary = async () => {
-    try {
-      setLoading(true);
-      const teacherId = selectedTeacher || (user.role === 'TEACHER' ? user.id : null);
-      if (!teacherId) return;
-
-      const response = await axios.get(`${baseApi}/attendance/teacher/summary?teacherId=${teacherId}&periodType=Monthly`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+    const fetchClassStudents = async (classId) => {
+        try {
+            setStudentsLoading(true);
+            const res = await axios.get(
+                `http://localhost:5000/api/attendance/teacher/class-students/${classId}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setStudents(res.data.data || []);
+            
+            // Initialize attendance status as Present by default
+            const initialAttendance = {};
+            res.data.data.forEach(student => {
+                initialAttendance[student._id] = "Present";
+            });
+            setStudentAttendance(initialAttendance);
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to load class students");
+        } finally {
+            setStudentsLoading(false);
         }
-      });
-      setSummaryData(response.data.data[0] || null);
-      setLoading(false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch attendance summary');
-      setLoading(false);
-    }
-  };
+    };
 
-  // Mark attendance
-  const markAttendance = async () => {
-    try {
-      setLoading(true);
-      const teacherId = selectedTeacher || user.id;
-      const data = {
-        teacherId,
-        status: attendanceStatus,
-        remarks
-      };
-
-      await axios.post(`${baseApi}/attendance/teacher`, data, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+    const fetchClassAttendance = async (classId) => {
+        try {
+            setAttendanceLoading(true);
+            const res = await axios.get(
+                `http://localhost:5000/api/attendance/student/summary/${classId}`,
+                { 
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { date }
+                }
+            );
+            setStudentAttendanceRecords(res.data.data || []);
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to load class attendance");
+        } finally {
+            setAttendanceLoading(false);
         }
-      });
+    };
 
-      setSuccess('Attendance marked successfully');
-      setOpenMarkDialog(false);
-      fetchAttendanceRecords();
-      fetchAttendanceSummary();
-      setLoading(false);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to mark attendance');
-      setLoading(false);
-    }
-  };
+    const fetchTeacherAttendance = async () => {
+        try {
+            setAttendanceLoading(true);
+            const res = await axios.get(
+                "http://localhost:5000/api/attendance/teacher/my-attendance",
+                { 
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { startDate, endDate }
+                }
+            );
+            setTeacherAttendanceRecords(res.data.data || []);
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to load teacher attendance");
+        } finally {
+            setAttendanceLoading(false);
+        }
+    };
 
-  // Initialize calendar days for monthly view
-  const initCalendarDays = () => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
-    const days = eachDayOfInterval({ start, end });
-    setCalendarDays(days);
-  };
+    const handleStudentAttendanceChange = (studentId, status) => {
+        setStudentAttendance(prev => ({
+            ...prev,
+            [studentId]: status
+        }));
+    };
 
-  // Filter attendance records based on search and status
-  const filteredRecords = attendanceRecords.filter(record => {
-    const matchesStatus = filterStatus === 'All' || record.status === filterStatus;
-    
-    if (!selectedTeacher && user.role !== 'TEACHER') {
-      const teacher = teachers.find(t => t._id === record.teacher);
-      const matchesSearch = teacher && 
-        (teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(searchTerm.toLowerCase()));
-      return matchesStatus && matchesSearch;
-    }
-    return matchesStatus;
-  });
+    const submitStudentAttendance = async () => {
+        try {
+            setLoading(true);
+            const attendancePayload = Object.keys(studentAttendance).map(studentId => ({
+                studentId,
+                status: studentAttendance[studentId],
+                classId: teacherClass._id
+            }));
 
-  // Get teacher name by ID
-  const getTeacherName = (teacherId) => {
-    const teacher = teachers.find(t => t._id === teacherId);
-    return teacher ? teacher.name : 'Unknown Teacher';
-  };
+            await axios.post(
+                "http://localhost:5000/api/attendance/teacher/mark-students",
+                { 
+                    attendances: attendancePayload,
+                    date,
+                    classId: teacherClass._id 
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
 
-  // Get status icon
-  const getStatusIcon = (status) => {
-    const option = statusOptions.find(opt => opt.value === status);
-    return option ? option.icon : null;
-  };
+            setSuccess("Attendance submitted successfully");
+            fetchClassAttendance(teacherClass._id);
+        } catch (err) {
+            setError(err.response?.data?.message || "Failed to submit attendance");
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  // Handle tab change
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
+    // Process data for charts
+    const getStudentAttendanceChartData = () => {
+        if (!studentAttendanceRecords.length) return [];
 
-  // Handle month navigation
-  const handleMonthChange = (direction) => {
-    const newMonth = new Date(currentMonth);
-    newMonth.setMonth(newMonth.getMonth() + (direction === 'prev' ? -1 : 1));
-    setCurrentMonth(newMonth);
-  };
+        // Count presents and absents
+        const presentCount = studentAttendanceRecords.filter(
+            record => record.status === "Present"
+        ).length;
+        const absentCount = studentAttendanceRecords.filter(
+            record => record.status === "Absent"
+        ).length;
 
-  // Initialize data
-  useEffect(() => {
-    fetchTeachers();
-    initCalendarDays();
-  }, []);
+        return [
+            { name: "Present", value: presentCount },
+            { name: "Absent", value: absentCount }
+        ];
+    };
 
-  // Fetch data when dependencies change
-  useEffect(() => {
-    if (activeTab === 0) {
-      fetchAttendanceRecords();
-    } else {
-      fetchAttendanceRecords();
-      fetchAttendanceSummary();
-    }
-  }, [selectedTeacher, currentMonth, activeTab]);
+    const getTeacherAttendanceChartData = () => {
+        if (!teacherAttendanceRecords.length) return [];
 
-  // Reinitialize calendar when month changes
-  useEffect(() => {
-    initCalendarDays();
-  }, [currentMonth]);
+        // Group by date and status
+        const groupedData = teacherAttendanceRecords.reduce((acc, record) => {
+            const dateStr = moment(record.date).format("MMM D");
+            const existing = acc.find(item => item.date === dateStr);
+            
+            if (existing) {
+                existing[record.status] = (existing[record.status] || 0) + 1;
+            } else {
+                acc.push({
+                    date: dateStr,
+                    Present: record.status === "Present" ? 1 : 0,
+                    Absent: record.status === "Absent" ? 1 : 0
+                });
+            }
+            
+            return acc;
+        }, []);
 
-  // Close snackbar
-  const handleCloseSnackbar = () => {
-    setError('');
-    setSuccess('');
-  };
+        return groupedData;
+    };
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
-        Teacher Attendance Management
-      </Typography>
-
-      {loading && <LinearProgress />}
-
-      {/* Error/Success Messages */}
-      <Snackbar
-        open={!!error || !!success}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={error ? 'error' : 'success'}
-          sx={{ width: '100%' }}
-        >
-          {error || success}
-        </Alert>
-      </Snackbar>
-
-      {/* Teacher Selection (for School role) */}
-      {user.role === 'SCHOOL' && (
-        <Box sx={{ mb: 3 }}>
-          <FormControl fullWidth>
-            <InputLabel>Select Teacher</InputLabel>
-            <Select
-              value={selectedTeacher || ''}
-              onChange={(e) => setSelectedTeacher(e.target.value)}
-              label="Select Teacher"
-              sx={{ minWidth: 250 }}
-            >
-              <MenuItem value="">
-                <em>All Teachers</em>
-              </MenuItem>
-              {teachers.map((teacher) => (
-                <MenuItem key={teacher._id} value={teacher._id}>
-                  {teacher.name} ({teacher.email})
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-      )}
-
-      {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tab label="Daily View" icon={<Today />} />
-          <Tab label="Monthly Summary" icon={<CalendarMonth />} />
-        </Tabs>
-      </Box>
-
-      {/* Daily View */}
-      {activeTab === 0 && (
-        <Box>
-          {/* Action Bar */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField
-                variant="outlined"
-                size="small"
-                placeholder="Search teachers..."
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search />
-                    </InputAdornment>
-                  ),
-                }}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                disabled={!!selectedTeacher || user.role === 'TEACHER'}
-              />
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  label="Status"
-                >
-                  <MenuItem value="All">All Statuses</MenuItem>
-                  {statusOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-            <Box>
-              <Button
-                variant="contained"
-                startIcon={<Add />}
-                onClick={() => setOpenMarkDialog(true)}
-                disabled={user.role === 'SCHOOL' && !selectedTeacher}
-              >
-                Mark Attendance
-              </Button>
-            </Box>
-          </Box>
-
-          {/* Attendance Table */}
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  {(!selectedTeacher && user.role !== 'TEACHER') && (
-                    <TableCell>Teacher</TableCell>
-                  )}
-                  <TableCell>Date</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Marked By</TableCell>
-                  <TableCell>Remarks</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredRecords.length > 0 ? (
-                  filteredRecords.map((record) => (
-                    <TableRow key={record._id}>
-                      {(!selectedTeacher && user.role !== 'TEACHER') && (
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Avatar src={`/images/uploaded/teacher/${record.teacher_details?.teacher_image}`}>
-                              <Person />
-                            </Avatar>
-                            <Box>
-                              <Typography>{getTeacherName(record.teacher)}</Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                {record.teacher_details?.email}
-                              </Typography>
-                            </Box>
-                          </Box>
-                        </TableCell>
-                      )}
-                      <TableCell>{format(new Date(record.date), 'PP')}</TableCell>
-                      <TableCell>
-                        <Chip
-                          icon={getStatusIcon(record.status)}
-                          label={record.status}
-                          color={statusOptions.find(opt => opt.value === record.status)?.color || 'default'}
-                          variant="outlined"
-                        />
-                      </TableCell>
-                      <TableCell>{record.marked_by}</TableCell>
-                      <TableCell>{record.remarks || '-'}</TableCell>
-                      <TableCell>
-                        <IconButton color="primary">
-                          <Edit />
-                        </IconButton>
-                        <IconButton color="error">
-                          <Delete />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      <Typography variant="body1" color="text.secondary">
-                        No attendance records found
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
-      )}
-
-      {/* Monthly View */}
-      {activeTab === 1 && (
-        <Box>
-          {/* Month Navigation */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-            <Button
-              startIcon={<ArrowBack />}
-              onClick={() => handleMonthChange('prev')}
-            >
-              Previous
-            </Button>
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-              {format(currentMonth, 'MMMM yyyy')}
+    return (
+        <Container maxWidth="lg">
+            <Typography variant="h4" gutterBottom>
+                Teacher Attendance Dashboard
             </Typography>
-            <Button
-              endIcon={<ArrowForward />}
-              onClick={() => handleMonthChange('next')}
+            
+            <Tabs 
+                value={activeTab} 
+                onChange={(e, newValue) => setActiveTab(newValue)}
+                sx={{ mb: 3 }}
             >
-              Next
-            </Button>
-          </Box>
+                <Tab label="Mark Attendance" />
+                <Tab label="My Attendance" />
+                <Tab label="Class Attendance" />
+            </Tabs>
 
-          {/* Summary Card */}
-          {summaryData && (
-            <Card sx={{ mb: 3 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Attendance Summary for {format(currentMonth, 'MMMM yyyy')}
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center' }}>
-                      <Typography variant="subtitle2">Total Days</Typography>
-                      <Typography variant="h4">{summaryData.total_days}</Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center' }}>
-                      <Typography variant="subtitle2">Present Days</Typography>
-                      <Typography variant="h4" color="success.main">
-                        {summaryData.present_days}
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center' }}>
-                      <Typography variant="subtitle2">Absent Days</Typography>
-                      <Typography variant="h4" color="error.main">
-                        {summaryData.absent_days}
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Paper sx={{ p: 2, textAlign: 'center' }}>
-                      <Typography variant="subtitle2">Attendance %</Typography>
-                      <Typography variant="h4">
-                        {summaryData.attendance_percentage}%
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Calendar View */}
-          <Grid container spacing={2}>
-            {calendarDays.map((day) => {
-              const dayRecords = attendanceRecords.filter(
-                record => format(new Date(record.date), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')
-              );
-              const status = dayRecords[0]?.status || 'Not Marked';
-              const isCurrentDay = isToday(day);
-
-              return (
-                <Grid item xs={6} sm={4} md={3} lg={2.4} key={day}>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      textAlign: 'center',
-                      border: isCurrentDay ? `2px solid ${theme.palette.primary.main}` : 'none',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: theme.palette.action.hover
-                      }
-                    }}
-                    onClick={() => {
-                      setSelectedDate(day);
-                      if (dayRecords.length > 0) {
-                        // TODO: Open edit dialog
-                      } else {
-                        setOpenMarkDialog(true);
-                      }
-                    }}
-                  >
-                    <Typography variant="subtitle2">
-                      {format(day, 'EEE')}
-                    </Typography>
-                    <Typography variant="h6">
-                      {format(day, 'd')}
-                    </Typography>
-                    {status !== 'Not Marked' ? (
-                      <Chip
-                        label={status}
-                        size="small"
-                        color={statusOptions.find(opt => opt.value === status)?.color || 'default'}
-                        sx={{ mt: 1 }}
-                      />
-                    ) : (
-                      <Typography variant="caption" color="text.secondary">
-                        Not marked
-                      </Typography>
+            {activeTab === 0 && (
+                <>
+                    {teacherClass && (
+                        <Box mb={3}>
+                            <Typography variant="h6">
+                                Class: {teacherClass.class_text} (Grade {teacherClass.class_num})
+                            </Typography>
+                        </Box>
                     )}
-                  </Paper>
-                </Grid>
-              );
-            })}
-          </Grid>
+                    
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid item xs={12} sm={6} md={4}>
+                            <TextField
+                                fullWidth
+                                type="date"
+                                label="Date"
+                                InputLabelProps={{ shrink: true }}
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                            />
+                        </Grid>
+                    </Grid>
 
-          {/* Attendance Details */}
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" gutterBottom>
-              Attendance Details
-            </Typography>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Marked By</TableCell>
-                    <TableCell>Remarks</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {attendanceRecords.length > 0 ? (
-                    attendanceRecords.map((record) => (
-                      <TableRow key={record._id}>
-                        <TableCell>{format(new Date(record.date), 'PP')}</TableCell>
-                        <TableCell>
-                          <Chip
-                            icon={getStatusIcon(record.status)}
-                            label={record.status}
-                            color={statusOptions.find(opt => opt.value === record.status)?.color || 'default'}
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell>{record.marked_by}</TableCell>
-                        <TableCell>{record.remarks || '-'}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center">
-                        <Typography variant="body1" color="text.secondary">
-                          No attendance records found for this month
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        </Box>
-      )}
+                    {studentsLoading ? (
+                        <Box display="flex" justifyContent="center">
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <>
+                            <Typography variant="h6" gutterBottom>
+                                Mark Student Attendance
+                            </Typography>
+                            
+                            <Grid container spacing={2}>
+                                {students.map(student => (
+                                    <Grid item xs={12} sm={6} md={4} key={student._id}>
+                                        <Card>
+                                            <CardContent>
+                                                <Box display="flex" alignItems="center" mb={1}>
+                                                    <Box 
+                                                        component="img"
+                                                        src={`/images/uploaded/student/${student.student_image}`}
+                                                        alt={student.name}
+                                                        sx={{
+                                                            width: 40,
+                                                            height: 40,
+                                                            borderRadius: '50%',
+                                                            objectFit: 'cover',
+                                                            mr: 2
+                                                        }}
+                                                    />
+                                                    <Typography>{student.name}</Typography>
+                                                </Box>
+                                                
+                                                <FormControl fullWidth size="small">
+                                                    <InputLabel>Status</InputLabel>
+                                                    <Select
+                                                        value={studentAttendance[student._id] || "Present"}
+                                                        onChange={(e) => 
+                                                            handleStudentAttendanceChange(student._id, e.target.value)
+                                                        }
+                                                        label="Status"
+                                                    >
+                                                        <MenuItem value="Present">Present</MenuItem>
+                                                        <MenuItem value="Absent">Absent</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                ))}
+                            </Grid>
+                            
+                            <Box mt={3}>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={submitStudentAttendance}
+                                    disabled={loading || !date || !teacherClass || Object.keys(studentAttendance).length === 0}
+                                >
+                                    {loading ? <CircularProgress size={24} /> : "Submit Attendance"}
+                                </Button>
+                            </Box>
+                        </>
+                    )}
+                </>
+            )}
 
-      {/* Mark Attendance Dialog */}
-      <Dialog
-        open={openMarkDialog}
-        onClose={() => setOpenMarkDialog(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>
-          {selectedDate ? `Mark Attendance for ${format(selectedDate, 'PP')}` : 'Mark Attendance'}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={attendanceStatus}
-                onChange={(e) => setAttendanceStatus(e.target.value)}
-                label="Status"
-              >
-                {statusOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {option.icon}
-                      {option.label}
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              fullWidth
-              label="Remarks"
-              multiline
-              rows={3}
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
+            {activeTab === 1 && (
+                <>
+                    <Typography variant="h6" gutterBottom>
+                        My Attendance Records
+                    </Typography>
+                    
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                type="date"
+                                label="Start Date"
+                                InputLabelProps={{ shrink: true }}
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                fullWidth
+                                type="date"
+                                label="End Date"
+                                InputLabelProps={{ shrink: true }}
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <Button
+                                variant="outlined"
+                                onClick={fetchTeacherAttendance}
+                            >
+                                Filter
+                            </Button>
+                        </Grid>
+                    </Grid>
+                    
+                    {attendanceLoading ? (
+                        <Box display="flex" justifyContent="center">
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <>
+                            {teacherAttendanceRecords.length > 0 ? (
+                                <>
+                                    <Grid container spacing={3} sx={{ mb: 4 }}>
+                                        <Grid item xs={12} md={6}>
+                                            <Paper elevation={3} sx={{ p: 2 }}>
+                                                <Typography variant="subtitle1" align="center">
+                                                    Attendance Distribution
+                                                </Typography>
+                                                <ResponsiveContainer width="100%" height={300}>
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={[
+                                                                {
+                                                                    name: "Present",
+                                                                    value: teacherAttendanceRecords.filter(
+                                                                        r => r.status === "Present"
+                                                                    ).length
+                                                                },
+                                                                {
+                                                                    name: "Absent",
+                                                                    value: teacherAttendanceRecords.filter(
+                                                                        r => r.status === "Absent"
+                                                                    ).length
+                                                                }
+                                                            ]}
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            outerRadius={80}
+                                                            fill="#8884d8"
+                                                            dataKey="value"
+                                                            label={({ name, percent }) => 
+                                                                `${name}: ${(percent * 100).toFixed(0)}%`
+                                                            }
+                                                        >
+                                                            <Cell fill="#0088FE" />
+                                                            <Cell fill="#FF8042" />
+                                                        </Pie>
+                                                        <Tooltip />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </Paper>
+                                        </Grid>
+                                        
+                                        <Grid item xs={12} md={6}>
+                                            <Paper elevation={3} sx={{ p: 2 }}>
+                                                <Typography variant="subtitle1" align="center">
+                                                    Attendance Over Time
+                                                </Typography>
+                                                <ResponsiveContainer width="100%" height={300}>
+                                                    <LineChart
+                                                        data={getTeacherAttendanceChartData()}
+                                                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                                    >
+                                                        <CartesianGrid strokeDasharray="3 3" />
+                                                        <XAxis dataKey="date" />
+                                                        <YAxis />
+                                                        <Tooltip />
+                                                        <Legend />
+                                                        <Line 
+                                                            type="monotone" 
+                                                            dataKey="Present" 
+                                                            stroke="#0088FE" 
+                                                            activeDot={{ r: 8 }} 
+                                                        />
+                                                        <Line 
+                                                            type="monotone" 
+                                                            dataKey="Absent" 
+                                                            stroke="#FF8042" 
+                                                        />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            </Paper>
+                                        </Grid>
+                                    </Grid>
+                                    
+                                    <Paper elevation={3} sx={{ p: 2 }}>
+                                        <TableContainer>
+                                            <Table size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell>Date</TableCell>
+                                                        <TableCell align="center">Status</TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {teacherAttendanceRecords.map((record) => (
+                                                        <TableRow key={record._id}>
+                                                            <TableCell>
+                                                                {moment(record.date).format("MMMM D, YYYY")}
+                                                            </TableCell>
+                                                            <TableCell align="center">
+                                                                <Chip 
+                                                                    label={record.status}
+                                                                    color={record.status === "Present" ? "success" : "error"}
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    </Paper>
+                                </>
+                            ) : (
+                                <Typography>No attendance records found</Typography>
+                            )}
+                        </>
+                    )}
+                </>
+            )}
+
+            {activeTab === 2 && teacherClass && (
+                <>
+                    <Typography variant="h6" gutterBottom>
+                        Class Attendance Summary: {teacherClass.class_text}
+                    </Typography>
+                    
+                    {attendanceLoading ? (
+                        <Box display="flex" justifyContent="center">
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <>
+                            {studentAttendanceRecords.length > 0 ? (
+                                <>
+                                    <Grid container spacing={3} sx={{ mb: 4 }}>
+                                        <Grid item xs={12} md={6}>
+                                            <Paper elevation={3} sx={{ p: 2 }}>
+                                                <Typography variant="subtitle1" align="center">
+                                                    Class Attendance Distribution
+                                                </Typography>
+                                                <ResponsiveContainer width="100%" height={300}>
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={getStudentAttendanceChartData()}
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            outerRadius={80}
+                                                            fill="#8884d8"
+                                                            dataKey="value"
+                                                            label={({ name, percent }) => 
+                                                                `${name}: ${(percent * 100).toFixed(0)}%`
+                                                            }
+                                                        >
+                                                            {getStudentAttendanceChartData().map((entry, index) => (
+                                                                <Cell 
+                                                                    key={`cell-${index}`} 
+                                                                    fill={COLORS[index % COLORS.length]} 
+                                                                />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </Paper>
+                                        </Grid>
+                                        
+                                        <Grid item xs={12} md={6}>
+                                            <Paper elevation={3} sx={{ p: 2 }}>
+                                                <Typography variant="subtitle1" align="center">
+                                                    Attendance by Student
+                                                </Typography>
+                                                <ResponsiveContainer width="100%" height={300}>
+                                                    <BarChart
+                                                        data={studentAttendanceRecords.reduce((acc, record) => {
+                                                            const existing = acc.find(item => 
+                                                                item.studentId === record.student._id
+                                                            );
+                                                            
+                                                            if (existing) {
+                                                                existing[record.status] = 
+                                                                    (existing[record.status] || 0) + 1;
+                                                            } else {
+                                                                acc.push({
+                                                                    name: record.student.name,
+                                                                    studentId: record.student._id,
+                                                                    [record.status]: 1
+                                                                });
+                                                            }
+                                                            
+                                                            return acc;
+                                                        }, [])}
+                                                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                                    >
+                                                        <CartesianGrid strokeDasharray="3 3" />
+                                                        <XAxis dataKey="name" />
+                                                        <YAxis />
+                                                        <Tooltip />
+                                                        <Legend />
+                                                        <Bar dataKey="Present" fill="#0088FE" />
+                                                        <Bar dataKey="Absent" fill="#FF8042" />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </Paper>
+                                        </Grid>
+                                    </Grid>
+                                    
+                                    <Paper elevation={3} sx={{ p: 2 }}>
+                                        <TableContainer>
+                                            <Table size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell>Student</TableCell>
+                                                        <TableCell>Date</TableCell>
+                                                        <TableCell align="center">Status</TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {studentAttendanceRecords.map((record) => (
+                                                        <TableRow key={record._id}>
+                                                            <TableCell>
+                                                                {record.student?.name || 'N/A'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {moment(record.date).format("MMMM D, YYYY")}
+                                                            </TableCell>
+                                                            <TableCell align="center">
+                                                                <Chip 
+                                                                    label={record.status}
+                                                                    color={record.status === "Present" ? "success" : "error"}
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    </Paper>
+                                </>
+                            ) : (
+                                <Typography>No attendance records found for this class</Typography>
+                            )}
+                        </>
+                    )}
+                </>
+            )}
+            
+            <MessageSnackbar
+                message={error || success}
+                type={error ? "error" : "success"}
+                handleClose={() => {
+                    if (error) setError("");
+                    if (success) setSuccess("");
+                }}
             />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenMarkDialog(false)}>Cancel</Button>
-          <Button
-            onClick={markAttendance}
-            variant="contained"
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : <CheckCircle />}
-          >
-            Mark Attendance
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
-  );
+        </Container>
+    );
 };
 
 export default TeacherAttendance;
