@@ -7,7 +7,13 @@ const schoolSchema = new mongoose.Schema({
     school_image: { type: String, required: true },
     password: { type: String, required: true },
 
-    createdAt: { type: Date, default: new Date() }
+    createdAt: { type: Date, default: new Date() },
+    resetPasswordToken: {
+    type: String, // ✅ FIXED: Should be string, not Object
+  },
+  resetPasswordExpires: {
+    type: Date, // ✅ FIXED: Should be Date, not Object
+  },
 });
 
 module.exports = mongoose.model("School", schoolSchema);

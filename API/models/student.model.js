@@ -21,14 +21,14 @@ const studentSchema = new mongoose.Schema(
       trim: true,
     },
     student_class: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Class',
-    validate: {
-      validator: mongoose.Types.ObjectId.isValid,
-      message: props => `${props.value} is not a valid class id!`
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Class',
+      validate: {
+        validator: mongoose.Types.ObjectId.isValid,
+        message: props => `${props.value} is not a valid class id!`
+      },
+      default: null
     },
-    default: null
-  },
     age: {
       type: String,
       required: true,
@@ -60,6 +60,12 @@ const studentSchema = new mongoose.Schema(
       type: Date,
       default: Date.now, // Uses the current timestamp
     },
+    resetPasswordToken: {
+    type: String, // ✅ FIXED: Should be string, not Object
+  },
+  resetPasswordExpires: {
+    type: Date, // ✅ FIXED: Should be Date, not Object
+  },
   },
   { timestamps: true } // Enables 'createdAt' and 'updatedAt'
 );

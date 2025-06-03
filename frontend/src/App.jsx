@@ -1,58 +1,75 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { useContext } from 'react';
-import { AuthContext } from './context/AuthContext';
-import { ThemeProvider } from '@mui/material/styles';
-import { darkTheme, lightTheme } from './basic utility components/dark theme/darkTheme';
-import CssBaseline from '@mui/material/CssBaseline';
-import DraggableButton from './basic utility components/draggable/DraggableButton';
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useContext } from "react";
+import { AuthContext } from "./context/AuthContext";
+import { ThemeProvider } from "@mui/material/styles";
+import {
+  darkTheme,
+  lightTheme,
+} from "./basic utility components/dark theme/darkTheme";
+import CssBaseline from "@mui/material/CssBaseline";
+import DraggableButton from "./basic utility components/draggable/DraggableButton";
 
 // School Components
-import School from './school/School';
-import Dashboard from './school/components/dashboard/Dashboard';
-import Class from './school/components/class/Class';
-import Examinations from './school/components/examinations/Examinations';
-import Notice from './school/components/notice/Notice';
-import Schedule from './school/components/schedule/Schedule';
-import Students from './school/components/students/Students';
-import Subjects from './school/components/subjects/Subjects';
-import Teachers from './school/components/teachers/Teachers';
-import AttendanceStudentList from './school/components/attendance/AttendanceStudentList';
+import School from "./school/School";
+import Dashboard from "./school/components/dashboard/Dashboard";
+import Class from "./school/components/class/Class";
+import Examinations from "./school/components/examinations/Examinations";
+import Notice from "./school/components/notice/Notice";
+import Schedule from "./school/components/schedule/Schedule";
+import Students from "./school/components/students/Students";
+import Subjects from "./school/components/subjects/Subjects";
+import Teachers from "./school/components/teachers/Teachers";
+import AttendanceStudentList from "./school/components/attendance/AttendanceStudentList";
 
 // Client Components
-import Client from './client/Client';
-import Home from './client/components/home/Home';
-import Login from './client/components/login/Login';
-import Register from './client/components/register/Register';
-import LogOut from './client/components/logout/LogOut';
+import Client from "./client/Client";
+import Home from "./client/components/home/Home";
+import Login from "./client/components/login/Login";
+import Register from "./client/components/register/Register";
+import LogOut from "./client/components/logout/LogOut";
+import ForgotPassword from "./client/components/login/ForgotPassword";
+import ResetPassword from "./client/components/login/ResetPassword";
 
 // Teacher Components
-import Teacher from './teacher/Teacher';
-import TeacherDetails from './teacher/components/teacher details/TeacherDetails';
-import ScheduleTeacher from './teacher/components/schedule/ScheduleTeacher';
-import AttendanceTeacher from './teacher/components/attendance/AttendanceTeacher';
-import ExaminationsTeacher from './teacher/components/examinations/ExaminationTeacher';
-import NoticeTeacher from './teacher/components/notice/NoticeTeacher';
+import Teacher from "./teacher/Teacher";
+import TeacherDetails from "./teacher/components/teacher details/TeacherDetails";
+import ScheduleTeacher from "./teacher/components/schedule/ScheduleTeacher";
+import AttendanceTeacher from "./teacher/components/attendance/AttendanceTeacher";
+import ExaminationsTeacher from "./teacher/components/examinations/ExaminationTeacher";
+import NoticeTeacher from "./teacher/components/notice/NoticeTeacher";
 
 // Student Components
-import Student from './student/Student';
-import StudentDetails from './student/components/student Details/StudentDetails';
-import AttendanceStudent from './student/components/attendance/AttendanceStudent';
-import ScheduleStudent from './student/components/schedule/ScheduleStudent';
-import ExaminationsStudent from './student/components/examinations/ExaminationsStudent';
-import NoticeStudent from './student/components/notice/NoticeStudent';
+import Student from "./student/Student";
+import StudentDetails from "./student/components/student Details/StudentDetails";
+import AttendanceStudent from "./student/components/attendance/AttendanceStudent";
+import ScheduleStudent from "./student/components/schedule/ScheduleStudent";
+import ExaminationsStudent from "./student/components/examinations/ExaminationsStudent";
+import NoticeStudent from "./student/components/notice/NoticeStudent";
 
 // Other Components
-import ProtectedRoute from './guard/ProtectedRoute';
+import ProtectedRoute from "./guard/ProtectedRoute";
 
 function AppContent() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* School Routes */}
-        <Route 
-          path="/school" 
+        {/* Public routes */}
+        <Route path="/" element={<Client />}>
+          <Route index element={<Home />} />
+          <Route path="login" element={<Login />} />
+          <Route path="register" element={<Register />} />
+          <Route path="logout" element={<LogOut />} />
+        </Route>
+        
+        {/* Password reset routes (public) */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+        {/* School protected routes */}
+        <Route
+          path="/school"
           element={
-            <ProtectedRoute allowedRoles={['SCHOOL']}>
+            <ProtectedRoute allowedRoles={["SCHOOL"]}>
               <School />
             </ProtectedRoute>
           }
@@ -69,11 +86,11 @@ function AppContent() {
           <Route path="teachers" element={<Teachers />} />
         </Route>
 
-        {/* Student Routes */}
-        <Route 
-          path="/student" 
+        {/* Student protected routes */}
+        <Route
+          path="/student"
           element={
-            <ProtectedRoute allowedRoles={['STUDENT']}>
+            <ProtectedRoute allowedRoles={["STUDENT"]}>
               <Student />
             </ProtectedRoute>
           }
@@ -85,11 +102,11 @@ function AppContent() {
           <Route path="notice" element={<NoticeStudent />} />
         </Route>
 
-        {/* Teacher Routes */}
-        <Route 
-          path="/teacher" 
+        {/* Teacher protected routes */}
+        <Route
+          path="/teacher"
           element={
-            <ProtectedRoute allowedRoles={['TEACHER']}>
+            <ProtectedRoute allowedRoles={["TEACHER"]}>
               <Teacher />
             </ProtectedRoute>
           }
@@ -101,13 +118,8 @@ function AppContent() {
           <Route path="notice" element={<NoticeTeacher />} />
         </Route>
 
-        {/* Client Routes */}
-        <Route path="/" element={<Client />}>
-          <Route index element={<Home />} />
-          <Route path="login" element={<Login />} />
-          <Route path="register" element={<Register />} />
-          <Route path="logout" element={<LogOut />} />
-        </Route>
+        {/* Catch-all route */}
+        <Route path="*" element={<Home />} />
       </Routes>
     </BrowserRouter>
   );

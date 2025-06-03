@@ -22,6 +22,12 @@ const teacherSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Subject' 
     }],
+   resetPasswordToken: {
+    type: String, // ✅ FIXED: Should be string, not Object
+  },
+  resetPasswordExpires: {
+    type: Date, // ✅ FIXED: Should be Date, not Object
+  },
     createdAt: { type: Date, default: Date.now }
 });
 
