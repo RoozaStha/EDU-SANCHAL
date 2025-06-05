@@ -48,6 +48,7 @@ import NoticeStudent from "./student/components/notice/NoticeStudent";
 
 // Other Components
 import ProtectedRoute from "./guard/ProtectedRoute";
+import AIChatbot from "./AIChatbot";
 
 function AppContent() {
   return (
@@ -133,6 +134,7 @@ export default function App() {
       <CssBaseline />
       <DraggableButton />
       <AppContent />
+      <AIChatbot />
     </ThemeProvider>
   );
 }

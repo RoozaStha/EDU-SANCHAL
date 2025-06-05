@@ -14,6 +14,9 @@ const attendanceRouter = require('./routers/attendance.router.js');
 const examinationRouter = require("./routers/examination.router.js");
 const noticeRouter = require("./routers/notice.router.js");
 const teacherAttendanceRouter = require("./routers/teacherAttendance.router.js")
+const chatbotRoutes = require("./routers/chatbot.router.js");
+
+
 dotenv.config();
 
 const app = express();
@@ -63,6 +66,9 @@ app.use("/api/attendance",attendanceRouter);
 app.use("/api/examination",examinationRouter);
 app.use("/api/notice",noticeRouter);
 app.use("/api/teacherAttendance",teacherAttendanceRouter);
+app.use("/api/chatbot", chatbotRoutes);
+
+
 
 // 7. Enhanced error handling
 app.use((err, req, res, next) => {
