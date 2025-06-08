@@ -60,11 +60,11 @@ function AppContent() {
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route path="logout" element={<LogOut />} />
-        </Route>
         
         {/* Password reset routes (public) */}
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        </Route>
 
         {/* School protected routes */}
         <Route
