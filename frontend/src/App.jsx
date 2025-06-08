@@ -37,6 +37,7 @@ import ScheduleTeacher from "./teacher/components/schedule/ScheduleTeacher";
 import AttendanceTeacher from "./teacher/components/attendance/AttendanceTeacher";
 import ExaminationsTeacher from "./teacher/components/examinations/ExaminationTeacher";
 import NoticeTeacher from "./teacher/components/notice/NoticeTeacher";
+import Assignment from "./teacher/components/assignment/Assignment";
 
 // Student Components
 import Student from "./student/Student";
@@ -45,6 +46,7 @@ import AttendanceStudent from "./student/components/attendance/AttendanceStudent
 import ScheduleStudent from "./student/components/schedule/ScheduleStudent";
 import ExaminationsStudent from "./student/components/examinations/ExaminationsStudent";
 import NoticeStudent from "./student/components/notice/NoticeStudent";
+import AssignmentStudent from "./student/components/assignmentStudent/AssignmentStudent";
 
 // Other Components
 import ProtectedRoute from "./guard/ProtectedRoute";
@@ -101,6 +103,7 @@ function AppContent() {
           <Route path="attendance" element={<AttendanceStudent />} />
           <Route path="examinations" element={<ExaminationsStudent />} />
           <Route path="notice" element={<NoticeStudent />} />
+          <Route path="assignment" element={<AssignmentStudent/>} />
         </Route>
 
         {/* Teacher protected routes */}
@@ -117,6 +120,8 @@ function AppContent() {
           <Route path="attendance" element={<AttendanceTeacher />} />
           <Route path="examinations" element={<ExaminationsTeacher />} />
           <Route path="notice" element={<NoticeTeacher />} />
+           <Route path="assignment" element={<Assignment/>} />
+
         </Route>
 
         {/* Catch-all route */}

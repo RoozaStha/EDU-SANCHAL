@@ -30,6 +30,7 @@ import RecentActorsIcon from "@mui/icons-material/RecentActors"; //attendance
 import LocalLibraryIcon from "@mui/icons-material/LocalLibrary"; //class
 import HomeIcon from "@mui/icons-material/Home";
 import LogoutIcon from "@mui/icons-material/Logout";
+import AssignmentIcon from '@mui/icons-material/Assignment';
 
 const drawerWidth = 240;
 
@@ -137,12 +138,15 @@ export default function Student() {
       component: "Attendance",
       icon: RecentActorsIcon,
     },
+    { link: "/student/assignment", component: "Assignment", icon: AssignmentIcon },
+
     {
       link: "/student/examinations",
       component: "Examinations",
       icon: ExplicitIcon,
     },
     { link: "/student/notice", component: "Notice", icon: NotificationsIcon },
+
     { link: "/logout", component: "Logout", icon: LogoutIcon },
   ];
 
