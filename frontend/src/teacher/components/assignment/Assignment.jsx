@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import axios from "axios";
-import { useForm } from "react-hook-form";
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { Controller, useForm } from "react-hook-form";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { keyframes, useTheme, alpha } from "@mui/material/styles";
 import {
   Box,
@@ -46,7 +46,7 @@ import {
   AccordionDetails,
   Tabs,
   Tab,
-  useMediaQuery
+  useMediaQuery,
 } from "@mui/material";
 import {
   Download as DownloadIcon,
@@ -76,7 +76,7 @@ import {
   Info as InfoIcon,
   Assessment as AssessmentIcon,
   Grading as GradingIcon,
-  AccessTime as AccessTimeIcon
+  AccessTime as AccessTimeIcon,
 } from "@mui/icons-material";
 
 const API_BASE = "http://localhost:5000/api";
@@ -106,8 +106,20 @@ const shimmer = keyframes`
 
 const TeacherAssignmentDashboard = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      subject: "",
+      class: "",
+    },
+  });
   const [assignments, setAssignments] = useState([]);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
   const [submissions, setSubmissions] = useState([]);
@@ -115,7 +127,7 @@ const TeacherAssignmentDashboard = () => {
     assignments: false,
     submissions: false,
     analytics: false,
-    form: false
+    form: false,
   });
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
@@ -134,60 +146,69 @@ const TeacherAssignmentDashboard = () => {
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [extensionDate, setExtensionDate] = useState("");
   const [rubricScores, setRubricScores] = useState({});
-  const [sortConfig, setSortConfig] = useState({ key: 'dueDate', direction: 'asc' });
-  const [activeTab, setActiveTab] = useState('assignments');
-  
+  const [sortConfig, setSortConfig] = useState({
+    key: "dueDate",
+    direction: "asc",
+  });
+  const [activeTab, setActiveTab] = useState("assignments");
+
   const token = localStorage.getItem("token");
   const watchClass = watch("class");
 
   // Memoized axios config
-  const axiosConfig = useMemo(() => ({
-    headers: { Authorization: `Bearer ${token}` },
-    withCredentials: true,
-  }), [token]);
+  const axiosConfig = useMemo(
+    () => ({
+      headers: { Authorization: `Bearer ${token}` },
+      withCredentials: true,
+    }),
+    [token]
+  );
 
   // Formatting utilities
   const formatDate = useCallback((dateString) => {
     if (!dateString) return "Not scheduled";
     const date = new Date(dateString);
-    return date.toLocaleString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   }, []);
 
   const formatDateForInput = useCallback((dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   }, []);
 
-  const getTimeAgo = useCallback((dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    
-    return formatDate(dateString).split(',')[0];
-  }, [formatDate]);
+  const getTimeAgo = useCallback(
+    (dateString) => {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffInSeconds = Math.floor((now - date) / 1000);
+
+      if (diffInSeconds < 60) return "Just now";
+
+      const diffInMinutes = Math.floor(diffInSeconds / 60);
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+
+      const diffInHours = Math.floor(diffInMinutes / 60);
+      if (diffInHours < 24) return `${diffInHours}h ago`;
+
+      const diffInDays = Math.floor(diffInHours / 24);
+      if (diffInDays < 7) return `${diffInDays}d ago`;
+
+      return formatDate(dateString).split(",")[0];
+    },
+    [formatDate]
+  );
 
   // Data fetching functions
   const fetchAssignments = useCallback(async () => {
     try {
-      setLoading(prev => ({ ...prev, assignments: true }));
+      setLoading((prev) => ({ ...prev, assignments: true }));
       const response = await axios.get(
         `${API_BASE}/assignments/teacher/list`,
         axiosConfig
@@ -197,7 +218,7 @@ const TeacherAssignmentDashboard = () => {
       console.error("Error fetching assignments:", error);
       toast.error("Failed to fetch assignments");
     } finally {
-      setLoading(prev => ({ ...prev, assignments: false }));
+      setLoading((prev) => ({ ...prev, assignments: false }));
     }
   }, [axiosConfig]);
 
@@ -229,112 +250,145 @@ const TeacherAssignmentDashboard = () => {
     }
   }, []);
 
-  const fetchSubmissions = useCallback(async (assignmentId) => {
-    try {
-      setLoading(prev => ({ ...prev, submissions: true }));
-      const response = await axios.get(
-        `${API_BASE}/assignments/submissions/${assignmentId}`,
-        axiosConfig
-      );
-      setSubmissions(response.data.data);
-    } catch (error) {
-      console.error("Error fetching submissions:", error);
-      toast.error("Failed to fetch submissions");
-    } finally {
-      setLoading(prev => ({ ...prev, submissions: false }));
-    }
-  }, [axiosConfig]);
+  const fetchSubmissions = useCallback(
+    async (assignmentId) => {
+      try {
+        setLoading((prev) => ({ ...prev, submissions: true }));
+        const response = await axios.get(
+          `${API_BASE}/assignments/submissions/${assignmentId}`,
+          axiosConfig
+        );
+        setSubmissions(response.data.data);
+      } catch (error) {
+        console.error("Error fetching submissions:", error);
+        toast.error("Failed to fetch submissions");
+      } finally {
+        setLoading((prev) => ({ ...prev, submissions: false }));
+      }
+    },
+    [axiosConfig]
+  );
 
-  const fetchAnalytics = useCallback(async (assignmentId) => {
-    try {
-      setLoading(prev => ({ ...prev, analytics: true }));
-      const response = await axios.get(
-        `${API_BASE}/assignments/analytics/${assignmentId}`,
-        axiosConfig
-      );
-      setAnalytics(response.data.data);
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-      toast.error("Failed to fetch assignment analytics");
-    } finally {
-      setLoading(prev => ({ ...prev, analytics: false }));
-    }
-  }, [axiosConfig]);
+  const fetchAnalytics = useCallback(
+    async (assignmentId) => {
+      try {
+        setLoading((prev) => ({ ...prev, analytics: true }));
+        const response = await axios.get(
+          `${API_BASE}/assignments/analytics/${assignmentId}`,
+          axiosConfig
+        );
+        setAnalytics(response.data.data);
+      } catch (error) {
+        console.error("Error fetching analytics:", error);
+        toast.error("Failed to fetch assignment analytics");
+      } finally {
+        setLoading((prev) => ({ ...prev, analytics: false }));
+      }
+    },
+    [axiosConfig]
+  );
 
   // Form submission handler
-  const onSubmit = useCallback(async (data) => {
-    try {
-      setLoading(prev => ({ ...prev, form: true }));
-      
-      const formData = new FormData();
-      formData.append('title', data.title);
-      formData.append('description', data.description);
-      formData.append('subject', data.subject);
-      formData.append('class', data.class);
-      formData.append('dueDate', data.dueDate);
-      formData.append('videoUrl', data.videoUrl || '');
-      formData.append('rubric', JSON.stringify(data.rubric || []));
-      formData.append('maxPoints', data.maxPoints);
-      formData.append('allowLateSubmission', data.allowLateSubmission);
-      formData.append('peerReviewEnabled', data.peerReviewEnabled);
-      
-      if (data.attachments) {
-        for (let i = 0; i < data.attachments.length; i++) {
-          formData.append('attachments', data.attachments[i]);
+  const onSubmit = useCallback(
+    async (data) => {
+      try {
+        setLoading((prev) => ({ ...prev, form: true }));
+
+        const formData = new FormData();
+        formData.append("title", data.title);
+        formData.append("description", data.description);
+        formData.append("subject", data.subject);
+        formData.append("class", data.class);
+        formData.append("dueDate", data.dueDate);
+        formData.append("videoUrl", data.videoUrl || "");
+        formData.append("rubric", JSON.stringify(data.rubric || []));
+        formData.append("maxPoints", data.maxPoints);
+        formData.append("allowLateSubmission", data.allowLateSubmission);
+        formData.append("peerReviewEnabled", data.peerReviewEnabled);
+
+        if (data.attachments) {
+          for (let i = 0; i < data.attachments.length; i++) {
+            formData.append("attachments", data.attachments[i]);
+          }
         }
-      }
-      
-      if (data.assignmentVideo) {
-        formData.append('assignmentVideo', data.assignmentVideo[0]);
-      }
-      
-      const endpoint = isEditing && currentAssignment 
-        ? `${API_BASE}/assignments/${currentAssignment._id}`
-        : `${API_BASE}/assignments`;
-      
-      const method = isEditing ? 'put' : 'post';
-      
-      const response = await axios[method](endpoint, formData, {
-        ...axiosConfig,
-        headers: {
-          ...axiosConfig.headers,
-          'Content-Type': 'multipart/form-data'
+
+        if (data.assignmentVideo) {
+          formData.append("assignmentVideo", data.assignmentVideo[0]);
         }
-      });
-      
-      toast.success(response.data.message);
-      reset();
-      fetchAssignments();
-      setIsEditing(false);
-      setCurrentAssignment(null);
-    } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Operation failed");
-    } finally {
-      setLoading(prev => ({ ...prev, form: false }));
-    }
-  }, [isEditing, currentAssignment, axiosConfig, fetchAssignments, reset]);
+
+        const endpoint =
+          isEditing && currentAssignment
+            ? `${API_BASE}/assignments/${currentAssignment._id}`
+            : `${API_BASE}/assignments`;
+
+        const method = isEditing ? "put" : "post";
+
+        const response = await axios[method](endpoint, formData, {
+          ...axiosConfig,
+          headers: {
+            ...axiosConfig.headers,
+            "Content-Type": "multipart/form-data",
+          },
+        });
+
+        toast.success(response.data.message);
+        reset({
+          subject: "",
+          class: "",
+        });
+        fetchAssignments();
+        setIsEditing(false);
+        setCurrentAssignment(null);
+      } catch (error) {
+        console.error(error);
+        toast.error(error.response?.data?.message || "Operation failed");
+      } finally {
+        setLoading((prev) => ({ ...prev, form: false }));
+      }
+    },
+    [isEditing, currentAssignment, axiosConfig, fetchAssignments, reset]
+  );
 
   // Assignment CRUD operations
-  const handleEdit = useCallback((assignment) => {
-    setIsEditing(true);
-    setCurrentAssignment(assignment);
-    setValue("title", assignment.title);
-    setValue("description", assignment.description);
-    setValue("subject", assignment.subject?._id);
-    setValue("class", assignment.class?._id);
-    setValue("dueDate", formatDateForInput(assignment.dueDate));
-    setValue("videoUrl", assignment.videoUrl || "");
-    setValue("maxPoints", assignment.maxPoints || 100);
-    setValue("allowLateSubmission", assignment.allowLateSubmission || false);
-    setValue("peerReviewEnabled", assignment.peerReviewEnabled || false);
-    setValue("rubric", assignment.rubric || []);
-  }, [setValue, formatDateForInput]);
+  const handleEdit = useCallback(
+    (assignment) => {
+      setIsEditing(true);
+      setCurrentAssignment(assignment);
+
+      // Ensure we have valid values for subject and class
+      const subjectValue = subjects.some(
+        (s) => s._id === assignment.subject?._id
+      )
+        ? assignment.subject?._id
+        : "";
+
+      const classValue = classes.some((c) => c._id === assignment.class?._id)
+        ? assignment.class?._id
+        : "";
+
+      reset({
+        title: assignment.title || "",
+        description: assignment.description || "",
+        subject: subjectValue,
+        class: classValue,
+        dueDate: formatDateForInput(assignment.dueDate) || "",
+        videoUrl: assignment.videoUrl || "",
+        maxPoints: assignment.maxPoints || 100,
+        allowLateSubmission: assignment.allowLateSubmission || false,
+        peerReviewEnabled: assignment.peerReviewEnabled || false,
+        rubric: assignment.rubric || [],
+      });
+    },
+    [reset, formatDateForInput, subjects, classes]
+  );
 
   const handleCancelEdit = useCallback(() => {
     setIsEditing(false);
     setCurrentAssignment(null);
-    reset();
+    reset({
+      subject: "",
+      class: "",
+    });
   }, [reset]);
 
   const openDeleteDialog = useCallback((assignment) => {
@@ -349,7 +403,7 @@ const TeacherAssignmentDashboard = () => {
 
   const handleDelete = useCallback(async () => {
     if (!assignmentToDelete) return;
-    
+
     try {
       await axios.delete(
         `${API_BASE}/assignments/${assignmentToDelete._id}`,
@@ -367,69 +421,92 @@ const TeacherAssignmentDashboard = () => {
 
   // Submission grading functions
   const handleGradeChange = useCallback((submissionId, value) => {
-    setGradeForm(prev => ({
+    setGradeForm((prev) => ({
       ...prev,
-      [submissionId]: value
+      [submissionId]: value,
     }));
   }, []);
 
-  const handleRubricScoreChange = useCallback((submissionId, criteriaId, value) => {
-    setRubricScores(prev => ({
-      ...prev,
-      [submissionId]: {
-        ...(prev[submissionId] || {}),
-        [criteriaId]: value
+  const handleRubricScoreChange = useCallback(
+    (submissionId, criteriaId, value) => {
+      setRubricScores((prev) => ({
+        ...prev,
+        [submissionId]: {
+          ...(prev[submissionId] || {}),
+          [criteriaId]: value,
+        },
+      }));
+    },
+    []
+  );
+
+  const submitGrade = useCallback(
+    async (submissionId) => {
+      const formData = new FormData();
+
+      if (gradeForm[submissionId]) {
+        formData.append("grade", gradeForm[submissionId]);
       }
-    }));
-  }, []);
 
-  const submitGrade = useCallback(async (submissionId) => {
-    const formData = new FormData();
-    
-    if (gradeForm[submissionId]) {
-      formData.append('grade', gradeForm[submissionId]);
-    }
-    
-    if (rubricScores[submissionId]) {
-      formData.append('rubricScores', JSON.stringify(
-        Object.entries(rubricScores[submissionId]).map(([criteriaId, score]) => ({
-          criteriaId,
-          score
-        }))
-      ));
-    }
-    
-    if (document.getElementById(`feedback-${submissionId}`).value) {
-      formData.append('feedback', document.getElementById(`feedback-${submissionId}`).value);
-    }
-    
-    if (document.getElementById(`feedbackVideo-${submissionId}`).files[0]) {
-      formData.append('feedbackVideo', document.getElementById(`feedbackVideo-${submissionId}`).files[0]);
-    }
-    
-    try {
-      setIsSubmittingGrade(true);
-      await axios.post(
-        `${API_BASE}/assignments/submissions/${submissionId}/grade`,
-        formData,
-        {
-          ...axiosConfig,
-          headers: {
-            ...axiosConfig.headers,
-            'Content-Type': 'multipart/form-data'
+      if (rubricScores[submissionId]) {
+        formData.append(
+          "rubricScores",
+          JSON.stringify(
+            Object.entries(rubricScores[submissionId]).map(
+              ([criteriaId, score]) => ({
+                criteriaId,
+                score,
+              })
+            )
+          )
+        );
+      }
+
+      if (document.getElementById(`feedback-${submissionId}`).value) {
+        formData.append(
+          "feedback",
+          document.getElementById(`feedback-${submissionId}`).value
+        );
+      }
+
+      if (document.getElementById(`feedbackVideo-${submissionId}`).files[0]) {
+        formData.append(
+          "feedbackVideo",
+          document.getElementById(`feedbackVideo-${submissionId}`).files[0]
+        );
+      }
+
+      try {
+        setIsSubmittingGrade(true);
+        await axios.post(
+          `${API_BASE}/assignments/submissions/${submissionId}/grade`,
+          formData,
+          {
+            ...axiosConfig,
+            headers: {
+              ...axiosConfig.headers,
+              "Content-Type": "multipart/form-data",
+            },
           }
-        }
-      );
-      toast.success("Grade submitted successfully");
-      fetchSubmissions(selectedAssignmentId);
-      setGradeForm(prev => ({ ...prev, [submissionId]: '' }));
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to submit grade");
-    } finally {
-      setIsSubmittingGrade(false);
-    }
-  }, [gradeForm, rubricScores, axiosConfig, selectedAssignmentId, fetchSubmissions]);
+        );
+        toast.success("Grade submitted successfully");
+        fetchSubmissions(selectedAssignmentId);
+        setGradeForm((prev) => ({ ...prev, [submissionId]: "" }));
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to submit grade");
+      } finally {
+        setIsSubmittingGrade(false);
+      }
+    },
+    [
+      gradeForm,
+      rubricScores,
+      axiosConfig,
+      selectedAssignmentId,
+      fetchSubmissions,
+    ]
+  );
 
   // Submission dialog functions
   const openSubmissionDialog = useCallback((submission) => {
@@ -456,7 +533,7 @@ const TeacherAssignmentDashboard = () => {
 
   const grantExtension = useCallback(async () => {
     if (!selectedSubmission || !extensionDate) return;
-    
+
     try {
       await axios.post(
         `${API_BASE}/assignments/submissions/${selectedSubmission._id}/extension`,
@@ -470,45 +547,60 @@ const TeacherAssignmentDashboard = () => {
       console.error(error);
       toast.error("Failed to grant extension");
     }
-  }, [selectedSubmission, extensionDate, axiosConfig, selectedAssignmentId, fetchSubmissions, closeExtensionDialog]);
+  }, [
+    selectedSubmission,
+    extensionDate,
+    axiosConfig,
+    selectedAssignmentId,
+    fetchSubmissions,
+    closeExtensionDialog,
+  ]);
 
   // Sorting functionality
-  const handleSort = useCallback((key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  }, [sortConfig]);
+  const handleSort = useCallback(
+    (key) => {
+      let direction = "asc";
+      if (sortConfig.key === key && sortConfig.direction === "asc") {
+        direction = "desc";
+      }
+      setSortConfig({ key, direction });
+    },
+    [sortConfig]
+  );
 
   // Filtered and sorted assignments
   const filteredAssignments = useMemo(() => {
-    let result = assignments.filter(assignment => {
-      const matchesSearch = assignment.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          assignment.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesClass = filterClass ? assignment.class?._id === filterClass : true;
-      const matchesSubject = filterSubject ? assignment.subject?._id === filterSubject : true;
-      
+    let result = assignments.filter((assignment) => {
+      const matchesSearch =
+        assignment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        assignment.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesClass = filterClass
+        ? assignment.class?._id === filterClass
+        : true;
+      const matchesSubject = filterSubject
+        ? assignment.subject?._id === filterSubject
+        : true;
+
       return matchesSearch && matchesClass && matchesSubject;
     });
 
     // Sorting logic
     if (sortConfig.key) {
       result.sort((a, b) => {
-        const aValue = a[sortConfig.key] || '';
-        const bValue = b[sortConfig.key] || '';
-        
-        if (sortConfig.key === 'dueDate') {
+        const aValue = a[sortConfig.key] || "";
+        const bValue = b[sortConfig.key] || "";
+
+        if (sortConfig.key === "dueDate") {
           const dateA = new Date(a.dueDate).getTime();
           const dateB = new Date(b.dueDate).getTime();
-          return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+          return sortConfig.direction === "asc" ? dateA - dateB : dateB - dateA;
         }
-        
+
         if (aValue < bValue) {
-          return sortConfig.direction === 'asc' ? -1 : 1;
+          return sortConfig.direction === "asc" ? -1 : 1;
         }
         if (aValue > bValue) {
-          return sortConfig.direction === 'asc' ? 1 : -1;
+          return sortConfig.direction === "asc" ? 1 : -1;
         }
         return 0;
       });
@@ -524,48 +616,67 @@ const TeacherAssignmentDashboard = () => {
   }, []);
 
   // Skeleton loaders
-  const AssignmentSkeleton = useCallback(() => (
-    <Card
-      variant="outlined"
-      sx={{
-        borderRadius: 2,
-        overflow: 'hidden',
-        transition: 'all 0.3s ease',
-        animation: `${fadeIn} 0.5s ease-out`,
-        p: 2,
-        height: 100,
-        mb: 2
-      }}
-    >
-      <Box sx={{ 
-        height: '100%',
-        background: `linear-gradient(90deg, ${alpha(theme.palette.text.disabled, 0.1)} 25%, 
+  const AssignmentSkeleton = useCallback(
+    () => (
+      <Card
+        variant="outlined"
+        sx={{
+          borderRadius: 2,
+          overflow: "hidden",
+          transition: "all 0.3s ease",
+          animation: `${fadeIn} 0.5s ease-out`,
+          p: 2,
+          height: 100,
+          mb: 2,
+        }}
+      >
+        <Box
+          sx={{
+            height: "100%",
+            background: `linear-gradient(90deg, ${alpha(
+              theme.palette.text.disabled,
+              0.1
+            )} 25%, 
                     ${alpha(theme.palette.text.disabled, 0.05)} 50%, 
                     ${alpha(theme.palette.text.disabled, 0.1)} 75%)`,
-        backgroundSize: '200% 100%',
-        animation: `${shimmer} 1.5s infinite`,
-        borderRadius: 1
-      }} />
-    </Card>
-  ), [theme]);
+            backgroundSize: "200% 100%",
+            animation: `${shimmer} 1.5s infinite`,
+            borderRadius: 1,
+          }}
+        />
+      </Card>
+    ),
+    [theme]
+  );
 
-  const SubmissionSkeleton = useCallback(() => (
-    <TableRow>
-      <TableCell>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Skeleton variant="circular" width={40} height={40} />
-          <Box sx={{ ml: 2 }}>
-            <Skeleton variant="text" width={100} />
-            <Skeleton variant="text" width={150} />
+  const SubmissionSkeleton = useCallback(
+    () => (
+      <TableRow>
+        <TableCell>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            <Skeleton variant="circular" width={40} height={40} />
+            <Box sx={{ ml: 2 }}>
+              <Skeleton variant="text" width={100} />
+              <Skeleton variant="text" width={150} />
+            </Box>
           </Box>
-        </Box>
-      </TableCell>
-      <TableCell><Skeleton variant="text" /></TableCell>
-      <TableCell><Skeleton variant="text" width={120} /></TableCell>
-      <TableCell><Skeleton variant="text" width={80} /></TableCell>
-      <TableCell><Skeleton variant="circular" width={24} height={24} /></TableCell>
-    </TableRow>
-  ), []);
+        </TableCell>
+        <TableCell>
+          <Skeleton variant="text" />
+        </TableCell>
+        <TableCell>
+          <Skeleton variant="text" width={120} />
+        </TableCell>
+        <TableCell>
+          <Skeleton variant="text" width={80} />
+        </TableCell>
+        <TableCell>
+          <Skeleton variant="circular" width={24} height={24} />
+        </TableCell>
+      </TableRow>
+    ),
+    []
+  );
 
   // Initial data fetch
   useEffect(() => {
@@ -585,21 +696,23 @@ const TeacherAssignmentDashboard = () => {
   return (
     <Box
       sx={{
-        maxWidth: 'lg',
+        maxWidth: "lg",
         mx: "auto",
         p: { xs: 1, sm: 3 },
         animation: `${fadeIn} 0.5s ease-out`,
       }}
     >
       {/* Title Section */}
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between', 
-        alignItems: { xs: 'flex-start', sm: 'center' },
-        mb: 4,
-        gap: 2
-      }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-start", sm: "center" },
+          mb: 4,
+          gap: 2,
+        }}
+      >
         <Typography
           variant="h3"
           component="h1"
@@ -609,65 +722,81 @@ const TeacherAssignmentDashboard = () => {
             WebkitTextFillColor: "transparent",
             animation: `${gradientFlow} 6s ease infinite`,
             backgroundSize: "200% 200%",
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 2,
-            fontSize: { xs: '1.8rem', sm: '2.4rem' }
+            fontSize: { xs: "1.8rem", sm: "2.4rem" },
           }}
         >
-          <AssignmentIcon fontSize="large" /> 
+          <AssignmentIcon fontSize="large" />
           Assignment Dashboard
         </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <Chip 
+
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            flexWrap: "wrap",
+          }}
+        >
+          <Chip
             icon={<CalendarIcon />}
-            label={`Last updated: ${formatDate(new Date()).split(',')[0]}`} 
+            label={`Last updated: ${formatDate(new Date()).split(",")[0]}`}
             variant="outlined"
             size="small"
-            sx={{ fontSize: { xs: '0.7rem', sm: '0.8125rem' } }}
+            sx={{ fontSize: { xs: "0.7rem", sm: "0.8125rem" } }}
           />
-          <Badge badgeContent={assignments.filter(a => new Date(a.dueDate) < new Date()).length} color="error">
-            <Chip 
-              label={`Total: ${assignments.length}`} 
-              variant="outlined" 
-              avatar={<Avatar sx={{ width: 24, height: 24 }}>{assignments.length}</Avatar>}
+          <Badge
+            badgeContent={
+              assignments.filter((a) => new Date(a.dueDate) < new Date()).length
+            }
+            color="error"
+          >
+            <Chip
+              label={`Total: ${assignments.length}`}
+              variant="outlined"
+              avatar={
+                <Avatar sx={{ width: 24, height: 24 }}>
+                  {assignments.length}
+                </Avatar>
+              }
               color="primary"
-              sx={{ fontSize: { xs: '0.7rem', sm: '0.8125rem' } }}
+              sx={{ fontSize: { xs: "0.7rem", sm: "0.8125rem" } }}
             />
           </Badge>
         </Box>
       </Box>
 
       {/* Navigation Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs 
-          value={activeTab} 
+      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+        <Tabs
+          value={activeTab}
           onChange={(e, newValue) => setActiveTab(newValue)}
           variant="scrollable"
           scrollButtons="auto"
         >
-          <Tab 
-            label="Assignments" 
-            value="assignments" 
-            icon={<AssignmentIcon />} 
+          <Tab
+            label="Assignments"
+            value="assignments"
+            icon={<AssignmentIcon />}
             iconPosition="start"
             sx={{ minHeight: 48 }}
           />
           {selectedAssignmentId && (
-            <Tab 
-              label="Submissions" 
-              value="submissions" 
-              icon={<SchoolIcon />} 
+            <Tab
+              label="Submissions"
+              value="submissions"
+              icon={<SchoolIcon />}
               iconPosition="start"
               sx={{ minHeight: 48 }}
             />
           )}
           {analytics && (
-            <Tab 
-              label="Analytics" 
-              value="analytics" 
-              icon={<AnalyticsIcon />} 
+            <Tab
+              label="Analytics"
+              value="analytics"
+              icon={<AnalyticsIcon />}
               iconPosition="start"
               sx={{ minHeight: 48 }}
             />
@@ -676,18 +805,24 @@ const TeacherAssignmentDashboard = () => {
       </Box>
 
       {/* Create/Edit Assignment Form */}
-      {activeTab === 'assignments' && (
+      {activeTab === "assignments" && (
         <Card
           sx={{
             mb: 4,
             borderRadius: 2,
             boxShadow: theme.shadows[2],
-            animation: isEditing ? `${pulse} 2s infinite` : 'none',
-            borderLeft: isEditing ? `4px solid ${theme.palette.primary.main}` : 'none'
+            animation: isEditing ? `${pulse} 2s infinite` : "none",
+            borderLeft: isEditing
+              ? `4px solid ${theme.palette.primary.main}`
+              : "none",
           }}
         >
           <CardContent>
-            <Typography variant="h5" component="h2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h5"
+              component="h2"
+              sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+            >
               {isEditing ? (
                 <>
                   <EditIcon color="primary" /> Edit Assignment
@@ -698,15 +833,15 @@ const TeacherAssignmentDashboard = () => {
                 </>
               )}
             </Typography>
-            
+
             <Box
               component="form"
               onSubmit={handleSubmit(onSubmit)}
               encType="multipart/form-data"
               sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-                gap: 3
+                display: "grid",
+                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+                gap: 3,
               }}
             >
               <TextField
@@ -719,12 +854,11 @@ const TeacherAssignmentDashboard = () => {
                 error={!!errors.title}
                 helperText={errors.title?.message}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2
-                  }
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                  },
                 }}
               />
-              
               <TextField
                 {...register("description")}
                 label="Description"
@@ -734,19 +868,21 @@ const TeacherAssignmentDashboard = () => {
                 multiline
                 rows={1}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2
-                  }
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                  },
                 }}
               />
-              
               <FormControl fullWidth error={!!errors.subject}>
                 <InputLabel>Subject *</InputLabel>
                 <Select
                   {...register("subject", { required: "Subject is required" })}
                   label="Subject *"
+                  value={watch("subject") || ""}
                 >
-                  <MenuItem value=""><em>Select Subject</em></MenuItem>
+                  <MenuItem value="">
+                    <em>Select Subject</em>
+                  </MenuItem>
                   {subjects.map((subject) => (
                     <MenuItem key={subject._id} value={subject._id}>
                       {subject.subject_name}
@@ -759,19 +895,26 @@ const TeacherAssignmentDashboard = () => {
                   </Typography>
                 )}
               </FormControl>
-              
               <FormControl fullWidth error={!!errors.class}>
                 <InputLabel>Class *</InputLabel>
                 <Select
                   {...register("class", { required: "Class is required" })}
                   label="Class *"
+                  value={watch("class") || ""}
+                  disabled={classes.length === 0}
                 >
-                  <MenuItem value=""><em>Select Class</em></MenuItem>
-                  {classes.map((cls) => (
-                    <MenuItem key={cls._id} value={cls._id}>
-                      {cls.class_text}
-                    </MenuItem>
-                  ))}
+                  <MenuItem value="">
+                    <em>Select Class</em>
+                  </MenuItem>
+                  {classes.length === 0 ? (
+                    <MenuItem disabled>Loading classes...</MenuItem>
+                  ) : (
+                    classes.map((cls) => (
+                      <MenuItem key={cls._id} value={cls._id}>
+                        {cls.class_text}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
                 {errors.class && (
                   <Typography variant="caption" color="error">
@@ -779,7 +922,7 @@ const TeacherAssignmentDashboard = () => {
                   </Typography>
                 )}
               </FormControl>
-              
+
               <TextField
                 {...register("dueDate", { required: "Due date is required" })}
                 label="Due Date *"
@@ -790,20 +933,19 @@ const TeacherAssignmentDashboard = () => {
                 error={!!errors.dueDate}
                 helperText={errors.dueDate?.message}
                 inputProps={{
-                  min: new Date().toISOString().split('T')[0]
+                  min: new Date().toISOString().split("T")[0],
                 }}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2
-                  }
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                  },
                 }}
               />
-              
               <TextField
-                {...register("maxPoints", { 
+                {...register("maxPoints", {
                   valueAsNumber: true,
                   min: { value: 1, message: "Minimum 1 point" },
-                  max: { value: 1000, message: "Maximum 1000 points" }
+                  max: { value: 1000, message: "Maximum 1000 points" },
                 })}
                 label="Max Points"
                 type="number"
@@ -814,13 +956,12 @@ const TeacherAssignmentDashboard = () => {
                 helperText={errors.maxPoints?.message}
                 InputProps={{ inputProps: { min: 1, max: 1000 } }}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2
-                  }
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                  },
                 }}
               />
-              
-              <Box sx={{ gridColumn: '1 / -1' }}>
+              <Box sx={{ gridColumn: "1 / -1" }}>
                 <FormGroup>
                   <FormControlLabel
                     control={<Switch {...register("allowLateSubmission")} />}
@@ -832,8 +973,7 @@ const TeacherAssignmentDashboard = () => {
                   />
                 </FormGroup>
               </Box>
-              
-              <Box sx={{ gridColumn: '1 / -1' }}>
+              <Box sx={{ gridColumn: "1 / -1" }}>
                 <Typography variant="subtitle1" gutterBottom>
                   Assignment Video
                 </Typography>
@@ -851,37 +991,18 @@ const TeacherAssignmentDashboard = () => {
                   sx={{ mt: 1 }}
                 />
               </Box>
-              
-              <Box sx={{ gridColumn: '1 / -1' }}>
+              <Box sx={{ gridColumn: "1 / -1" }}>
                 <Typography variant="subtitle1" gutterBottom>
                   Attachments
                 </Typography>
-                <input
-                  type="file"
-                  multiple
-                  {...register("attachments")}
-                />
+                <input type="file" multiple {...register("attachments")} />
               </Box>
-              
-              {/* <Box sx={{ gridColumn: '1 / -1' }}>
-                <Accordion>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography>Rubric Settings</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Typography variant="body2" color="text.secondary">
-                      Advanced rubric builder coming soon
-                    </Typography>
-                  </AccordionDetails>
-                </Accordion>
-              </Box> */}
-              
               <Box
                 sx={{
-                  gridColumn: { xs: '1', md: '1 / -1' },
-                  display: 'flex',
+                  gridColumn: { xs: "1", md: "1 / -1" },
+                  display: "flex",
                   gap: 2,
-                  justifyContent: 'flex-end'
+                  justifyContent: "flex-end",
                 }}
               >
                 {isEditing && (
@@ -894,14 +1015,18 @@ const TeacherAssignmentDashboard = () => {
                     Cancel
                   </Button>
                 )}
-                
+
                 <Button
                   type="submit"
                   variant="contained"
                   color="primary"
                   disabled={loading.form}
                   sx={{ borderRadius: 2 }}
-                  startIcon={loading.form ? <CircularProgress size={20} color="inherit" /> : null}
+                  startIcon={
+                    loading.form ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : null
+                  }
                 >
                   {isEditing ? "Update Assignment" : "Create Assignment"}
                 </Button>
@@ -912,19 +1037,27 @@ const TeacherAssignmentDashboard = () => {
       )}
 
       {/* Filter/Search Section */}
-      {activeTab === 'assignments' && (
+      {activeTab === "assignments" && (
         <Card sx={{ mb: 4, borderRadius: 2, boxShadow: theme.shadows[1] }}>
           <CardContent>
-            <Typography variant="h5" component="h2" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="h5"
+              component="h2"
+              sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+            >
               <FilterListIcon color="primary" /> Filter Assignments
             </Typography>
-            
+
             <Box
               sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '2fr 1fr 1fr auto' },
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "1fr 1fr",
+                  md: "2fr 1fr 1fr auto",
+                },
                 gap: 2,
-                alignItems: 'flex-end'
+                alignItems: "flex-end",
               }}
             >
               <TextField
@@ -941,7 +1074,10 @@ const TeacherAssignmentDashboard = () => {
                   ),
                   endAdornment: searchTerm && (
                     <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setSearchTerm("")}>
+                      <IconButton
+                        size="small"
+                        onClick={() => setSearchTerm("")}
+                      >
                         <CloseIcon fontSize="small" />
                       </IconButton>
                     </InputAdornment>
@@ -949,12 +1085,12 @@ const TeacherAssignmentDashboard = () => {
                 }}
                 fullWidth
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 2
-                  }
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                  },
                 }}
               />
-              
+
               <FormControl fullWidth>
                 <InputLabel>Class</InputLabel>
                 <Select
@@ -970,7 +1106,7 @@ const TeacherAssignmentDashboard = () => {
                   ))}
                 </Select>
               </FormControl>
-              
+
               <FormControl fullWidth>
                 <InputLabel>Subject</InputLabel>
                 <Select
@@ -986,12 +1122,12 @@ const TeacherAssignmentDashboard = () => {
                   ))}
                 </Select>
               </FormControl>
-              
+
               <Button
                 variant="outlined"
                 onClick={clearFilters}
                 startIcon={<ClearIcon />}
-                sx={{ height: '56px', borderRadius: 2 }}
+                sx={{ height: "56px", borderRadius: 2 }}
               >
                 Clear
               </Button>
@@ -1001,19 +1137,31 @@ const TeacherAssignmentDashboard = () => {
       )}
 
       {/* Assignments List */}
-      {activeTab === 'assignments' && (
+      {activeTab === "assignments" && (
         <Card sx={{ mb: 4, borderRadius: 2, boxShadow: theme.shadows[1] }}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" component="h2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              >
                 <AssignmentIcon color="primary" /> Your Assignments
               </Typography>
-              
+
               <Typography variant="body2" color="text.secondary">
-                Showing {filteredAssignments.length} of {assignments.length} assignments
+                Showing {filteredAssignments.length} of {assignments.length}{" "}
+                assignments
               </Typography>
             </Box>
-            
+
             {loading.assignments && assignments.length === 0 ? (
               <Box>
                 {[1, 2, 3].map((i) => (
@@ -1023,13 +1171,15 @@ const TeacherAssignmentDashboard = () => {
             ) : filteredAssignments.length === 0 ? (
               <Box
                 sx={{
-                  textAlign: 'center',
+                  textAlign: "center",
                   p: 4,
                   borderRadius: 2,
                   bgcolor: theme.palette.action.hover,
                 }}
               >
-                <AssignmentIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                <AssignmentIcon
+                  sx={{ fontSize: 60, color: "text.disabled", mb: 2 }}
+                />
                 <Typography variant="h6" color="text.secondary" gutterBottom>
                   No assignments found
                 </Typography>
@@ -1040,62 +1190,82 @@ const TeacherAssignmentDashboard = () => {
                 </Typography>
               </Box>
             ) : (
-              <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2 }}>
+              <TableContainer
+                component={Paper}
+                elevation={0}
+                sx={{ borderRadius: 2 }}
+              >
                 <Table>
                   <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
                     <TableRow>
                       <TableCell>
-                        <Button 
-                          onClick={() => handleSort('title')} 
+                        <Button
+                          onClick={() => handleSort("title")}
                           startIcon={<SortIcon />}
                           endIcon={
-                            sortConfig.key === 'title' ? (
-                              sortConfig.direction === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />
+                            sortConfig.key === "title" ? (
+                              sortConfig.direction === "asc" ? (
+                                <ArrowUpwardIcon fontSize="small" />
+                              ) : (
+                                <ArrowDownwardIcon fontSize="small" />
+                              )
                             ) : null
                           }
-                          sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                          sx={{ textTransform: "none", fontWeight: "bold" }}
                         >
                           Title
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          onClick={() => handleSort('subject')} 
+                        <Button
+                          onClick={() => handleSort("subject")}
                           startIcon={<SortIcon />}
                           endIcon={
-                            sortConfig.key === 'subject' ? (
-                              sortConfig.direction === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />
+                            sortConfig.key === "subject" ? (
+                              sortConfig.direction === "asc" ? (
+                                <ArrowUpwardIcon fontSize="small" />
+                              ) : (
+                                <ArrowDownwardIcon fontSize="small" />
+                              )
                             ) : null
                           }
-                          sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                          sx={{ textTransform: "none", fontWeight: "bold" }}
                         >
                           Subject
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          onClick={() => handleSort('class')} 
+                        <Button
+                          onClick={() => handleSort("class")}
                           startIcon={<SortIcon />}
                           endIcon={
-                            sortConfig.key === 'class' ? (
-                              sortConfig.direction === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />
+                            sortConfig.key === "class" ? (
+                              sortConfig.direction === "asc" ? (
+                                <ArrowUpwardIcon fontSize="small" />
+                              ) : (
+                                <ArrowDownwardIcon fontSize="small" />
+                              )
                             ) : null
                           }
-                          sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                          sx={{ textTransform: "none", fontWeight: "bold" }}
                         >
                           Class
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          onClick={() => handleSort('dueDate')} 
+                        <Button
+                          onClick={() => handleSort("dueDate")}
                           startIcon={<SortIcon />}
                           endIcon={
-                            sortConfig.key === 'dueDate' ? (
-                              sortConfig.direction === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />
+                            sortConfig.key === "dueDate" ? (
+                              sortConfig.direction === "asc" ? (
+                                <ArrowUpwardIcon fontSize="small" />
+                              ) : (
+                                <ArrowDownwardIcon fontSize="small" />
+                              )
                             ) : null
                           }
-                          sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                          sx={{ textTransform: "none", fontWeight: "bold" }}
                         >
                           Due Date
                         </Button>
@@ -1110,14 +1280,22 @@ const TeacherAssignmentDashboard = () => {
                         key={assignment._id}
                         hover
                         sx={{
-                          '&:last-child td': { borderBottom: 0 },
+                          "&:last-child td": { borderBottom: 0 },
                           animation: `${fadeIn} 0.3s ease-out`,
-                          animationDelay: `${filteredAssignments.indexOf(assignment) * 50}ms`
+                          animationDelay: `${
+                            filteredAssignments.indexOf(assignment) * 50
+                          }ms`,
                         }}
                       >
                         <TableCell>
-                          <Typography fontWeight="medium">{assignment.title}</Typography>
-                          <Typography variant="body2" color="text.secondary" noWrap>
+                          <Typography fontWeight="medium">
+                            {assignment.title}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            noWrap
+                          >
                             {assignment.description}
                           </Typography>
                           {assignment.videoUrl && (
@@ -1147,7 +1325,13 @@ const TeacherAssignmentDashboard = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
                             <CalendarIcon fontSize="small" color="action" />
                             <Typography variant="body2">
                               {formatDate(assignment.dueDate)}
@@ -1167,20 +1351,30 @@ const TeacherAssignmentDashboard = () => {
                             variant="text"
                             color="primary"
                             onClick={() => {
-                              setSelectedAssignmentId(assignment._id === selectedAssignmentId ? "" : assignment._id);
-                              setActiveTab('submissions');
+                              setSelectedAssignmentId(
+                                assignment._id === selectedAssignmentId
+                                  ? ""
+                                  : assignment._id
+                              );
+                              setActiveTab("submissions");
                               if (assignment._id !== selectedAssignmentId) {
                                 fetchSubmissions(assignment._id);
                               }
                             }}
                             startIcon={<SchoolIcon />}
-                            sx={{ textTransform: 'none' }}
+                            sx={{ textTransform: "none" }}
                           >
                             {assignment.submissionCount || 0} submissions
                           </Button>
                         </TableCell>
                         <TableCell align="right">
-                          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              gap: 1,
+                              justifyContent: "flex-end",
+                            }}
+                          >
                             <Tooltip title="Edit">
                               <IconButton
                                 onClick={() => handleEdit(assignment)}
@@ -1201,7 +1395,7 @@ const TeacherAssignmentDashboard = () => {
                               <IconButton
                                 onClick={() => {
                                   setSelectedAssignmentId(assignment._id);
-                                  setActiveTab('analytics');
+                                  setActiveTab("analytics");
                                   fetchAnalytics(assignment._id);
                                 }}
                                 color="info"
@@ -1222,17 +1416,28 @@ const TeacherAssignmentDashboard = () => {
       )}
 
       {/* Analytics Section */}
-      {activeTab === 'analytics' && analytics && selectedAssignmentId && (
+      {activeTab === "analytics" && analytics && selectedAssignmentId && (
         <Card sx={{ mb: 4, borderRadius: 2, boxShadow: theme.shadows[1] }}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" component="h2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              >
                 <AnalyticsIcon color="primary" /> Assignment Analytics
               </Typography>
               <Box>
-                <Button 
-                  variant="outlined" 
-                  onClick={() => setActiveTab('submissions')}
+                <Button
+                  variant="outlined"
+                  onClick={() => setActiveTab("submissions")}
                   startIcon={<SchoolIcon />}
                   sx={{ mr: 1 }}
                 >
@@ -1243,15 +1448,17 @@ const TeacherAssignmentDashboard = () => {
                 </IconButton>
               </Box>
             </Box>
-            
+
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={3}>
-                <Card sx={{ 
-                  textAlign: 'center', 
-                  p: 2,
-                  borderLeft: `4px solid ${theme.palette.primary.main}`,
-                  height: '100%'
-                }}>
+                <Card
+                  sx={{
+                    textAlign: "center",
+                    p: 2,
+                    borderLeft: `4px solid ${theme.palette.primary.main}`,
+                    height: "100%",
+                  }}
+                >
                   <Typography variant="h4" color="primary">
                     {analytics.totalSubmissions}
                   </Typography>
@@ -1262,12 +1469,14 @@ const TeacherAssignmentDashboard = () => {
                 </Card>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <Card sx={{ 
-                  textAlign: 'center', 
-                  p: 2,
-                  borderLeft: `4px solid ${theme.palette.success.main}`,
-                  height: '100%'
-                }}>
+                <Card
+                  sx={{
+                    textAlign: "center",
+                    p: 2,
+                    borderLeft: `4px solid ${theme.palette.success.main}`,
+                    height: "100%",
+                  }}
+                >
                   <Typography variant="h4" color="success.main">
                     {analytics.gradedSubmissions}
                   </Typography>
@@ -1278,12 +1487,14 @@ const TeacherAssignmentDashboard = () => {
                 </Card>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <Card sx={{ 
-                  textAlign: 'center', 
-                  p: 2,
-                  borderLeft: `4px solid ${theme.palette.error.main}`,
-                  height: '100%'
-                }}>
+                <Card
+                  sx={{
+                    textAlign: "center",
+                    p: 2,
+                    borderLeft: `4px solid ${theme.palette.error.main}`,
+                    height: "100%",
+                  }}
+                >
                   <Typography variant="h4" color="error.main">
                     {analytics.lateSubmissions}
                   </Typography>
@@ -1294,12 +1505,14 @@ const TeacherAssignmentDashboard = () => {
                 </Card>
               </Grid>
               <Grid item xs={12} sm={6} md={3}>
-                <Card sx={{ 
-                  textAlign: 'center', 
-                  p: 2,
-                  borderLeft: `4px solid ${theme.palette.warning.main}`,
-                  height: '100%'
-                }}>
+                <Card
+                  sx={{
+                    textAlign: "center",
+                    p: 2,
+                    borderLeft: `4px solid ${theme.palette.warning.main}`,
+                    height: "100%",
+                  }}
+                >
                   <Typography variant="h4">
                     {analytics.averageGrade.toFixed(1)}%
                   </Typography>
@@ -1311,30 +1524,39 @@ const TeacherAssignmentDashboard = () => {
               </Grid>
               <Grid item xs={12}>
                 <Card sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
                     <AssessmentIcon /> Grade Distribution
                   </Typography>
-                  <Box sx={{ width: '100%', height: 200, p: 2 }}>
+                  <Box sx={{ width: "100%", height: 200, p: 2 }}>
                     {/* Placeholder for chart */}
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'flex-end', 
-                      height: '100%', 
-                      gap: 1,
-                      justifyContent: 'center'
-                    }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "flex-end",
+                        height: "100%",
+                        gap: 1,
+                        justifyContent: "center",
+                      }}
+                    >
                       {[70, 50, 30, 20, 10, 5].map((value, index) => (
-                        <Box key={index} sx={{ 
-                          width: 40, 
-                          height: `${value}%`,
-                          bgcolor: theme.palette.primary.main,
-                          borderRadius: 1,
-                          display: 'flex',
-                          alignItems: 'flex-end',
-                          justifyContent: 'center',
-                          color: 'white',
-                          fontWeight: 'bold'
-                        }}>
+                        <Box
+                          key={index}
+                          sx={{
+                            width: 40,
+                            height: `${value}%`,
+                            bgcolor: theme.palette.primary.main,
+                            borderRadius: 1,
+                            display: "flex",
+                            alignItems: "flex-end",
+                            justifyContent: "center",
+                            color: "white",
+                            fontWeight: "bold",
+                          }}
+                        >
                           {value}%
                         </Box>
                       ))}
@@ -1344,19 +1566,25 @@ const TeacherAssignmentDashboard = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Card sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
                     <GradingIcon /> Submission Timeline
                   </Typography>
-                  <Box sx={{ width: '100%', height: 200, p: 2 }}>
+                  <Box sx={{ width: "100%", height: 200, p: 2 }}>
                     {/* Placeholder for timeline */}
-                    <Box sx={{ 
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: theme.palette.action.hover,
-                      borderRadius: 1
-                    }}>
+                    <Box
+                      sx={{
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        bgcolor: theme.palette.action.hover,
+                        borderRadius: 1,
+                      }}
+                    >
                       <Typography variant="body2" color="text.secondary">
                         Submission timeline visualization
                       </Typography>
@@ -1366,19 +1594,25 @@ const TeacherAssignmentDashboard = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Card sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                  >
                     <AccessTimeIcon /> Time Spent Analysis
                   </Typography>
-                  <Box sx={{ width: '100%', height: 200, p: 2 }}>
+                  <Box sx={{ width: "100%", height: 200, p: 2 }}>
                     {/* Placeholder for time spent */}
-                    <Box sx={{ 
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      bgcolor: theme.palette.action.hover,
-                      borderRadius: 1
-                    }}>
+                    <Box
+                      sx={{
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        bgcolor: theme.palette.action.hover,
+                        borderRadius: 1,
+                      }}
+                    >
                       <Typography variant="body2" color="text.secondary">
                         Average time spent: 45 minutes
                       </Typography>
@@ -1392,18 +1626,29 @@ const TeacherAssignmentDashboard = () => {
       )}
 
       {/* Submissions Section */}
-      {activeTab === 'submissions' && selectedAssignmentId && (
+      {activeTab === "submissions" && selectedAssignmentId && (
         <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[1] }}>
           <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" component="h2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+              >
                 <SchoolIcon color="primary" /> Submissions
               </Typography>
-              
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button 
-                  variant="outlined" 
-                  onClick={() => setActiveTab('analytics')}
+
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => setActiveTab("analytics")}
                   startIcon={<AnalyticsIcon />}
                 >
                   View Analytics
@@ -1413,7 +1658,7 @@ const TeacherAssignmentDashboard = () => {
                 </IconButton>
               </Box>
             </Box>
-            
+
             {loading.submissions && submissions.length === 0 ? (
               <Box>
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -1423,13 +1668,15 @@ const TeacherAssignmentDashboard = () => {
             ) : submissions.length === 0 ? (
               <Box
                 sx={{
-                  textAlign: 'center',
+                  textAlign: "center",
                   p: 4,
                   borderRadius: 2,
                   bgcolor: theme.palette.action.hover,
                 }}
               >
-                <SchoolIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                <SchoolIcon
+                  sx={{ fontSize: 60, color: "text.disabled", mb: 2 }}
+                />
                 <Typography variant="h6" color="text.secondary" gutterBottom>
                   No submissions yet
                 </Typography>
@@ -1438,7 +1685,11 @@ const TeacherAssignmentDashboard = () => {
                 </Typography>
               </Box>
             ) : (
-              <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2 }}>
+              <TableContainer
+                component={Paper}
+                elevation={0}
+                sx={{ borderRadius: 2 }}
+              >
                 <Table>
                   <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
                     <TableRow>
@@ -1455,26 +1706,40 @@ const TeacherAssignmentDashboard = () => {
                         key={sub._id}
                         hover
                         sx={{
-                          '&:last-child td': { borderBottom: 0 },
+                          "&:last-child td": { borderBottom: 0 },
                           animation: `${fadeIn} 0.3s ease-out`,
-                          animationDelay: `${submissions.indexOf(sub) * 50}ms`
+                          animationDelay: `${submissions.indexOf(sub) * 50}ms`,
                         }}
                       >
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 2,
+                            }}
+                          >
                             <Avatar
                               src={sub.student?.image_url}
                               sx={{ width: 40, height: 40 }}
                             >
-                              {sub.student?.name?.charAt(0) || '?'}
+                              {sub.student?.name?.charAt(0) || "?"}
                             </Avatar>
                             <Box>
                               <Typography fontWeight="medium">
-                                {sub.student?.name || 'Unknown'}
+                                {sub.student?.name || "Unknown"}
                               </Typography>
-                              <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.5,
+                                }}
+                              >
                                 <EmailIcon fontSize="small" />
-                                {sub.student?.email || 'N/A'}
+                                {sub.student?.email || "N/A"}
                               </Typography>
                               {sub.lateSubmission && (
                                 <Chip
@@ -1488,13 +1753,17 @@ const TeacherAssignmentDashboard = () => {
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Box
+                            sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}
+                          >
                             {sub.fileUrl && (
                               <Button
                                 variant="outlined"
                                 startIcon={<DownloadIcon />}
-                                onClick={() => window.open(sub.fileUrl, '_blank')}
-                                sx={{ textTransform: 'none' }}
+                                onClick={() =>
+                                  window.open(sub.fileUrl, "_blank")
+                                }
+                                sx={{ textTransform: "none" }}
                               >
                                 Document
                               </Button>
@@ -1503,15 +1772,21 @@ const TeacherAssignmentDashboard = () => {
                               <Button
                                 variant="outlined"
                                 startIcon={<PlayIcon />}
-                                onClick={() => window.open(sub.videoUrl, '_blank')}
-                                sx={{ textTransform: 'none' }}
+                                onClick={() =>
+                                  window.open(sub.videoUrl, "_blank")
+                                }
+                                sx={{ textTransform: "none" }}
                               >
                                 Video
                               </Button>
                             )}
                           </Box>
                           {sub.remarks && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mt: 1 }}
+                            >
                               Remarks: {sub.remarks}
                             </Typography>
                           )}
@@ -1529,13 +1804,22 @@ const TeacherAssignmentDashboard = () => {
                             <Box>
                               <Chip
                                 label={`${sub.grade}%`}
-                                color={sub.grade >= 70 ? 'success' : sub.grade >= 50 ? 'warning' : 'error'}
+                                color={
+                                  sub.grade >= 70
+                                    ? "success"
+                                    : sub.grade >= 50
+                                    ? "warning"
+                                    : "error"
+                                }
                                 variant="outlined"
-                                sx={{ fontWeight: 'bold' }}
+                                sx={{ fontWeight: "bold" }}
                               />
                               {sub.feedback && (
                                 <Tooltip title={sub.feedback}>
-                                  <InfoIcon color="action" sx={{ ml: 1, verticalAlign: 'middle' }} />
+                                  <InfoIcon
+                                    color="action"
+                                    sx={{ ml: 1, verticalAlign: "middle" }}
+                                  />
                                 </Tooltip>
                               )}
                             </Box>
@@ -1544,8 +1828,10 @@ const TeacherAssignmentDashboard = () => {
                               <TextField
                                 size="small"
                                 placeholder="Grade"
-                                value={gradeForm[sub._id] || ''}
-                                onChange={(e) => handleGradeChange(sub._id, e.target.value)}
+                                value={gradeForm[sub._id] || ""}
+                                onChange={(e) =>
+                                  handleGradeChange(sub._id, e.target.value)
+                                }
                                 sx={{ width: 80, mb: 1 }}
                                 type="number"
                                 inputProps={{ min: 0, max: 100 }}
@@ -1556,13 +1842,13 @@ const TeacherAssignmentDashboard = () => {
                                 size="small"
                                 multiline
                                 rows={2}
-                                sx={{ width: '100%', mb: 1 }}
+                                sx={{ width: "100%", mb: 1 }}
                               />
                               <input
                                 id={`feedbackVideo-${sub._id}`}
                                 type="file"
                                 accept="video/*"
-                                style={{ display: 'none' }}
+                                style={{ display: "none" }}
                               />
                               <label htmlFor={`feedbackVideo-${sub._id}`}>
                                 <Button
@@ -1582,13 +1868,17 @@ const TeacherAssignmentDashboard = () => {
                                 disabled={isSubmittingGrade}
                                 sx={{ ml: 1 }}
                               >
-                                {isSubmittingGrade ? <CircularProgress size={20} /> : 'Submit'}
+                                {isSubmittingGrade ? (
+                                  <CircularProgress size={20} />
+                                ) : (
+                                  "Submit"
+                                )}
                               </Button>
                             </Box>
                           )}
                         </TableCell>
                         <TableCell align="right">
-                          <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <Box sx={{ display: "flex", gap: 0.5 }}>
                             <Tooltip title="View Details">
                               <IconButton
                                 onClick={() => openSubmissionDialog(sub)}
@@ -1620,15 +1910,15 @@ const TeacherAssignmentDashboard = () => {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onClose={closeDeleteDialog}>
-        <DialogTitle>
-          Confirm Delete
-        </DialogTitle>
+        <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
           <Typography>
-            Are you sure you want to delete the assignment "{assignmentToDelete?.title}"?
+            Are you sure you want to delete the assignment "
+            {assignmentToDelete?.title}"?
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            This action cannot be undone and will also delete all associated submissions.
+            This action cannot be undone and will also delete all associated
+            submissions.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -1640,54 +1930,76 @@ const TeacherAssignmentDashboard = () => {
       </Dialog>
 
       {/* Submission Details Dialog */}
-      <Dialog 
-        open={submissionDialogOpen} 
-        onClose={closeSubmissionDialog} 
-        maxWidth="md" 
+      <Dialog
+        open={submissionDialogOpen}
+        onClose={closeSubmissionDialog}
+        maxWidth="md"
         fullWidth
         fullScreen={isMobile}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <VisibilityIcon color="primary" /> Submission Details
         </DialogTitle>
         <DialogContent>
           {selectedSubmission && (
             <Box sx={{ mt: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  mb: 3,
+                  flexDirection: { xs: "column", sm: "row" },
+                }}
+              >
                 <Avatar
                   src={selectedSubmission.student?.image_url}
                   sx={{ width: 64, height: 64 }}
                 >
-                  {selectedSubmission.student?.name?.charAt(0) || '?'}
+                  {selectedSubmission.student?.name?.charAt(0) || "?"}
                 </Avatar>
-                <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
                   <Typography variant="h6" fontWeight="medium">
-                    {selectedSubmission.student?.name || 'Unknown Student'}
+                    {selectedSubmission.student?.name || "Unknown Student"}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {selectedSubmission.student?.email || 'N/A'}
+                    {selectedSubmission.student?.email || "N/A"}
                   </Typography>
                   {selectedSubmission.grade !== undefined && (
                     <Chip
                       label={`Grade: ${selectedSubmission.grade}%`}
-                      color={selectedSubmission.grade >= 70 ? 'success' : selectedSubmission.grade >= 50 ? 'warning' : 'error'}
-                      sx={{ mt: 1, fontWeight: 'bold' }}
+                      color={
+                        selectedSubmission.grade >= 70
+                          ? "success"
+                          : selectedSubmission.grade >= 50
+                          ? "warning"
+                          : "error"
+                      }
+                      sx={{ mt: 1, fontWeight: "bold" }}
                     />
                   )}
                 </Box>
               </Box>
-              
+
               <Divider sx={{ my: 2 }} />
-              
+
               <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="medium"
+                  gutterBottom
+                >
                   Assignment Details
                 </Typography>
                 <Typography>
-                  <strong>Title:</strong> {assignments.find(a => a._id === selectedSubmission.assignment)?.title || 'N/A'}
+                  <strong>Title:</strong>{" "}
+                  {assignments.find(
+                    (a) => a._id === selectedSubmission.assignment
+                  )?.title || "N/A"}
                 </Typography>
                 <Typography>
-                  <strong>Submitted On:</strong> {formatDate(selectedSubmission.createdAt)}
+                  <strong>Submitted On:</strong>{" "}
+                  {formatDate(selectedSubmission.createdAt)}
                 </Typography>
                 {selectedSubmission.lateSubmission && (
                   <Typography color="error">
@@ -1700,19 +2012,32 @@ const TeacherAssignmentDashboard = () => {
                   </Typography>
                 )}
               </Box>
-              
+
               <Divider sx={{ my: 2 }} />
-              
+
               <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="medium"
+                  gutterBottom
+                >
                   Submission Files
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    gap: 2,
+                    flexWrap: "wrap",
+                    justifyContent: { xs: "center", sm: "flex-start" },
+                  }}
+                >
                   {selectedSubmission.fileUrl && (
                     <Button
                       variant="contained"
                       startIcon={<DownloadIcon />}
-                      onClick={() => window.open(selectedSubmission.fileUrl, '_blank')}
+                      onClick={() =>
+                        window.open(selectedSubmission.fileUrl, "_blank")
+                      }
                       sx={{ borderRadius: 2 }}
                     >
                       Download Document
@@ -1722,7 +2047,9 @@ const TeacherAssignmentDashboard = () => {
                     <Button
                       variant="contained"
                       startIcon={<PlayIcon />}
-                      onClick={() => window.open(selectedSubmission.videoUrl, '_blank')}
+                      onClick={() =>
+                        window.open(selectedSubmission.videoUrl, "_blank")
+                      }
                       sx={{ borderRadius: 2 }}
                     >
                       Play Submission Video
@@ -1730,24 +2057,34 @@ const TeacherAssignmentDashboard = () => {
                   )}
                 </Box>
               </Box>
-              
+
               {selectedSubmission.feedback && (
                 <>
                   <Divider sx={{ my: 2 }} />
                   <Box>
-                    <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+                    <Typography
+                      variant="subtitle1"
+                      fontWeight="medium"
+                      gutterBottom
+                    >
                       Teacher Feedback
                     </Typography>
-                    <Card variant="outlined" sx={{ p: 2, mb: 2, bgcolor: theme.palette.action.hover }}>
-                      <Typography>
-                        {selectedSubmission.feedback}
-                      </Typography>
+                    <Card
+                      variant="outlined"
+                      sx={{ p: 2, mb: 2, bgcolor: theme.palette.action.hover }}
+                    >
+                      <Typography>{selectedSubmission.feedback}</Typography>
                     </Card>
                     {selectedSubmission.feedbackVideoUrl && (
                       <Button
                         variant="contained"
                         startIcon={<PlayIcon />}
-                        onClick={() => window.open(selectedSubmission.feedbackVideoUrl, '_blank')}
+                        onClick={() =>
+                          window.open(
+                            selectedSubmission.feedbackVideoUrl,
+                            "_blank"
+                          )
+                        }
                         sx={{ borderRadius: 2 }}
                       >
                         Play Feedback Video
@@ -1767,15 +2104,16 @@ const TeacherAssignmentDashboard = () => {
       {/* Extension Dialog */}
       <Dialog open={extensionDialogOpen} onClose={closeExtensionDialog}>
         <DialogTitle>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <ExtensionIcon color="primary" /> Grant Extension
           </Box>
         </DialogTitle>
         <DialogContent>
           {selectedSubmission && (
-            <Box sx={{ mt: 2, minWidth: { xs: 'auto', sm: 400 } }}>
+            <Box sx={{ mt: 2, minWidth: { xs: "auto", sm: 400 } }}>
               <Typography gutterBottom>
-                Grant extension for: <strong>{selectedSubmission.student?.name}</strong>
+                Grant extension for:{" "}
+                <strong>{selectedSubmission.student?.name}</strong>
               </Typography>
               <TextField
                 label="New Due Date"
@@ -1787,7 +2125,7 @@ const TeacherAssignmentDashboard = () => {
                 onChange={(e) => setExtensionDate(e.target.value)}
                 sx={{ mt: 2 }}
                 inputProps={{
-                  min: new Date().toISOString().slice(0, 16)
+                  min: new Date().toISOString().slice(0, 16),
                 }}
               />
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -1798,8 +2136,8 @@ const TeacherAssignmentDashboard = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeExtensionDialog}>Cancel</Button>
-          <Button 
-            onClick={grantExtension} 
+          <Button
+            onClick={grantExtension}
             variant="contained"
             disabled={!extensionDate}
           >
