@@ -5,14 +5,35 @@ const auth = require('../auth/auth');
 
 // Create a new assignment (TEACHER only)
 router.post(
-  '/create',
+  '/',
   auth(['TEACHER']),
   assignmentController.createAssignment
 );
 
+// Get single assignment
+router.get(
+  '/:id',
+  auth(['TEACHER', 'STUDENT']),
+  assignmentController.getAssignment
+);
+
+// Update assignment (TEACHER only)
+router.put(
+  '/:id',
+  auth(['TEACHER']),
+  assignmentController.updateAssignment
+);
+
+// Delete assignment (TEACHER only)
+router.delete(
+  '/:id',
+  auth(['TEACHER']),
+  assignmentController.deleteAssignment
+);
+
 // Get assignments for student (STUDENT only)
 router.get(
-  '/student',
+  '/student/list',
   auth(['STUDENT']),
   assignmentController.getAssignmentsForStudent
 );
@@ -27,8 +48,36 @@ router.post(
 // Get submissions for an assignment (TEACHER only)
 router.get(
   '/submissions/:assignmentId',
-  auth(['TEACHER']),
+  auth(['TEACHER','STUDENT']),
   assignmentController.getSubmissionsForAssignment
+);
+
+// Grade a submission (TEACHER only)
+router.post(
+  '/submissions/:submissionId/grade',
+  auth(['TEACHER']),
+  assignmentController.gradeSubmission
+);
+
+// Grant extension to a student (TEACHER only)
+router.post(
+  '/submissions/:submissionId/extension',
+  auth(['TEACHER']),
+  assignmentController.grantExtension
+);
+
+// Get teacher's assignments (TEACHER only)
+router.get(
+  '/teacher/list',
+  auth(['TEACHER']),
+  assignmentController.getAssignmentsForTeacher
+);
+
+// Get assignment analytics (TEACHER only)
+router.get(
+  '/analytics/:assignmentId',
+  auth(['TEACHER']),
+  assignmentController.getAssignmentAnalytics
 );
 
 module.exports = router;
