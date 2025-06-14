@@ -93,6 +93,10 @@ const Student = () => {
         },
       });
       setStudents(response.data.data);
+       // Save updated classId to localStorage if it exists
+    if (response.data.data.student_class?._id) {
+      localStorage.setItem('classId', response.data.data.student_class._id);
+    }
       setLoading(false);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch students");

@@ -47,6 +47,8 @@ import ScheduleStudent from "./student/components/schedule/ScheduleStudent";
 import ExaminationsStudent from "./student/components/examinations/ExaminationsStudent";
 import NoticeStudent from "./student/components/notice/NoticeStudent";
 import AssignmentStudent from "./student/components/assignmentStudent/AssignmentStudent";
+import Support from "./student/components/Support/support";
+
 
 // Other Components
 import ProtectedRoute from "./guard/ProtectedRoute";
@@ -104,6 +106,8 @@ function AppContent() {
           <Route path="examinations" element={<ExaminationsStudent />} />
           <Route path="notice" element={<NoticeStudent />} />
           <Route path="assignment" element={<AssignmentStudent/>} />
+          <Route path="support" element={<Support/>} />
+
         </Route>
 
         {/* Teacher protected routes */}

@@ -192,7 +192,8 @@ exports.loginStudent = async (req, res) => {
             name: student.name,
             image_url: student.student_image,
             role: "STUDENT",
-            email: student.email
+            email: student.email,
+            class: student.student_class 
         };
 
         const token = jwt.sign(

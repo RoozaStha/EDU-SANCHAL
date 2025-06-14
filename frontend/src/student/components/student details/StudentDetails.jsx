@@ -209,6 +209,9 @@ const StudentDetails = () => {
         }
       );
       setStudent(response.data.data);
+      if (response.data.data.student_class?._id) {
+      localStorage.setItem('classId', response.data.data.student_class._id);
+    }
       setLoading(false);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to fetch student data");

@@ -32,15 +32,18 @@ app.use(cors({
   exposedHeaders: ['Authorization'] 
 }));
 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 app.use('/images/uploaded/school', express.static(
   path.join(__dirname, '../frontend/public/images/uploaded/school'),
   { maxAge: '1d' }
 ));
 
 // 2. Middleware ordering fix
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
 
 
 // 4. Improved MongoDB connection

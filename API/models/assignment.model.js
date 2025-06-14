@@ -1,10 +1,12 @@
 const mongoose = require('mongoose');
 
+
 const rubricCriteriaSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: String,
   maxScore: { type: Number, required: true }
 });
+
 
 const assignmentSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -40,6 +42,7 @@ const assignmentSchema = new mongoose.Schema({
   timestamps: true
 });
 
+
 const submissionSchema = new mongoose.Schema({
   assignment: {
     type: mongoose.Schema.Types.ObjectId,
@@ -68,7 +71,9 @@ const submissionSchema = new mongoose.Schema({
   timestamps: true
 });
 
+
 module.exports = {
   Assignment: mongoose.model('Assignment', assignmentSchema),
   AssignmentSubmission: mongoose.model('AssignmentSubmission', submissionSchema)
 };
+

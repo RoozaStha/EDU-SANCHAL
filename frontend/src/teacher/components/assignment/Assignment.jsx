@@ -80,8 +80,8 @@ import {
 } from "@mui/icons-material";
 
 const API_BASE = "http://localhost:5000/api";
+const FILE_BASE = API_BASE.replace('/api', '');
 
-// Enhanced Animations
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -151,9 +151,22 @@ const TeacherAssignmentDashboard = () => {
     direction: "asc",
   });
   const [activeTab, setActiveTab] = useState("assignments");
+  const [submissionCounts, setSubmissionCounts] = useState({}); // Track submission counts
 
   const token = localStorage.getItem("token");
   const watchClass = watch("class");
+
+  // File handling helper
+  const getFileUrl = (path) => {
+    if (!path) return "";
+    if (path.startsWith('http')) return path;
+    return FILE_BASE + path;
+  };
+
+  const handleOpenFile = (url) => {
+    const fullUrl = getFileUrl(url);
+    if (fullUrl) window.open(fullUrl, '_blank');
+  };
 
   // Memoized axios config
   const axiosConfig = useMemo(
@@ -214,6 +227,13 @@ const TeacherAssignmentDashboard = () => {
         axiosConfig
       );
       setAssignments(response.data.data);
+      
+      // Initialize submission counts
+      const initialCounts = {};
+      response.data.data.forEach(assignment => {
+        initialCounts[assignment._id] = assignment.submissionCount || 0;
+      });
+      setSubmissionCounts(initialCounts);
     } catch (error) {
       console.error("Error fetching assignments:", error);
       toast.error("Failed to fetch assignments");
@@ -259,6 +279,12 @@ const TeacherAssignmentDashboard = () => {
           axiosConfig
         );
         setSubmissions(response.data.data);
+        
+        // Update submission count for this assignment
+        setSubmissionCounts(prev => ({
+          ...prev,
+          [assignmentId]: response.data.data.length
+        }));
       } catch (error) {
         console.error("Error fetching submissions:", error);
         toast.error("Failed to fetch submissions");
@@ -319,7 +345,7 @@ const TeacherAssignmentDashboard = () => {
         const endpoint =
           isEditing && currentAssignment
             ? `${API_BASE}/assignments/${currentAssignment._id}`
-            : `${API_BASE}/assignments`;
+            : `${API_BASE}/assignments/`;
 
         const method = isEditing ? "put" : "post";
 
@@ -792,7 +818,7 @@ const TeacherAssignmentDashboard = () => {
               sx={{ minHeight: 48 }}
             />
           )}
-          {analytics && (
+          {selectedAssignmentId && analytics && (
             <Tab
               label="Analytics"
               value="analytics"
@@ -1305,6 +1331,7 @@ const TeacherAssignmentDashboard = () => {
                               size="small"
                               color="info"
                               sx={{ mt: 0.5 }}
+                              onClick={() => handleOpenFile(assignment.videoUrl)}
                             />
                           )}
                         </TableCell>
@@ -1351,20 +1378,14 @@ const TeacherAssignmentDashboard = () => {
                             variant="text"
                             color="primary"
                             onClick={() => {
-                              setSelectedAssignmentId(
-                                assignment._id === selectedAssignmentId
-                                  ? ""
-                                  : assignment._id
-                              );
+                              setSelectedAssignmentId(assignment._id);
                               setActiveTab("submissions");
-                              if (assignment._id !== selectedAssignmentId) {
-                                fetchSubmissions(assignment._id);
-                              }
+                              fetchSubmissions(assignment._id);
                             }}
                             startIcon={<SchoolIcon />}
                             sx={{ textTransform: "none" }}
                           >
-                            {assignment.submissionCount || 0} submissions
+                            {submissionCounts[assignment._id] || 0} submissions
                           </Button>
                         </TableCell>
                         <TableCell align="right">
@@ -1416,7 +1437,7 @@ const TeacherAssignmentDashboard = () => {
       )}
 
       {/* Analytics Section */}
-      {activeTab === "analytics" && analytics && selectedAssignmentId && (
+      {activeTab === "analytics" && selectedAssignmentId && analytics && (
         <Card sx={{ mb: 4, borderRadius: 2, boxShadow: theme.shadows[1] }}>
           <CardContent>
             <Box
@@ -1443,7 +1464,10 @@ const TeacherAssignmentDashboard = () => {
                 >
                   View Submissions
                 </Button>
-                <IconButton onClick={() => setAnalytics(null)}>
+                <IconButton onClick={() => {
+                  setAnalytics(null);
+                  setActiveTab("assignments");
+                }}>
                   <CloseIcon />
                 </IconButton>
               </Box>
@@ -1653,7 +1677,10 @@ const TeacherAssignmentDashboard = () => {
                 >
                   View Analytics
                 </Button>
-                <IconButton onClick={() => setSelectedAssignmentId("")}>
+                <IconButton onClick={() => {
+                  setSelectedAssignmentId("");
+                  setActiveTab("assignments");
+                }}>
                   <CloseIcon />
                 </IconButton>
               </Box>
@@ -1720,7 +1747,7 @@ const TeacherAssignmentDashboard = () => {
                             }}
                           >
                             <Avatar
-                              src={sub.student?.image_url}
+                              src={getFileUrl(sub.student?.image_url)}
                               sx={{ width: 40, height: 40 }}
                             >
                               {sub.student?.name?.charAt(0) || "?"}
@@ -1760,9 +1787,7 @@ const TeacherAssignmentDashboard = () => {
                               <Button
                                 variant="outlined"
                                 startIcon={<DownloadIcon />}
-                                onClick={() =>
-                                  window.open(sub.fileUrl, "_blank")
-                                }
+                                onClick={() => handleOpenFile(sub.fileUrl)}
                                 sx={{ textTransform: "none" }}
                               >
                                 Document
@@ -1772,9 +1797,7 @@ const TeacherAssignmentDashboard = () => {
                               <Button
                                 variant="outlined"
                                 startIcon={<PlayIcon />}
-                                onClick={() =>
-                                  window.open(sub.videoUrl, "_blank")
-                                }
+                                onClick={() => handleOpenFile(sub.videoUrl)}
                                 sx={{ textTransform: "none" }}
                               >
                                 Video
@@ -1953,7 +1976,7 @@ const TeacherAssignmentDashboard = () => {
                 }}
               >
                 <Avatar
-                  src={selectedSubmission.student?.image_url}
+                  src={getFileUrl(selectedSubmission.student?.image_url)}
                   sx={{ width: 64, height: 64 }}
                 >
                   {selectedSubmission.student?.name?.charAt(0) || "?"}
@@ -2035,9 +2058,7 @@ const TeacherAssignmentDashboard = () => {
                     <Button
                       variant="contained"
                       startIcon={<DownloadIcon />}
-                      onClick={() =>
-                        window.open(selectedSubmission.fileUrl, "_blank")
-                      }
+                      onClick={() => handleOpenFile(selectedSubmission.fileUrl)}
                       sx={{ borderRadius: 2 }}
                     >
                       Download Document
@@ -2047,9 +2068,7 @@ const TeacherAssignmentDashboard = () => {
                     <Button
                       variant="contained"
                       startIcon={<PlayIcon />}
-                      onClick={() =>
-                        window.open(selectedSubmission.videoUrl, "_blank")
-                      }
+                      onClick={() => handleOpenFile(selectedSubmission.videoUrl)}
                       sx={{ borderRadius: 2 }}
                     >
                       Play Submission Video
@@ -2080,10 +2099,7 @@ const TeacherAssignmentDashboard = () => {
                         variant="contained"
                         startIcon={<PlayIcon />}
                         onClick={() =>
-                          window.open(
-                            selectedSubmission.feedbackVideoUrl,
-                            "_blank"
-                          )
+                          handleOpenFile(selectedSubmission.feedbackVideoUrl)
                         }
                         sx={{ borderRadius: 2 }}
                       >

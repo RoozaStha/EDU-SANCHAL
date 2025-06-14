@@ -31,6 +31,7 @@ import LocalLibraryIcon from "@mui/icons-material/LocalLibrary"; //class
 import HomeIcon from "@mui/icons-material/Home";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import LightbulbRoundedIcon from '@mui/icons-material/LightbulbRounded';
 
 const drawerWidth = 240;
 
@@ -146,6 +147,8 @@ export default function Student() {
       icon: ExplicitIcon,
     },
     { link: "/student/notice", component: "Notice", icon: NotificationsIcon },
+    { link: "/student/support", component: "Support", icon: LightbulbRoundedIcon},
+
 
     { link: "/logout", component: "Logout", icon: LogoutIcon },
   ];

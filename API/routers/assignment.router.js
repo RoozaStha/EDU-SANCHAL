@@ -3,6 +3,9 @@ const router = express.Router();
 const assignmentController = require('../controllers/assignment.controller');
 const auth = require('../auth/auth');
 
+// Serve static files
+router.use('/uploads', express.static('uploads'));
+
 // Create a new assignment (TEACHER only)
 router.post(
   '/',
@@ -50,6 +53,13 @@ router.get(
   '/submissions/:assignmentId',
   auth(['TEACHER','STUDENT']),
   assignmentController.getSubmissionsForAssignment
+);
+
+// NEW: Get submissions for student (STUDENT only)
+router.get(
+  '/submissions/student/list',
+  auth(['STUDENT']),
+  assignmentController.getSubmissionsForStudent
 );
 
 // Grade a submission (TEACHER only)
