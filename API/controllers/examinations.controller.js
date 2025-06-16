@@ -1,7 +1,7 @@
 const Examination = require("../models/examination.model");
 
 module.exports = {
-    newExamination: async (req, res) => {
+     newExamination: async (req, res) => {
         try {
             const schoolId = req.user.schoolId;
             const { date, subject, examType, classId } = req.body;
@@ -30,6 +30,15 @@ module.exports = {
             });
         } catch (error) {
             console.error("Create Error:", error);
+            
+            // Handle enum validation error
+            if (error.name === 'ValidationError' && error.errors?.examType) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid exam type. Valid options: 1st Term Exam, 2nd Term Exam, 3rd Term Exam, Final Term Exam"
+                });
+            }
+            
             return res.status(500).json({
                 success: false,
                 message: "Error in creating examination"
@@ -110,6 +119,15 @@ module.exports = {
             });
         } catch (error) {
             console.error("Update Error:", error);
+            
+            // Handle enum validation error
+            if (error.name === 'ValidationError' && error.errors?.examType) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid exam type. Valid options: 1st Term Exam, 2nd Term Exam, 3rd Term Exam, Final Term Exam"
+                });
+            }
+            
             return res.status(500).json({ 
                 success: false, 
                 message: "Error in updating examination" 

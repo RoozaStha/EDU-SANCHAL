@@ -65,14 +65,21 @@ const gradientFlow = keyframes`
 const examinationSchema = Yup.object().shape({
   date: Yup.date().required("Exam date is required"),
   subject: Yup.string().required("Subject is required"),
-  examType: Yup.string().required("Exam type is required"),
+  examType: Yup.string()
+    .required("Exam type is required")
+    .oneOf([
+      '1st Term Exam', 
+      '2nd Term Exam', 
+      '3rd Term Exam', 
+      'Final Term Exam'
+    ], "Invalid exam type"),
   classId: Yup.string().required("Class is required"),
 }).test(
-  'unique-date',
-  'An examination already exists for this date, subject, and class',
+  'unique-date-per-exam-type',
+  'Another subject already has an exam scheduled for this date in the same exam type and class',
   function(value) {
-    const { date, subject, classId } = value;
-    if (!date || !subject || !classId) return true;
+    const { date, subject, examType, classId } = value;
+    if (!date || !subject || !examType || !classId) return true;
     
     const formattedDate = new Date(date).toISOString().split('T')[0];
     const context = this.options.context;
@@ -89,12 +96,20 @@ const examinationSchema = Yup.object().shape({
       const examDate = new Date(exam.examDate).toISOString().split('T')[0];
       return (
         examDate === formattedDate &&
-        exam.subject._id === subject &&
+        exam.examType === examType &&
         exam.class?._id === classId
       );
     });
   }
 );
+
+// Exam type options
+const examTypeOptions = [
+  '1st Term Exam',
+  '2nd Term Exam',
+  '3rd Term Exam',
+  'Final Term Exam'
+];
 
 export default function Examinations() {
   const theme = useTheme();
@@ -114,7 +129,7 @@ export default function Examinations() {
     setMessage("");
   };
 
-  const checkDuplicateDate = (values, examinations, selectedClass, editingId) => {
+  const checkDuplicateDate = (values, examinations, editingId) => {
     if (!values.date || !examinations || !Array.isArray(examinations)) return false;
     
     const formattedDate = new Date(values.date).toISOString().split('T')[0];
@@ -128,8 +143,8 @@ export default function Examinations() {
       const examDate = new Date(exam.examDate).toISOString().split('T')[0];
       return (
         examDate === formattedDate &&
-        exam.subject._id === values.subject &&
-        exam.class?._id === selectedClass
+        exam.examType === values.examType &&
+        exam.class?._id === values.classId
       );
     });
   };
@@ -147,8 +162,8 @@ export default function Examinations() {
       editingId
     },
     onSubmit: async (values, { resetForm }) => {
-      if (checkDuplicateDate(values, examinations, selectedClass, editingId)) {
-        setMessage("An examination for this subject and class already exists on this date");
+      if (checkDuplicateDate(values, examinations, editingId)) {
+        setMessage("Another subject already has an exam scheduled for this date in the same exam type and class");
         setMessageType("error");
         return;
       }
@@ -443,31 +458,40 @@ export default function Examinations() {
             )}
           </FormControl>
 
-          <TextField
-            fullWidth
-            variant="outlined"
-            label="Exam Type"
-            name="examType"
-            value={formik.values.examType}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            error={formik.touched.examType && Boolean(formik.errors.examType)}
-            helperText={formik.touched.examType && formik.errors.examType}
-            InputProps={{
-              startAdornment: (
+          <FormControl fullWidth variant="outlined">
+            <InputLabel id="exam-type-label">Exam Type</InputLabel>
+            <Select
+              labelId="exam-type-label"
+              id="exam-type"
+              name="examType"
+              value={formik.values.examType}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              error={formik.touched.examType && Boolean(formik.errors.examType)}
+              label="Exam Type"
+              startAdornment={
                 <InputAdornment position="start">
                   <AssignmentIcon />
                 </InputAdornment>
-              ),
-              sx: {
+              }
+              sx={{
                 borderRadius: 2,
                 transition: "all 0.3s ease",
                 "&:hover": {
                   boxShadow: theme.shadows[2],
                 },
-              },
-            }}
-          />
+              }}
+            >
+              {examTypeOptions.map((type) => (
+                <MenuItem key={type} value={type}>
+                  {type}
+                </MenuItem>
+              ))}
+            </Select>
+            {formik.touched.examType && formik.errors.examType && (
+              <FormHelperText error>{formik.errors.examType}</FormHelperText>
+            )}
+          </FormControl>
 
           <Stack direction="row" spacing={2}>
             <Button

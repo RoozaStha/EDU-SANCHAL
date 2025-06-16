@@ -425,7 +425,7 @@ exports.createResultsForStudent = async (req, res) => {
 exports.getExaminationAnalytics = async (req, res) => {
   try {
     const examinationId = req.params.examinationId;
-    const { passThreshold = 40 } = req.query;
+    const { passThreshold = 50 } = req.query; // Changed default threshold to 50 to match frontend
 
     if (!mongoose.Types.ObjectId.isValid(examinationId)) {
       return res.status(400).json({
@@ -458,7 +458,9 @@ exports.getExaminationAnalytics = async (req, res) => {
           student: result.student,
           subjects: [],
           totalMarks: 0,
-          totalMaxMarks: 0
+          totalMaxMarks: 0,
+          passedSubjects: 0,
+          totalSubjects: 0
         };
       }
 
@@ -471,18 +473,25 @@ exports.getExaminationAnalytics = async (req, res) => {
 
       studentResults[studentId].totalMarks += result.marks;
       studentResults[studentId].totalMaxMarks += result.maxMarks;
+      studentResults[studentId].totalSubjects++;
+      if (result.percentage >= passThreshold) {
+        studentResults[studentId].passedSubjects++;
+      }
     });
 
-    // Calculate overall percentages
+    // Calculate overall percentages and status
     const studentAnalytics = Object.values(studentResults).map(student => {
       const overallPercentage = parseFloat(
         ((student.totalMarks / student.totalMaxMarks) * 100).toFixed(2)
       );
+      
+      // Student passes only if all subjects are passed
+      const status = student.passedSubjects === student.totalSubjects ? 'Pass' : 'Fail';
 
       return {
         ...student,
         overallPercentage,
-        status: overallPercentage >= passThreshold ? 'Pass' : 'Fail'
+        status
       };
     });
 

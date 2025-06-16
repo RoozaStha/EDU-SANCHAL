@@ -11,10 +11,16 @@ import {
   Assessment, PictureAsPdf, BarChart, PersonAdd 
 } from "@mui/icons-material";
 import axios from "axios";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart as ReBarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { saveAs } from 'file-saver';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const examTypeOptions = [
+  '1st Term Exam',
+  '2nd Term Exam',
+  '3rd Term Exam',
+  'Final Term Exam'
+];
 
 const TeacherResult = () => {
   const theme = useTheme();
@@ -23,14 +29,17 @@ const TeacherResult = () => {
   
   // State variables
   const [examinations, setExaminations] = useState([]);
+  const [filteredExaminations, setFilteredExaminations] = useState([]);
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
-  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedExamType, setSelectedExamType] = useState("");
   const [selectedExamination, setSelectedExamination] = useState("");
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [editMode, setEditMode] = useState(null);
   const [tempResult, setTempResult] = useState({});
@@ -52,7 +61,7 @@ const TeacherResult = () => {
     remarks: ""
   });
 
-  // Fetch classes when component mounts
+  // Fetch classes and students
   useEffect(() => {
     const fetchClasses = async () => {
       try {
@@ -74,14 +83,8 @@ const TeacherResult = () => {
       }
     };
 
-    fetchClasses();
-  }, []);
-
-  // Fetch students when classes are loaded
-  useEffect(() => {
     const fetchStudents = async () => {
       try {
-        setLoading(true);
         const response = await axios.get(
           "http://localhost:5000/api/students/all",
           { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
@@ -94,15 +97,66 @@ const TeacherResult = () => {
           message: "Failed to load students",
           severity: "error"
         });
+      }
+    };
+
+    fetchClasses();
+    fetchStudents();
+  }, []);
+
+  // Fetch examinations when component mounts
+  useEffect(() => {
+    const fetchAllExaminations = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(
+          "http://localhost:5000/api/examination/all",
+          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+        );
+        setExaminations(response.data.examinations || []);
+      } catch (error) {
+        console.error("Error fetching examinations:", error);
+        setSnackbar({
+          open: true,
+          message: "Failed to load examinations",
+          severity: "error"
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    if (classes.length > 0) {
-      fetchStudents();
+    fetchAllExaminations();
+  }, []);
+
+  // Filter examinations based on selected exam type
+  useEffect(() => {
+    if (selectedExamType) {
+      const filtered = examinations.filter(
+        exam => exam.examType === selectedExamType
+      );
+      setFilteredExaminations(filtered);
+      
+      // Get unique classes from filtered examinations
+      const uniqueClasses = [...new Set(filtered.map(exam => exam.class._id))];
+      setSelectedClass(uniqueClasses.length > 0 ? uniqueClasses[0] : "");
+    } else {
+      setFilteredExaminations([]);
+      setSelectedClass("");
     }
-  }, [classes]);
+  }, [selectedExamType, examinations]);
+
+  // Filter examinations for selected class
+  useEffect(() => {
+    if (selectedClass && selectedExamType) {
+      const classExams = filteredExaminations.filter(
+        exam => exam.class._id === selectedClass
+      );
+      setSelectedExamination(classExams.length > 0 ? classExams[0]._id : "");
+    } else {
+      setSelectedExamination("");
+    }
+  }, [selectedClass, filteredExaminations]);
 
   // Fetch subjects for a class
   const fetchSubjectsByClass = async (classId) => {
@@ -120,40 +174,6 @@ const TeacherResult = () => {
         severity: "error"
       });
     }
-  };
-
-  // Fetch examinations when class is selected
-  const fetchExaminationsByClass = async (classId) => {
-    try {
-      setLoading(true);
-      const response = await axios.get(
-        `http://localhost:5000/api/examination/class/${classId}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      setExaminations(response.data.examinations);
-    } catch (error) {
-      console.error("Error fetching examinations:", error);
-      setSnackbar({
-        open: true,
-        message: "Failed to load examinations",
-        severity: "error"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle class selection
-  const handleClassChange = (classId) => {
-    setSelectedClass(classId);
-    setSelectedExamination("");
-    fetchExaminationsByClass(classId);
-    fetchSubjectsByClass(classId);
-  };
-
-  // Handle examination selection
-  const handleExaminationChange = (examId) => {
-    setSelectedExamination(examId);
   };
 
   // Fetch results when examination is selected
@@ -201,6 +221,13 @@ const TeacherResult = () => {
 
     fetchAnalytics();
   }, [selectedExamination, results]);
+
+  // Fetch subjects when class changes
+  useEffect(() => {
+    if (selectedClass) {
+      fetchSubjectsByClass(selectedClass);
+    }
+  }, [selectedClass]);
 
   // Handle tab change
   const handleTabChange = (event, newValue) => {
@@ -285,10 +312,10 @@ const TeacherResult = () => {
   const openAddResultDialog = () => {
     setAddResultDialog(true);
     setNewResult({
-      student: "",
-      subject: "",
+      student: selectedStudent || "",
+      subject: currentExam?.subject?._id || "",
       marks: "",
-      maxMarks: "",
+      maxMarks: currentExam?.subject?.maxMarks || 100,
       remarks: ""
     });
   };
@@ -296,115 +323,6 @@ const TeacherResult = () => {
   // Handle new result changes
   const handleNewResultChange = (e) => {
     setNewResult({ ...newResult, [e.target.name]: e.target.value });
-  };
-
-  // Handle student selection for bulk results
-  const handleStudentChange = (studentId) => {
-    const student = students.find(s => s._id === studentId);
-    if (!student || !student.student_class) {
-      setSnackbar({
-        open: true,
-        message: "Student doesn't have a class assigned",
-        severity: "warning"
-      });
-      return;
-    }
-    
-    // Initialize results for all subjects
-    const initialResults = classSubjects.map(subject => ({
-      subjectId: subject._id,
-      subjectName: subject.subject_name,
-      marks: "",
-      maxMarks: ""
-    }));
-    
-    setStudentResult({
-      student: studentId,
-      examination: studentResult.examination,
-      class: student.student_class,
-      results: initialResults
-    });
-  };
-
-  // Handle subject marks change for bulk results
-  const handleSubjectChange = (index, field, value) => {
-    setStudentResult(prev => {
-      const newResults = [...prev.results];
-      newResults[index] = { 
-        ...newResults[index], 
-        [field]: field === 'marks' || field === 'maxMarks' ? Number(value) : value
-      };
-      return { ...prev, results: newResults };
-    });
-  };
-
-  // Submit student results
-  const handleAddStudentResults = async () => {
-    // Validation
-    const invalidSubjects = studentResult.results.filter(
-      subj => !subj.marks || !subj.maxMarks || subj.marks > subj.maxMarks
-    );
-    
-    if (invalidSubjects.length > 0) {
-      setSnackbar({
-        open: true,
-        message: "Please fill all marks correctly",
-        severity: "warning"
-      });
-      return;
-    }
-
-    try {
-      setLoading(true);
-      
-      const payload = {
-        examinationId: studentResult.examination,
-        studentId: studentResult.student,
-        results: studentResult.results.map(res => ({
-          subjectId: res.subjectId,
-          marks: res.marks,
-          maxMarks: res.maxMarks
-        }))
-      };
-
-      await axios.post(
-        "http://localhost:5000/api/results/student",
-        payload,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-      
-      setSnackbar({
-        open: true,
-        message: "Student results added successfully!",
-        severity: "success"
-      });
-      
-      // Reset form
-      setStudentResult({
-        student: "",
-        examination: "",
-        class: "",
-        results: []
-      });
-      
-      // Refresh results if examination is selected
-      if (selectedExamination) {
-        const res = await axios.get(
-          `http://localhost:5000/api/results/examination/${selectedExamination}`,
-          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-        );
-        setResults(res.data.data);
-      }
-    } catch (error) {
-      console.error("Error adding student results:", error);
-      setSnackbar({
-        open: true,
-        message: error.response?.data?.message || "Failed to add results",
-        severity: "error"
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Submit new result
@@ -499,6 +417,31 @@ const TeacherResult = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "No date set";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return "Invalid date";
+    }
+  };
+
+  // Get students for selected class
+  const classStudents = students.filter(
+    student => student.student_class?._id === selectedClass
+  );
+
+  // Get selected examination object
+  const currentExam = filteredExaminations.find(
+    exam => exam._id === selectedExamination
+  );
+
   return (
     <Box sx={{ p: isMobile ? 2 : 4 }}>
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
@@ -508,8 +451,7 @@ const TeacherResult = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
         <Tab label="Examination Results" icon={<Assessment />} />
-        <Tab label="Create Student Result" icon={<PersonAdd />} />
-        <Tab label="Analytics Dashboard" icon={<BarChart />} disabled={!analytics} />
+        <Tab label="Analysis Dashboard" icon={<BarChart />} />
       </Tabs>
       
       {/* Examination Results Tab */}
@@ -518,60 +460,95 @@ const TeacherResult = () => {
           {/* Controls Section */}
           <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
             <Grid container spacing={2} alignItems="center">
+              {/* Exam Type Selection */}
+              <Grid item xs={12} md={3}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Select Exam Type"
+                  value={selectedExamType}
+                  onChange={(e) => setSelectedExamType(e.target.value)}
+                  disabled={loading}
+                >
+                  <MenuItem value="" disabled>
+                    Choose exam type
+                  </MenuItem>
+                  {examTypeOptions.map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {type}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              
               {/* Class Selection */}
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <TextField
                   select
                   fullWidth
                   label="Select Class"
                   value={selectedClass}
-                  onChange={(e) => handleClassChange(e.target.value)}
-                  disabled={loading}
+                  onChange={(e) => setSelectedClass(e.target.value)}
+                  disabled={!selectedExamType || loading}
                 >
                   <MenuItem value="" disabled>
                     Choose a class
                   </MenuItem>
-                  {classes.map((cls) => (
-                    <MenuItem key={cls._id} value={cls._id}>
-                      {cls.class_text}
-                    </MenuItem>
-                  ))}
+                  {[...new Set(filteredExaminations.map(exam => exam.class._id))]
+                    .map(classId => {
+                      const cls = classes.find(c => c._id === classId);
+                      return cls ? (
+                        <MenuItem key={cls._id} value={cls._id}>
+                          {cls.class_text}
+                        </MenuItem>
+                      ) : null;
+                    })
+                    .filter(Boolean)}
                 </TextField>
               </Grid>
               
               {/* Examination Selection */}
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} md={3}>
                 <TextField
                   select
                   fullWidth
                   label="Select Examination"
                   value={selectedExamination}
-                  onChange={(e) => handleExaminationChange(e.target.value)}
+                  onChange={(e) => setSelectedExamination(e.target.value)}
                   disabled={!selectedClass || loading}
                 >
                   <MenuItem value="" disabled>
                     Choose an examination
                   </MenuItem>
-                  {examinations.map((exam) => (
-                    <MenuItem key={exam._id} value={exam._id}>
-                      {exam.examType} - {new Date(exam.examDate).toLocaleDateString()}
-                    </MenuItem>
+                  {filteredExaminations
+                    .filter(exam => exam.class._id === selectedClass)
+                    .map((exam) => (
+                      <MenuItem key={exam._id} value={exam._id}>
+                        {exam.subject.subject_name} - {formatDate(exam.examDate)}
+                      </MenuItem>
                   ))}
                 </TextField>
               </Grid>
               
-              {/* Search and Buttons */}
-              <Grid item xs={12} md={4}>
+              {/* Student Selection */}
+              <Grid item xs={12} md={3}>
                 <TextField
+                  select
                   fullWidth
-                  label="Search Students or Subjects"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  label="Select Student"
+                  value={selectedStudent}
+                  onChange={(e) => setSelectedStudent(e.target.value)}
                   disabled={!selectedExamination || loading}
-                  InputProps={{
-                    startAdornment: <Search sx={{ mr: 1 }} />,
-                  }}
-                />
+                >
+                  <MenuItem value="" disabled>
+                    Choose a student
+                  </MenuItem>
+                  {classStudents.map((student) => (
+                    <MenuItem key={student._id} value={student._id}>
+                      {student.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
               
               <Grid item xs={12} sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>
@@ -579,7 +556,7 @@ const TeacherResult = () => {
                   variant="contained"
                   startIcon={<Add />}
                   onClick={openAddResultDialog}
-                  disabled={!selectedExamination || loading}
+                  disabled={!selectedStudent || !selectedExamination || loading}
                 >
                   Add Result
                 </Button>
@@ -594,6 +571,29 @@ const TeacherResult = () => {
               </Grid>
             </Grid>
           </Paper>
+          
+          {/* Exam Details */}
+          {currentExam && (
+            <Box sx={{ mb: 3, p: 2, backgroundColor: theme.palette.background.paper, borderRadius: 2 }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="subtitle1">
+                    <strong>Subject:</strong> {currentExam.subject?.subject_name || 'Unknown'}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="subtitle1">
+                    <strong>Date:</strong> {formatDate(currentExam.examDate)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <Typography variant="subtitle1">
+                    <strong>Exam Type:</strong> {currentExam.examType}
+                  </Typography>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
           
           {/* Results Table */}
           {selectedExamination ? (
@@ -765,6 +765,7 @@ const TeacherResult = () => {
                     startIcon={<Add />}
                     onClick={openAddResultDialog}
                     sx={{ mt: 2 }}
+                    disabled={!selectedStudent}
                   >
                     Add New Result
                   </Button>
@@ -774,284 +775,249 @@ const TeacherResult = () => {
           ) : (
             <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
               <Typography variant="h6" color="textSecondary">
-                {selectedClass ? "Please select an examination" : "Please select a class first"}
+                {selectedClass ? "Please select an examination" : "Please select a class and exam type first"}
               </Typography>
             </Paper>
           )}
         </>
       )}
       
-      {/* Create Student Result Tab */}
+      {/* Analysis Dashboard Tab */}
       {activeTab === 1 && (
-        <Paper sx={{ p: 3, borderRadius: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Create Results for a Student
+        <Box>
+          <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+            Examination Analysis
           </Typography>
           
-          <Grid container spacing={2} sx={{ mt: 2 }}>
-            {/* Class Selection */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                select
-                fullWidth
-                label="Select Class"
-                value={selectedClass}
-                onChange={(e) => handleClassChange(e.target.value)}
-                disabled={loading}
-              >
-                <MenuItem value="" disabled>
-                  Choose a class
-                </MenuItem>
-                {classes.map((cls) => (
-                  <MenuItem key={cls._id} value={cls._id}>
-                    {cls.class_text}
+          {/* Analysis Controls */}
+          <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={12} md={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Select Exam Type"
+                  value={selectedExamType}
+                  onChange={(e) => setSelectedExamType(e.target.value)}
+                  disabled={loading}
+                >
+                  <MenuItem value="" disabled>
+                    Choose exam type
                   </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            
-            {/* Examination Selection */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                select
-                fullWidth
-                label="Examination"
-                value={studentResult.examination}
-                onChange={(e) => setStudentResult(prev => ({ ...prev, examination: e.target.value }))}
-                disabled={!selectedClass || loading}
-              >
-                <MenuItem value="" disabled>
-                  Select examination
-                </MenuItem>
-                {examinations.map((exam) => (
-                  <MenuItem key={exam._id} value={exam._id}>
-                    {exam.examType} - {new Date(exam.examDate).toLocaleDateString()}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            
-            {/* Student Selection */}
-            <Grid item xs={12} md={4}>
-              <TextField
-                select
-                fullWidth
-                label="Student"
-                value={studentResult.student}
-                onChange={(e) => handleStudentChange(e.target.value)}
-                disabled={!studentResult.examination || loading}
-              >
-                <MenuItem value="" disabled>
-                  Select student
-                </MenuItem>
-                {students
-                  .filter(student => student.student_class?._id === selectedClass)
-                  .map((student) => (
-                    <MenuItem 
-                      key={student._id} 
-                      value={student._id}
-                    >
-                      {student.name}
+                  {examTypeOptions.map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {type}
                     </MenuItem>
                   ))}
-              </TextField>
-            </Grid>
-            
-            {/* Subject Marks Input */}
-            {studentResult.student && classSubjects.length > 0 && (
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-                  Enter Marks:
-                </Typography>
-                <TableContainer component={Paper}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Subject</TableCell>
-                        <TableCell align="center">Marks</TableCell>
-                        <TableCell align="center">Max Marks</TableCell>
-                        <TableCell align="center">Status</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {studentResult.results.map((result, index) => (
-                        <TableRow key={result.subjectId}>
-                          <TableCell>{result.subjectName}</TableCell>
-                          <TableCell align="center">
-                            <TextField
-                              type="number"
-                              value={result.marks || ""}
-                              onChange={(e) => handleSubjectChange(index, 'marks', e.target.value)}
-                              inputProps={{ min: 0 }}
-                              size="small"
-                              sx={{ width: 100 }}
-                              disabled={loading}
-                            />
-                          </TableCell>
-                          <TableCell align="center">
-                            <TextField
-                              type="number"
-                              value={result.maxMarks || ""}
-                              onChange={(e) => handleSubjectChange(index, 'maxMarks', e.target.value)}
-                              inputProps={{ min: 1 }}
-                              size="small"
-                              sx={{ width: 100 }}
-                              disabled={loading}
-                            />
-                          </TableCell>
-                          <TableCell align="center">
-                            {result.marks && result.maxMarks ? (
-                              (result.marks / result.maxMarks) * 100 >= 50 ? (
-                                <Chip label="Pass" color="success" size="small" />
-                              ) : (
-                                <Chip label="Fail" color="error" size="small" />
-                              )
-                            ) : (
-                              <Typography variant="caption">N/A</Typography>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                </TextField>
               </Grid>
-            )}
-            
-            <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button
-                variant="contained"
-                onClick={handleAddStudentResults}
-                disabled={loading || !studentResult.student || !studentResult.examination}
-                startIcon={<Save />}
-              >
-                {loading ? <CircularProgress size={24} /> : "Save Results"}
-              </Button>
+              
+              <Grid item xs={12} md={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Select Class"
+                  value={selectedClass}
+                  onChange={(e) => setSelectedClass(e.target.value)}
+                  disabled={!selectedExamType || loading}
+                >
+                  <MenuItem value="" disabled>
+                    Choose a class
+                  </MenuItem>
+                  {[...new Set(filteredExaminations.map(exam => exam.class._id))]
+                    .map(classId => {
+                      const cls = classes.find(c => c._id === classId);
+                      return cls ? (
+                        <MenuItem key={cls._id} value={cls._id}>
+                          {cls.class_text}
+                        </MenuItem>
+                      ) : null;
+                    })
+                    .filter(Boolean)}
+                </TextField>
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Select Examination"
+                  value={selectedExamination}
+                  onChange={(e) => setSelectedExamination(e.target.value)}
+                  disabled={!selectedClass || loading}
+                >
+                  <MenuItem value="" disabled>
+                    Choose an examination
+                  </MenuItem>
+                  {filteredExaminations
+                    .filter(exam => exam.class._id === selectedClass)
+                    .map((exam) => (
+                      <MenuItem key={exam._id} value={exam._id}>
+                        {exam.subject.subject_name} - {formatDate(exam.examDate)}
+                      </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
             </Grid>
-          </Grid>
-        </Paper>
-      )}
-      
-      {/* Analytics Dashboard Tab */}
-      {activeTab === 2 && analytics && (
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            Examination Analytics
-          </Typography>
+          </Paper>
           
-          <Grid container spacing={3}>
-            {/* Summary Cards */}
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6">Total Students</Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                    {analytics.totalStudents}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6">Passed</Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
-                    {analytics.passCount} ({analytics.passPercentage}%)
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6">Failed</Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                    {analytics.failCount}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            {/* Pie Chart */}
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>Pass/Fail Distribution</Typography>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Passed', value: analytics.passCount },
-                          { name: 'Failed', value: analytics.failCount }
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      >
-                        <Cell fill="#00C49F" />
-                        <Cell fill="#FF8042" />
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            {/* Student Performance */}
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>Student Performance</Typography>
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Student</TableCell>
-                          <TableCell align="right">Percentage</TableCell>
-                          <TableCell align="center">Status</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {analytics.studentAnalytics.slice(0, 5).map((student) => (
-                          <TableRow key={student.student._id}>
-                            <TableCell>{student.student.name}</TableCell>
-                            <TableCell align="right">
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Box sx={{ width: '100%', mr: 1 }}>
-                                  <Box sx={{ 
-                                    width: `${student.overallPercentage}%`, 
-                                    height: 8,
-                                    bgcolor: student.overallPercentage >= 40 ? 'success.main' : 'error.main',
-                                    borderRadius: 4
-                                  }} />
-                                </Box>
-                                {student.overallPercentage}%
-                              </Box>
-                            </TableCell>
-                            <TableCell align="center">
-                              <Chip 
-                                label={student.status} 
-                                color={student.status === 'Pass' ? 'success' : 'error'} 
-                                size="small" 
-                              />
-                            </TableCell>
+          {/* Analysis Content */}
+          {analytics ? (
+            <Grid container spacing={3}>
+              {/* Summary Cards */}
+              <Grid item xs={12} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6">Total Students</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                      {analytics.totalStudents}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6">Passed</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                      {analytics.passCount} ({analytics.passPercentage}%)
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={4}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6">Failed</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                      {analytics.failCount} ({Math.round(100 - analytics.passPercentage)}%)
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              {/* Pie Chart */}
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>Pass/Fail Distribution</Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Passed', value: analytics.passCount },
+                            { name: 'Failed', value: analytics.failCount }
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                          label={({ name, value }) => `${name}: ${value}`}
+                        >
+                          <Cell fill="#00C49F" />
+                          <Cell fill="#FF8042" />
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [`${value} students`, value === 1 ? 'Student' : 'Students']}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              {/* Student Performance */}
+              <Grid item xs={12} md={6}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>Top Performers</Typography>
+                    <TableContainer>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Student</TableCell>
+                            <TableCell align="right">Percentage</TableCell>
+                            <TableCell align="center">Status</TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </CardContent>
-              </Card>
+                        </TableHead>
+                        <TableBody>
+                          {[...analytics.studentAnalytics]
+                            .sort((a, b) => b.overallPercentage - a.overallPercentage)
+                            .slice(0, 5)
+                            .map((student) => (
+                              <TableRow key={student.student._id}>
+                                <TableCell>{student.student.name}</TableCell>
+                                <TableCell align="right">
+                                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Box sx={{ width: '100%', mr: 1 }}>
+                                      <Box sx={{ 
+                                        width: `${student.overallPercentage}%`, 
+                                        height: 8,
+                                        bgcolor: student.overallPercentage >= 50 ? 'success.main' : 'error.main',
+                                        borderRadius: 4
+                                      }} />
+                                    </Box>
+                                    {student.overallPercentage}%
+                                  </Box>
+                                </TableCell>
+                                <TableCell align="center">
+                                  <Chip 
+                                    label={student.overallPercentage >= 50 ? 'Pass' : 'Fail'} 
+                                    color={student.overallPercentage >= 50 ? 'success' : 'error'} 
+                                    size="small" 
+                                  />
+                                </TableCell>
+                              </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              {/* Subject-wise Performance */}
+              <Grid item xs={12}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>Subject-wise Performance</Typography>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <ReBarChart
+                        data={analytics.studentAnalytics.flatMap(student => 
+                          student.subjects.map(subject => ({
+                            student: student.student.name,
+                            subject: subject.subject,
+                            percentage: subject.percentage
+                          }))
+                        )}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="subject" angle={-45} textAnchor="end" height={80} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="percentage" name="Percentage" fill="#8884d8" />
+                      </ReBarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
-          </Grid>
+          ) : (
+            <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
+              <Typography variant="h6" color="textSecondary">
+                {selectedExamination 
+                  ? "No analytics available for this examination" 
+                  : "Please select an examination to view analytics"}
+              </Typography>
+            </Paper>
+          )}
         </Box>
       )}
       
@@ -1062,43 +1028,27 @@ const TeacherResult = () => {
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
               <TextField
-                select
                 fullWidth
                 label="Student"
-                name="student"
-                value={newResult.student}
-                onChange={handleNewResultChange}
-              >
-                <MenuItem value="" disabled>
-                  Select student
-                </MenuItem>
-                {students
-                  .filter(student => student.student_class?._id === selectedClass)
-                  .map((student) => (
-                    <MenuItem key={student._id} value={student._id}>
-                      {student.name}
-                    </MenuItem>
-                  ))}
-              </TextField>
+                value={students.find(s => s._id === newResult.student)?.name || ""}
+                disabled
+              />
             </Grid>
             <Grid item xs={12}>
               <TextField
-                select
                 fullWidth
                 label="Subject"
-                name="subject"
-                value={newResult.subject}
-                onChange={handleNewResultChange}
-              >
-                <MenuItem value="" disabled>
-                  Select subject
-                </MenuItem>
-                {classSubjects.map((subject) => (
-                  <MenuItem key={subject._id} value={subject._id}>
-                    {subject.subject_name}
-                  </MenuItem>
-                ))}
-              </TextField>
+                value={currentExam?.subject?.subject_name || ""}
+                disabled
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Date"
+                value={currentExam ? formatDate(currentExam.examDate) : ""}
+                disabled
+              />
             </Grid>
             <Grid item xs={6}>
               <TextField
@@ -1115,11 +1065,8 @@ const TeacherResult = () => {
               <TextField
                 fullWidth
                 label="Max Marks"
-                name="maxMarks"
-                type="number"
                 value={newResult.maxMarks}
-                onChange={handleNewResultChange}
-                inputProps={{ min: 1 }}
+                disabled
               />
             </Grid>
             <Grid item xs={12}>

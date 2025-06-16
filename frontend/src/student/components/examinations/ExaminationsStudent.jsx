@@ -12,11 +12,8 @@ import {
   Skeleton,
   Avatar,
   Divider,
-  Tooltip,
   IconButton
 } from "@mui/material";
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import axios from "axios";
 import { baseApi } from "../../../environment";
 import React, { useEffect, useState } from "react";
@@ -26,12 +23,10 @@ import MessageSnackbar from "../../../basic utility components/snackbar/MessageS
 import EventIcon from "@mui/icons-material/Event";
 import SubjectIcon from "@mui/icons-material/Subject";
 import AssignmentIcon from "@mui/icons-material/Assignment";
-import ClassIcon from "@mui/icons-material/Class";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import UpcomingIcon from '@mui/icons-material/Upcoming';
 import AllInboxIcon from '@mui/icons-material/AllInbox';
 import SchoolIcon from "@mui/icons-material/School";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import InfoIcon from "@mui/icons-material/Info";
 
 // Animations
@@ -100,8 +95,19 @@ export default function StudentExaminations() {
   const fetchExaminations = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get(`${baseApi}/examination/all`);
-      setExaminations(response.data.examinations);
+      // Get student's class ID from localStorage
+      const classId = localStorage.getItem('classId');
+      
+      if (!classId) {
+        setMessage("You are not enrolled in any class");
+        setMessageType("error");
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch exams only for the student's class
+      const response = await axios.get(`${baseApi}/examination/class/${classId}`);
+      setExaminations(response.data.examinations || []);
       
       // Calculate stats
       const now = new Date();
@@ -196,9 +202,9 @@ export default function StudentExaminations() {
   return (
     <Box
       sx={{
-        maxWidth: 1000, // Reduced from 1200
+        maxWidth: 1000,
         mx: "auto",
-        p: 1.5, // Reduced from 2
+        p: 1.5,
         animation: `${fadeIn} 0.5s ease-out`,
       }}
     >
@@ -215,12 +221,12 @@ export default function StudentExaminations() {
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        mb: 2, // Reduced from 4
+        mb: 2,
         flexWrap: 'wrap',
-        gap: 1 // Reduced from 2
+        gap: 1
       }}>
         <Typography
-          variant="h4" // Reduced from h3
+          variant="h4"
           component="h1"
           sx={{
             background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
@@ -237,12 +243,12 @@ export default function StudentExaminations() {
       {/* Stats Cards */}
       <Box sx={{ 
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', // Reduced from 240px
-        gap: 2, // Reduced from 3
-        mb: 2 // Reduced from 4
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: 2,
+        mb: 2
       }}>
         <StatCard 
-          icon={<EventIcon fontSize="medium" />} // Reduced from large
+          icon={<EventIcon fontSize="medium" />}
           title="Total Exams"
           value={stats.totalExams}
           color={theme.palette.primary.main}
@@ -250,7 +256,7 @@ export default function StudentExaminations() {
         />
         
         <StatCard 
-          icon={<UpcomingIcon fontSize="medium" />} // Reduced from large
+          icon={<UpcomingIcon fontSize="medium" />}
           title="Upcoming"
           value={stats.upcomingExams}
           color={theme.palette.info.main}
@@ -258,7 +264,7 @@ export default function StudentExaminations() {
         />
         
         <StatCard 
-          icon={<CheckCircleIcon fontSize="medium" />} // Reduced from large
+          icon={<CheckCircleIcon fontSize="medium" />}
           title="Completed"
           value={stats.completedExams}
           color={theme.palette.success.main}
@@ -267,34 +273,34 @@ export default function StudentExaminations() {
       </Box>
       
       {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}> {/* Reduced from 3 */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs 
           value={tabValue} 
           onChange={handleTabChange} 
           aria-label="examination tabs"
           variant="fullWidth"
-          sx={{ minHeight: 40 }} // Reduced height
+          sx={{ minHeight: 40 }}
         >
           <Tab 
-            icon={<UpcomingIcon fontSize="small" />} // Reduced from default
+            icon={<UpcomingIcon fontSize="small" />}
             iconPosition="start" 
             label="Upcoming" 
             {...a11yProps(0)} 
-            sx={{ minHeight: 40, py: 0.5 }} // Reduced height and padding
+            sx={{ minHeight: 40, py: 0.5 }}
           />
           <Tab 
-            icon={<CheckCircleIcon fontSize="small" />} // Reduced from default
+            icon={<CheckCircleIcon fontSize="small" />}
             iconPosition="start" 
             label="Completed" 
             {...a11yProps(1)} 
-            sx={{ minHeight: 40, py: 0.5 }} // Reduced height and padding
+            sx={{ minHeight: 40, py: 0.5 }}
           />
           <Tab 
-            icon={<AllInboxIcon fontSize="small" />} // Reduced from default
+            icon={<AllInboxIcon fontSize="small" />}
             iconPosition="start" 
             label="All" 
             {...a11yProps(2)} 
-            sx={{ minHeight: 40, py: 0.5 }} // Reduced height and padding
+            sx={{ minHeight: 40, py: 0.5 }}
           />
         </Tabs>
       </Box>
@@ -302,35 +308,35 @@ export default function StudentExaminations() {
       {/* Examinations List */}
       <Box sx={{ 
         backgroundColor: theme.palette.background.paper,
-        borderRadius: 2, // Reduced from 3
+        borderRadius: 2,
         boxShadow: theme.shadows[1],
         overflow: 'hidden'
       }}>
         <Box sx={{ 
-          p: 1.5, // Reduced from 3
+          p: 1.5,
           backgroundColor: theme.palette.primary.main,
           color: theme.palette.primary.contrastText,
           display: 'flex',
           alignItems: 'center',
-          gap: 1 // Reduced from 2
+          gap: 1
         }}>
-          <SchoolIcon fontSize="medium" /> {/* Reduced from large */}
-          <Typography variant="h6" component="h2"> {/* Reduced from h5 */}
+          <SchoolIcon fontSize="medium" />
+          <Typography variant="h6" component="h2">
             Examinations
           </Typography>
         </Box>
         
         <TabPanel value={tabValue} index={0}>
           {isLoading ? (
-            <Box sx={{ p: 2 }}> {/* Reduced from 3 */}
+            <Box sx={{ p: 2 }}>
               {[...Array(3)].map((_, index) => (
                 <Skeleton 
                   key={index} 
                   variant="rectangular" 
-                  height={90} // Reduced from 120
+                  height={90}
                   sx={{ 
-                    borderRadius: 1, // Reduced from 2
-                    mb: 1 // Reduced from 2
+                    borderRadius: 1,
+                    mb: 1
                   }} 
                 />
               ))}
@@ -357,15 +363,15 @@ export default function StudentExaminations() {
         
         <TabPanel value={tabValue} index={1}>
           {isLoading ? (
-            <Box sx={{ p: 2 }}> {/* Reduced from 3 */}
+            <Box sx={{ p: 2 }}>
               {[...Array(3)].map((_, index) => (
                 <Skeleton 
                   key={index} 
                   variant="rectangular" 
-                  height={90} // Reduced from 120
+                  height={90}
                   sx={{ 
-                    borderRadius: 1, // Reduced from 2
-                    mb: 1 // Reduced from 2
+                    borderRadius: 1,
+                    mb: 1
                   }} 
                 />
               ))}
@@ -392,15 +398,15 @@ export default function StudentExaminations() {
         
         <TabPanel value={tabValue} index={2}>
           {isLoading ? (
-            <Box sx={{ p: 2 }}> {/* Reduced from 3 */}
+            <Box sx={{ p: 2 }}>
               {[...Array(3)].map((_, index) => (
                 <Skeleton 
                   key={index} 
                   variant="rectangular" 
-                  height={90} // Reduced from 120
+                  height={90}
                   sx={{ 
-                    borderRadius: 1, // Reduced from 2
-                    mb: 1 // Reduced from 2
+                    borderRadius: 1,
+                    mb: 1
                   }} 
                 />
               ))}
@@ -432,33 +438,33 @@ export default function StudentExaminations() {
 function StatCard({ icon, title, value, color, loading }) {
   return (
     <Card sx={{ 
-      borderRadius: 1, // Reduced from 2
+      borderRadius: 1,
       boxShadow: 0,
       border: '1px solid',
       borderColor: 'divider',
       transition: 'all 0.3s ease',
       '&:hover': {
-        transform: 'translateY(-3px)', // Reduced from 5px
-        boxShadow: 2 // Reduced from 3
+        transform: 'translateY(-3px)',
+        boxShadow: 2
       }
     }}>
-      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2 }}> {/* Reduced gap and padding */}
+      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2 }}>
         <Avatar sx={{ 
           backgroundColor: `${color}20`, 
           color: color,
-          width: 48, // Reduced from 56
-          height: 48 // Reduced from 56
+          width: 48,
+          height: 48
         }}>
           {icon}
         </Avatar>
         <Box>
-          <Typography variant="subtitle2" color="text.secondary"> {/* Reduced from subtitle1 */}
+          <Typography variant="subtitle2" color="text.secondary">
             {title}
           </Typography>
           {loading ? (
             <Skeleton variant="text" width={50} height={32} /> 
           ) : (
-            <Typography variant="h4" component="div"> {/* Reduced from h3 */}
+            <Typography variant="h4" component="div">
               {value}
             </Typography>
           )}
@@ -475,15 +481,15 @@ function ExamCard({ exam, formatDate, formatTime, getDaysRemaining, theme }) {
   
   return (
     <Box sx={{ 
-      p: 2, // Reduced from 3
+      p: 2,
       display: 'flex',
       flexDirection: { xs: 'column', md: 'row' },
-      gap: 2, // Reduced from 3
+      gap: 2,
       transition: 'all 0.3s ease',
       '&:hover': {
         backgroundColor: theme.palette.action.hover,
-        transform: 'translateY(-1px)', // Reduced from 2px
-        boxShadow: theme.shadows[1] // Reduced from 2
+        transform: 'translateY(-1px)',
+        boxShadow: theme.shadows[1]
       }
     }}>
       {/* Date Section */}
@@ -492,13 +498,13 @@ function ExamCard({ exam, formatDate, formatTime, getDaysRemaining, theme }) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        minWidth: 80, // Reduced from 100
+        minWidth: 80,
         textAlign: 'center'
       }}>
-        <Typography variant="caption" color="text.secondary"> {/* Reduced from subtitle2 */}
+        <Typography variant="caption" color="text.secondary">
           {formatDate(exam.examDate).split(' ')[1]} {/* Month */}
         </Typography>
-        <Typography variant="h4" color="primary"> {/* Reduced from h3 */}
+        <Typography variant="h4" color="primary">
           {formatDate(exam.examDate).split(' ')[0]} {/* Day */}
         </Typography>
         <Typography variant="caption" color="text.secondary">
@@ -511,11 +517,11 @@ function ExamCard({ exam, formatDate, formatTime, getDaysRemaining, theme }) {
         <Box sx={{ 
           display: 'flex',
           alignItems: 'center',
-          gap: 1, // Reduced from 2
-          mb: 0.5, // Reduced from 1
+          gap: 1,
+          mb: 0.5,
           flexWrap: 'wrap'
         }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}> {/* Reduced from h6 */}
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             {exam.subject?.subject_name || 'Unknown Subject'}
           </Typography>
           
@@ -536,14 +542,14 @@ function ExamCard({ exam, formatDate, formatTime, getDaysRemaining, theme }) {
           )}
         </Box>
         
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}> {/* Reduced from 1 */}
-          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', mr: 1 }}> {/* Reduced from 2 */}
-            <AssignmentIcon fontSize="small" sx={{ mr: 0.25 }} /> {/* Reduced from 0.5 */}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', mr: 1 }}>
+            <AssignmentIcon fontSize="small" sx={{ mr: 0.25 }} />
             {exam.examType}
           </Box>
         </Typography>
         
-        <Typography variant="caption" sx={{ // Reduced from body2
+        <Typography variant="caption" sx={{
           fontStyle: 'italic',
           color: isUpcoming ? theme.palette.info.main : theme.palette.success.main
         }}>
@@ -556,14 +562,14 @@ function ExamCard({ exam, formatDate, formatTime, getDaysRemaining, theme }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        minWidth: 80 // Reduced from 100
+        minWidth: 80
       }}>
         <Box sx={{ 
-          width: 10, // Reduced from 12
-          height: 10, // Reduced from 12
+          width: 10,
+          height: 10,
           borderRadius: '50%',
           backgroundColor: isUpcoming ? theme.palette.info.main : theme.palette.success.main,
-          boxShadow: `0 0 6px ${isUpcoming ? theme.palette.info.main : theme.palette.success.main}`, // Reduced from 8px
+          boxShadow: `0 0 6px ${isUpcoming ? theme.palette.info.main : theme.palette.success.main}`,
           animation: 'pulse 2s infinite'
         }} />
       </Box>
@@ -574,18 +580,18 @@ function ExamCard({ exam, formatDate, formatTime, getDaysRemaining, theme }) {
 function EmptyState() {
   return (
     <Box sx={{ 
-      p: 2, // Reduced from 4
+      p: 2,
       textAlign: 'center',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      gap: 1 // Reduced from 2
+      gap: 1
     }}>
-      <InfoIcon fontSize="medium" color="action" /> {/* Reduced from large */}
-      <Typography variant="subtitle1" color="text.secondary"> {/* Reduced from h6 */}
+      <InfoIcon fontSize="medium" color="action" />
+      <Typography variant="subtitle1" color="text.secondary">
         No examinations found
       </Typography>
-      <Typography variant="body2" color="text.secondary"> {/* Reduced from body1 */}
+      <Typography variant="body2" color="text.secondary">
         Examinations will appear here once scheduled
       </Typography>
     </Box>
