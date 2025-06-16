@@ -67,7 +67,34 @@ const examinationSchema = Yup.object().shape({
   subject: Yup.string().required("Subject is required"),
   examType: Yup.string().required("Exam type is required"),
   classId: Yup.string().required("Class is required"),
-});
+}).test(
+  'unique-date',
+  'An examination already exists for this date, subject, and class',
+  function(value) {
+    const { date, subject, classId } = value;
+    if (!date || !subject || !classId) return true;
+    
+    const formattedDate = new Date(date).toISOString().split('T')[0];
+    const context = this.options.context;
+    
+    // Safety check for examinations array
+    if (!context.examinations || !Array.isArray(context.examinations)) return true;
+    
+    return !context.examinations.some(exam => {
+      if (!exam || !exam.examDate || !exam.subject) return false;
+      
+      // Skip current exam when editing
+      if (context.editingId && exam._id === context.editingId) return false;
+      
+      const examDate = new Date(exam.examDate).toISOString().split('T')[0];
+      return (
+        examDate === formattedDate &&
+        exam.subject._id === subject &&
+        exam.class?._id === classId
+      );
+    });
+  }
+);
 
 export default function Examinations() {
   const theme = useTheme();
@@ -87,6 +114,26 @@ export default function Examinations() {
     setMessage("");
   };
 
+  const checkDuplicateDate = (values, examinations, selectedClass, editingId) => {
+    if (!values.date || !examinations || !Array.isArray(examinations)) return false;
+    
+    const formattedDate = new Date(values.date).toISOString().split('T')[0];
+    
+    return examinations.some(exam => {
+      if (!exam || !exam.examDate || !exam.subject) return false;
+      
+      // Skip current exam when editing
+      if (editingId && exam._id === editingId) return false;
+      
+      const examDate = new Date(exam.examDate).toISOString().split('T')[0];
+      return (
+        examDate === formattedDate &&
+        exam.subject._id === values.subject &&
+        exam.class?._id === selectedClass
+      );
+    });
+  };
+
   const formik = useFormik({
     initialValues: {
       date: null,
@@ -95,7 +142,17 @@ export default function Examinations() {
       classId: "",
     },
     validationSchema: examinationSchema,
+    context: {
+      examinations,
+      editingId
+    },
     onSubmit: async (values, { resetForm }) => {
+      if (checkDuplicateDate(values, examinations, selectedClass, editingId)) {
+        setMessage("An examination for this subject and class already exists on this date");
+        setMessageType("error");
+        return;
+      }
+
       try {
         const formattedDate = values.date ? new Date(values.date).toISOString() : null;
 
@@ -137,9 +194,9 @@ export default function Examinations() {
   const fetchAllClasses = async () => {
     try {
       const response = await axios.get(`${baseApi}/class/all`);
-      setClasses(response.data.data);
+      setClasses(response.data.data || []);
       
-      if (response.data.data.length > 0 && !selectedClass) {
+      if (response.data.data?.length > 0 && !selectedClass) {
         setSelectedClass(response.data.data[0]._id);
         formik.setFieldValue("classId", response.data.data[0]._id);
       }
@@ -153,7 +210,7 @@ export default function Examinations() {
   const fetchAllSubjects = async () => {
     try {
       const response = await axios.get(`${baseApi}/subjects`);
-      setSubjects(response.data.data);
+      setSubjects(response.data.data || []);
     } catch (error) {
       console.error("Error fetching subjects:", error);
       setMessage("Failed to fetch subjects");
@@ -166,7 +223,7 @@ export default function Examinations() {
     
     try {
       const response = await axios.get(`${baseApi}/examination/class/${classId}`);
-      setExaminations(response.data.examinations);
+      setExaminations(response.data.examinations || []);
     } catch (error) {
       console.error("Error fetching examinations:", error);
       setMessage("Failed to fetch examinations");
@@ -186,8 +243,8 @@ export default function Examinations() {
     setEditingId(exam._id);
     formik.setValues({
       date: exam.examDate ? new Date(exam.examDate) : null,
-      subject: exam.subject._id,
-      examType: exam.examType,
+      subject: exam.subject?._id || "",
+      examType: exam.examType || "",
       classId: exam.class?._id || selectedClass,
     });
   };
@@ -226,12 +283,16 @@ export default function Examinations() {
 
   const formatDate = (dateString) => {
     if (!dateString) return "No date set";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch (e) {
+      return "Invalid date";
+    }
   };
 
   useEffect(() => {
@@ -322,14 +383,13 @@ export default function Examinations() {
               onChange={(newValue) => {
                 formik.setFieldValue("date", newValue);
               }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  fullWidth
-                  variant="outlined"
-                  error={formik.touched.date && Boolean(formik.errors.date)}
-                  helperText={formik.touched.date && formik.errors.date}
-                  InputProps={{
+              slotProps={{
+                textField: {
+                  fullWidth: true,
+                  variant: "outlined",
+                  error: formik.touched.date && Boolean(formik.errors.date),
+                  helperText: formik.touched.date && formik.errors.date,
+                  InputProps: {
                     startAdornment: (
                       <InputAdornment position="start">
                         <EventIcon />
@@ -342,9 +402,9 @@ export default function Examinations() {
                         boxShadow: theme.shadows[2],
                       },
                     },
-                  }}
-                />
-              )}
+                  },
+                }
+              }}
             />
           </LocalizationProvider>
 

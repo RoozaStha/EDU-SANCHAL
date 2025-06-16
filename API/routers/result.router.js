@@ -46,4 +46,29 @@ router.get('/student/:studentId/performance',
   resultController.getStudentPerformance
 );
 
+router.get('/analytics/:examinationId', 
+  authMiddleware(['TEACHER', 'SCHOOL']), 
+  resultController.getExaminationAnalytics
+);
+
+router.get('/export/pdf/:examinationId', 
+  authMiddleware(['TEACHER', 'SCHOOL']), 
+  resultController.exportResultsPDF
+);
+
+router.post('/student', 
+  authMiddleware(['TEACHER', 'SCHOOL']), 
+  resultController.createResultsForStudent
+);
+
+router.get('/subjects/:classId', 
+  authMiddleware(['TEACHER', 'SCHOOL']), 
+  resultController.getSubjectsByClass
+);
+
+router.get('/classes', 
+  authMiddleware(['TEACHER', 'SCHOOL']), 
+  resultController.getClassesForExamination
+);
+
 module.exports = router;
