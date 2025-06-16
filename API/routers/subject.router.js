@@ -11,7 +11,7 @@ const authMiddleware = require('../auth/auth')
 // Apply auth middleware to all subject routes
 router.use(authMiddleware());
 router.post("/",authMiddleware(['STUDENT','SCHOOL','TEACHER']),  createSubject);
-router.get("/", getAllSubjects);
+router.get("/",authMiddleware(['STUDENT','SCHOOL','TEACHER']), getAllSubjects);
 router.patch("/:id",authMiddleware(['STUDENT','SCHOOL','TEACHER']),  updateSubjectWithId);
 router.delete("/:id",authMiddleware(['STUDENT','SCHOOL','TEACHER']),  deleteSubjectWithId);
 

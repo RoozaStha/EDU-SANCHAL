@@ -16,6 +16,7 @@ const noticeRouter = require("./routers/notice.router.js");
 const teacherAttendanceRouter = require("./routers/teacherAttendance.router.js")
 const chatbotRoutes = require("./routers/chatbot.router.js");
 const assignmentRoutes = require('./routers/assignment.router.js');
+const resultRouter = require('./routers/result.router.js');
 
 
 dotenv.config();
@@ -72,6 +73,7 @@ app.use("/api/notice",noticeRouter);
 app.use("/api/teacherAttendance",teacherAttendanceRouter);
 app.use("/api/chatbot", chatbotRoutes);
 app.use('/api/assignments', assignmentRoutes);
+app.use('/api/results', resultRouter);
 
 
 

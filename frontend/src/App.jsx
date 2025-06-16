@@ -20,6 +20,7 @@ import Students from "./school/components/students/Students";
 import Subjects from "./school/components/subjects/Subjects";
 import Teachers from "./school/components/teachers/Teachers";
 import AttendanceStudentList from "./school/components/attendance/AttendanceStudentList";
+import ResultSchool from "./school/components/results/resultsSchool";
 
 // Client Components
 import Client from "./client/Client";
@@ -38,6 +39,7 @@ import AttendanceTeacher from "./teacher/components/attendance/AttendanceTeacher
 import ExaminationsTeacher from "./teacher/components/examinations/ExaminationTeacher";
 import NoticeTeacher from "./teacher/components/notice/NoticeTeacher";
 import Assignment from "./teacher/components/assignment/Assignment";
+import Result from "./teacher/components/result/teacherResult";
 
 // Student Components
 import Student from "./student/Student";
@@ -47,8 +49,9 @@ import ScheduleStudent from "./student/components/schedule/ScheduleStudent";
 import ExaminationsStudent from "./student/components/examinations/ExaminationsStudent";
 import NoticeStudent from "./student/components/notice/NoticeStudent";
 import AssignmentStudent from "./student/components/assignmentStudent/AssignmentStudent";
-import Support from "./student/components/Support/support";
+import ResultStudent from "./student/components/results/resultStudent";
 
+import Support from "./student/components/Support/support";
 
 // Other Components
 import ProtectedRoute from "./guard/ProtectedRoute";
@@ -64,10 +67,10 @@ function AppContent() {
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route path="logout" element={<LogOut />} />
-        
-        {/* Password reset routes (public) */}
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+          {/* Password reset routes (public) */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
         </Route>
 
         {/* School protected routes */}
@@ -89,6 +92,7 @@ function AppContent() {
           <Route path="students" element={<Students />} />
           <Route path="subjects" element={<Subjects />} />
           <Route path="teachers" element={<Teachers />} />
+          <Route path="result" element={<ResultSchool />} />
         </Route>
 
         {/* Student protected routes */}
@@ -105,9 +109,9 @@ function AppContent() {
           <Route path="attendance" element={<AttendanceStudent />} />
           <Route path="examinations" element={<ExaminationsStudent />} />
           <Route path="notice" element={<NoticeStudent />} />
-          <Route path="assignment" element={<AssignmentStudent/>} />
-          <Route path="support" element={<Support/>} />
-
+          <Route path="assignment" element={<AssignmentStudent />} />
+          <Route path="support" element={<Support />} />
+          <Route path="results" element={<ResultStudent />} />
         </Route>
 
         {/* Teacher protected routes */}
@@ -124,8 +128,8 @@ function AppContent() {
           <Route path="attendance" element={<AttendanceTeacher />} />
           <Route path="examinations" element={<ExaminationsTeacher />} />
           <Route path="notice" element={<NoticeTeacher />} />
-           <Route path="assignment" element={<Assignment/>} />
-
+          <Route path="assignment" element={<Assignment />} />
+          <Route path="result" element={<Result />} />
         </Route>
 
         {/* Catch-all route */}

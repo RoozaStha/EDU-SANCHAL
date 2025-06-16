@@ -32,6 +32,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LightbulbRoundedIcon from '@mui/icons-material/LightbulbRounded';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
 
 const drawerWidth = 240;
 
@@ -146,8 +147,12 @@ export default function Student() {
       component: "Examinations",
       icon: ExplicitIcon,
     },
+    { link: "/student/results", component: "Result", icon: FactCheckIcon},
+
     { link: "/student/notice", component: "Notice", icon: NotificationsIcon },
+
     { link: "/student/support", component: "Support", icon: LightbulbRoundedIcon},
+
 
 
     { link: "/logout", component: "Logout", icon: LogoutIcon },
