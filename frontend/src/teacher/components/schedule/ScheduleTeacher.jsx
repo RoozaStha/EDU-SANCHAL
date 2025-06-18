@@ -3,6 +3,7 @@ import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Material UI components
 import {
@@ -27,14 +28,20 @@ import {
   Tab,
   Button,
   Tooltip,
-    Dialog,
-    DialogTitle,
+  Dialog,
+  DialogTitle,
   DialogContent,
   DialogContentText,
   DialogActions,
   CardContent,
-  Chip
-
+  Chip,
+  Divider,
+  alpha,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Avatar
 } from "@mui/material";
 
 // Icons
@@ -47,8 +54,15 @@ import {
   ViewAgenda as ViewAgendaIcon,
   ArrowBack as ArrowBackIcon,
   ArrowForward as ArrowForwardIcon,
-    Refresh as RefreshIcon,
-
+  Refresh as RefreshIcon,
+  BarChart as BarChartIcon,
+  Schedule as ScheduleIcon,
+  Class as ClassIcon,
+  Person as PersonIcon,
+  Subject as SubjectIcon,
+  AccessTime as TimeIcon,
+  CalendarToday as CalendarIcon,
+  Close as CloseIcon
 } from "@mui/icons-material";
 
 const localizer = momentLocalizer(moment);
@@ -66,19 +80,65 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
         mb: 2,
         flexWrap: "wrap",
         gap: 1,
+        background: alpha(theme.palette.primary.main, 0.08),
+        p: 1.5,
+        borderRadius: 2,
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <IconButton onClick={() => onNavigate("PREV")}>
-          <ArrowBackIcon />
-        </IconButton>
-        <IconButton onClick={() => onNavigate("TODAY")}>
-          <EventIcon />
-        </IconButton>
-        <IconButton onClick={() => onNavigate("NEXT")}>
-          <ArrowForwardIcon />
-        </IconButton>
-        <Typography variant="h6" sx={{ fontWeight: 500 }}>
+        <Tooltip title="Previous">
+          <IconButton 
+            onClick={() => onNavigate("PREV")}
+            sx={{
+              background: alpha(theme.palette.primary.main, 0.1),
+              '&:hover': {
+                background: alpha(theme.palette.primary.main, 0.2)
+              }
+            }}
+          >
+            <ArrowBackIcon color="primary" />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Today">
+          <IconButton 
+            onClick={() => onNavigate("TODAY")}
+            sx={{
+              background: alpha(theme.palette.primary.main, 0.1),
+              '&:hover': {
+                background: alpha(theme.palette.primary.main, 0.2)
+              }
+            }}
+          >
+            <EventIcon color="primary" />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Next">
+          <IconButton 
+            onClick={() => onNavigate("NEXT")}
+            sx={{
+              background: alpha(theme.palette.primary.main, 0.1),
+              '&:hover': {
+                background: alpha(theme.palette.primary.main, 0.2)
+              }
+            }}
+          >
+            <ArrowForwardIcon color="primary" />
+          </IconButton>
+        </Tooltip>
+        
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 700,
+            color: theme.palette.primary.dark,
+            ml: 1,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5
+          }}
+        >
           {label}
         </Typography>
       </Box>
@@ -89,9 +149,19 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
         sx={{
           minHeight: "unset",
           "& .MuiTabs-indicator": {
+            height: 4,
+            borderRadius: 2,
             backgroundColor: theme.palette.primary.main,
           },
-          "& .MuiTab-root": { minHeight: 40, py: 0.5 },
+          "& .MuiTab-root": { 
+            minHeight: 40, 
+            py: 0.5,
+            borderRadius: 1,
+            mr: 1,
+            '&.Mui-selected': {
+              background: alpha(theme.palette.primary.main, 0.1)
+            }
+          },
         }}
       >
         {views.map((viewName) => {
@@ -125,8 +195,12 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
                 color:
                   view === viewName
                     ? theme.palette.primary.main
-                    : "text.secondary",
-                "&.Mui-selected": { color: theme.palette.primary.main },
+                    : theme.palette.text.secondary,
+                "&.Mui-selected": { 
+                  color: theme.palette.primary.main,
+                  fontWeight: 600
+                },
+                transition: 'all 0.2s ease',
               }}
             />
           );
@@ -141,37 +215,57 @@ const CustomEvent = ({ event }) => {
   const theme = useTheme();
 
   return (
-    <Box
-      sx={{
-        p: 0.75,
-        height: "100%",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-      }}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2 }}
     >
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 600, mb: 0.5, lineHeight: 1.2 }}
-      >
-        {event.title}
-      </Typography>
-
       <Box
         sx={{
+          p: 1,
+          height: "100%",
+          overflow: "hidden",
           display: "flex",
+          flexDirection: "column",
           justifyContent: "space-between",
-          alignItems: "center",
-          mt: "auto",
+          borderRadius: 1,
+          boxShadow: 1
         }}
       >
-        <Typography variant="caption" sx={{ fontSize: "0.7rem" }}>
-          {moment(event.start).format("h:mm A")} -{" "}
-          {moment(event.end).format("h:mm A")}
+        <Typography
+          variant="body2"
+          sx={{ 
+            fontWeight: 700, 
+            mb: 0.5, 
+            lineHeight: 1.2,
+            fontSize: '0.8rem'
+          }}
+        >
+          {event.title}
         </Typography>
+
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mt: "auto",
+          }}
+        >
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              fontSize: "0.65rem",
+              fontWeight: 500,
+              color: alpha('#fff', 0.9)
+            }}
+          >
+            {moment(event.start).format("h:mm A")} -{" "}
+            {moment(event.end).format("h:mm A")}
+          </Typography>
+        </Box>
       </Box>
-    </Box>
+    </motion.div>
   );
 };
 
@@ -186,6 +280,10 @@ export default function ScheduleTeacher() {
   const [showWeekends, setShowWeekends] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statsOpen, setStatsOpen] = useState(false);
+  
+  // NEW STATES FOR EVENT DETAILS
+  const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   // Stats for the selected class
   const stats = useMemo(() => {
@@ -308,6 +406,18 @@ export default function ScheduleTeacher() {
 
   const handleCloseError = () => setError(null);
 
+  // NEW: Event click handler
+  const handleEventClick = (event) => {
+    setSelectedEvent(event);
+    setEventDetailsOpen(true);
+  };
+
+  // NEW: Close event details
+  const handleCloseEventDetails = () => {
+    setEventDetailsOpen(false);
+    setSelectedEvent(null);
+  };
+
   const filteredEvents = useMemo(() => {
     if (!showWeekends) {
       return events.filter((event) => {
@@ -319,9 +429,6 @@ export default function ScheduleTeacher() {
   }, [events, showWeekends]);
 
   const eventStyleGetter = (event) => {
-    const backgroundColor =
-      theme.palette.primary.main;
-
     const subjectName = event.title.split(" - ")[0].toLowerCase();
 
     const stringToColor = (str) => {
@@ -342,17 +449,18 @@ export default function ScheduleTeacher() {
     return {
       style: {
         backgroundColor: baseColor,
-        borderRadius: "6px",
+        borderRadius: "8px",
         opacity: 0.9,
         color: "white",
         border: "0px",
         display: "block",
         cursor: "pointer",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-        transition: "all 0.2s",
+        boxShadow: theme.shadows[2],
+        transition: "all 0.3s ease",
         "&:hover": {
           opacity: 1,
-          boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+          boxShadow: theme.shadows[4],
+          transform: "translateY(-2px)"
         },
       },
     };
@@ -361,15 +469,17 @@ export default function ScheduleTeacher() {
   return (
     <Box sx={{ height: "90vh", p: { xs: 1, sm: 2, md: 3 } }}>
       <Paper
-        elevation={3}
+        elevation={0}
         sx={{
           p: { xs: 2, sm: 3 },
           height: "100%",
-          borderRadius: 2,
+          borderRadius: 4,
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          bgcolor: theme.palette.background.default,
+          bgcolor: theme.palette.background.paper,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.1)}`
         }}
       >
         <Box
@@ -377,55 +487,139 @@ export default function ScheduleTeacher() {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: 2,
+            mb: 3,
             flexWrap: "wrap",
             gap: 2,
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <SchoolIcon color="primary" fontSize="large" />
-            <Typography variant="h4" sx={{ fontWeight: 600 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <SchoolIcon 
+              sx={{ 
+                fontSize: 40,
+                color: theme.palette.primary.main,
+                background: alpha(theme.palette.primary.main, 0.1),
+                p: 1,
+                borderRadius: 2
+              }} 
+            />
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 800,
+                background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.dark} 90%)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: -0.5
+              }}
+            >
               Class Schedule
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-            <Button
-              variant="outlined"
-              startIcon={<InfoIcon />}
-              onClick={() => setStatsOpen(true)}
-              disabled={!events.length}
-            >
-              Stats
-            </Button>
-
-            <Tooltip title="Refresh schedule">
+          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={refreshSchedules}
-                disabled={!selectedClass}
+                variant="contained"
+                startIcon={<BarChartIcon />}
+                onClick={() => setStatsOpen(true)}
+                disabled={!events.length}
+                sx={{
+                  borderRadius: 2,
+                  boxShadow: `0 4px 8px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
               >
-                Refresh
+                View Stats
               </Button>
+            </motion.div>
+
+            <Tooltip title="Refresh schedule data">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={refreshSchedules}
+                  disabled={!selectedClass}
+                  sx={{
+                    borderRadius: 2,
+                    borderWidth: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    '&:hover': {
+                      borderWidth: 2
+                    }
+                  }}
+                >
+                  Refresh
+                </Button>
+              </motion.div>
             </Tooltip>
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-          <FormControl sx={{ minWidth: 200, maxWidth: 300, flex: 1 }}>
-            <InputLabel id="class-label">Class</InputLabel>
+        <Box 
+          sx={{ 
+            display: "flex", 
+            gap: 3, 
+            mb: 3, 
+            flexWrap: "wrap",
+            alignItems: 'center'
+          }}
+        >
+          <FormControl 
+            sx={{ 
+              minWidth: 220, 
+              flex: 1,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                borderWidth: 2,
+                '&:hover fieldset': {
+                  borderColor: theme.palette.primary.main
+                }
+              }
+            }}
+          >
+            <InputLabel 
+              id="class-label"
+              sx={{
+                fontWeight: 600,
+                color: theme.palette.text.primary
+              }}
+            >
+              Select Class
+            </InputLabel>
             <Select
               labelId="class-label"
-              label="Class"
+              label="Select Class"
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
               startAdornment={
-                <SchoolIcon sx={{ mr: 1, ml: -0.5, color: "text.secondary" }} />
+                <ClassIcon sx={{ mr: 1, ml: -0.5, color: theme.palette.primary.main }} />
               }
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    borderRadius: 2,
+                    mt: 1,
+                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.1)}`
+                  }
+                }
+              }}
             >
               {classes.map((cls) => (
-                <MenuItem key={cls._id} value={cls._id}>
+                <MenuItem 
+                  key={cls._id} 
+                  value={cls._id}
+                  sx={{
+                    '&:hover': {
+                      background: alpha(theme.palette.primary.main, 0.1)
+                    },
+                    '&.Mui-selected': {
+                      background: alpha(theme.palette.primary.main, 0.2)
+                    }
+                  }}
+                >
                   {cls.class_text}
                 </MenuItem>
               ))}
@@ -438,9 +632,19 @@ export default function ScheduleTeacher() {
                 checked={showWeekends}
                 onChange={(e) => setShowWeekends(e.target.checked)}
                 color="primary"
+                sx={{
+                  '& .MuiSwitch-track': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.3)
+                  }
+                }}
               />
             }
-            label="Show Weekends"
+            label={
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                Show Weekends
+              </Typography>
+            }
+            sx={{ ml: 0 }}
           />
         </Box>
 
@@ -449,19 +653,40 @@ export default function ScheduleTeacher() {
             open={!!error}
             autoHideDuration={6000}
             onClose={handleCloseError}
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
-            <Alert
-              onClose={handleCloseError}
-              severity="error"
-              sx={{ width: "100%" }}
-              variant="filled"
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
             >
-              {error}
-            </Alert>
+              <Alert
+                onClose={handleCloseError}
+                severity="error"
+                sx={{ 
+                  width: "100%",
+                  borderRadius: 2,
+                  boxShadow: theme.shadows[3],
+                  alignItems: 'center'
+                }}
+                variant="filled"
+              >
+                {error}
+              </Alert>
+            </motion.div>
           </Snackbar>
         )}
 
-        <Box sx={{ flex: 1, overflow: "hidden", borderRadius: 1, mt: 1 }}>
+        <Box 
+          sx={{ 
+            flex: 1, 
+            overflow: "hidden", 
+            borderRadius: 3, 
+            mt: 1,
+            position: 'relative',
+            background: alpha(theme.palette.primary.main, 0.03),
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+          }}
+        >
           {loading ? (
             <Box
               sx={{
@@ -469,10 +694,21 @@ export default function ScheduleTeacher() {
                 flexDirection: "column",
                 gap: 2,
                 height: "100%",
+                p: 3
               }}
             >
-              <Skeleton variant="rectangular" width="100%" height={80} />
-              <Skeleton variant="rectangular" width="100%" height="80%" />
+              <Skeleton 
+                variant="rectangular" 
+                width="100%" 
+                height={80} 
+                sx={{ borderRadius: 2 }} 
+              />
+              <Skeleton 
+                variant="rectangular" 
+                width="100%" 
+                height="80%" 
+                sx={{ borderRadius: 2 }} 
+              />
             </Box>
           ) : (
             <Calendar
@@ -490,12 +726,14 @@ export default function ScheduleTeacher() {
               endAccessor="end"
               date={currentDate}
               onNavigate={(date) => setCurrentDate(date)}
+              // ADDED EVENT CLICK HANDLER
+              onSelectEvent={handleEventClick}
               showMultiDayTimes
               eventPropGetter={eventStyleGetter}
               style={{
                 height: "100%",
                 backgroundColor: theme.palette.background.paper,
-                borderRadius: "8px",
+                borderRadius: "12px",
               }}
               components={{
                 toolbar: CustomToolbar,
@@ -513,88 +751,374 @@ export default function ScheduleTeacher() {
         fullWidth
         maxWidth="sm"
         PaperProps={{
-          sx: { borderRadius: 2 },
+          sx: { 
+            borderRadius: 3,
+            background: theme.palette.background.paper,
+            boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.15)}`,
+            overflow: 'hidden'
+          },
         }}
       >
-        <DialogTitle>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <InfoIcon color="primary" />
-            <Typography variant="h6">Schedule Statistics</Typography>
+        <DialogTitle
+          sx={{
+            background: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            color: 'white',
+            py: 2,
+            px: 3
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <BarChartIcon fontSize="large" />
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Schedule Statistics
+            </Typography>
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ p: 3 }}>
           {stats ? (
             <>
-              <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={6}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h4" sx={{ textAlign: "center" }}>
-                        {stats.totalEvents}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ textAlign: "center" }}
-                      >
-                        Total Events
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                  <motion.div whileHover={{ y: -2 }}>
+                    <Card
+                      sx={{
+                        borderRadius: 2,
+                        boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
+                        borderLeft: `4px solid ${theme.palette.primary.main}`
+                      }}
+                    >
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <ScheduleIcon color="primary" />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Total Events
+                          </Typography>
+                        </Box>
+                        <Typography 
+                          variant="h3" 
+                          sx={{ 
+                            textAlign: "left",
+                            fontWeight: 800,
+                            color: theme.palette.primary.main
+                          }}
+                        >
+                          {stats.totalEvents}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 </Grid>
                 <Grid item xs={6}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h4" sx={{ textAlign: "center" }}>
-                        {stats.totalHours}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ textAlign: "center" }}
-                      >
-                        Total Hours
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                  <motion.div whileHover={{ y: -2 }}>
+                    <Card
+                      sx={{
+                        borderRadius: 2,
+                        boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
+                        borderLeft: `4px solid ${theme.palette.secondary.main}`
+                      }}
+                    >
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <EventIcon color="secondary" />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Total Hours
+                          </Typography>
+                        </Box>
+                        <Typography 
+                          variant="h3" 
+                          sx={{ 
+                            textAlign: "left",
+                            fontWeight: 800,
+                            color: theme.palette.secondary.main
+                          }}
+                        >
+                          {stats.totalHours}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 </Grid>
               </Grid>
 
-              <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+              <Divider sx={{ my: 2 }} />
+
+              <Typography 
+                variant="subtitle1" 
+                sx={{ 
+                  mt: 2, 
+                  mb: 1.5,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                <SchoolIcon color="primary" fontSize="small" />
                 Events by Subject
               </Typography>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexWrap: "wrap", 
+                  gap: 1, 
+                  mb: 3,
+                  '& .MuiChip-root': {
+                    borderRadius: 1,
+                    fontWeight: 500
+                  }
+                }}
+              >
                 {Object.entries(stats.subjectCounts).map(([subject, count]) => (
                   <Chip
                     key={subject}
                     label={`${subject}: ${count}`}
                     color="primary"
                     variant="outlined"
+                    size="small"
+                    sx={{
+                      borderWidth: 2,
+                      '&:hover': {
+                        background: alpha(theme.palette.primary.main, 0.1)
+                      }
+                    }}
                   />
                 ))}
               </Box>
 
-              <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+              <Typography 
+                variant="subtitle1" 
+                sx={{ 
+                  mt: 2, 
+                  mb: 1.5,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                <ClassIcon color="secondary" fontSize="small" />
                 Events by Teacher
               </Typography>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexWrap: "wrap", 
+                  gap: 1,
+                  '& .MuiChip-root': {
+                    borderRadius: 1,
+                    fontWeight: 500
+                  }
+                }}
+              >
                 {Object.entries(stats.teacherCounts).map(([teacher, count]) => (
                   <Chip
                     key={teacher}
                     label={`${teacher}: ${count}`}
                     color="secondary"
                     variant="outlined"
+                    size="small"
+                    sx={{
+                      borderWidth: 2,
+                      '&:hover': {
+                        background: alpha(theme.palette.secondary.main, 0.1)
+                      }
+                    }}
                   />
                 ))}
               </Box>
             </>
           ) : (
-            <Typography variant="body1">No statistics available</Typography>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                py: 4,
+                textAlign: 'center'
+              }}
+            >
+              <InfoIcon 
+                sx={{ 
+                  fontSize: 48,
+                  color: theme.palette.text.disabled,
+                  mb: 2
+                }} 
+              />
+              <Typography variant="body1" color="text.secondary">
+                No statistics available for the selected class
+              </Typography>
+            </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setStatsOpen(false)}>Close</Button>
+        <DialogActions sx={{ p: 2, background: alpha(theme.palette.primary.main, 0.03) }}>
+          <Button 
+            onClick={() => setStatsOpen(false)}
+            variant="contained"
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              fontWeight: 600,
+              textTransform: 'none'
+            }}
+          >
+            Close
+          </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* NEW: Event Details Dialog */}
+      <Dialog
+        open={eventDetailsOpen}
+        onClose={handleCloseEventDetails}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: { 
+            borderRadius: 3,
+            overflow: 'hidden',
+            background: theme.palette.background.paper,
+            boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.2)}`
+          }
+        }}
+      >
+        {selectedEvent && (
+          <>
+            <DialogTitle
+              sx={{
+                background: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                color: 'white',
+                py: 2,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <EventIcon />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Class Details
+                </Typography>
+              </Box>
+              <IconButton 
+                onClick={handleCloseEventDetails}
+                sx={{ color: 'white' }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent sx={{ py: 3 }}>
+              <List sx={{ py: 0 }}>
+                <ListItem sx={{ py: 2 }}>
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.primary.light,
+                      color: theme.palette.primary.contrastText 
+                    }}>
+                      <SubjectIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary="Subject"
+                    secondary={selectedEvent.title.split(' - ')[0]}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
+                  />
+                </ListItem>
+                
+                <Divider variant="middle" />
+                
+                <ListItem sx={{ py: 2 }}>
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.secondary.light,
+                      color: theme.palette.secondary.contrastText 
+                    }}>
+                      <PersonIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary="Teacher"
+                    secondary={selectedEvent.title.split(' - ')[1]}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
+                  />
+                </ListItem>
+                
+                <Divider variant="middle" />
+                
+                <ListItem sx={{ py: 2 }}>
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.success.light,
+                      color: theme.palette.success.contrastText 
+                    }}>
+                      <ClassIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary="Class"
+                    secondary={selectedEvent.resource.class?.class_text || 'N/A'}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
+                  />
+                </ListItem>
+                
+                <Divider variant="middle" />
+                
+                <ListItem sx={{ py: 2 }}>
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.warning.light,
+                      color: theme.palette.warning.contrastText 
+                    }}>
+                      <TimeIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary="Time"
+                    secondary={`${moment(selectedEvent.start).format('h:mm A')} - ${moment(selectedEvent.end).format('h:mm A')}`}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
+                  />
+                </ListItem>
+                
+                <Divider variant="middle" />
+                
+                <ListItem sx={{ py: 2 }}>
+                  <ListItemAvatar>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.info.light,
+                      color: theme.palette.info.contrastText 
+                    }}>
+                      <CalendarIcon />
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary="Date"
+                    secondary={moment(selectedEvent.start).format('dddd, MMMM D, YYYY')}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
+                  />
+                </ListItem>
+              </List>
+            </DialogContent>
+            <DialogActions sx={{ p: 2, background: alpha(theme.palette.primary.main, 0.05) }}>
+              <Button 
+                onClick={handleCloseEventDetails}
+                variant="contained"
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  background: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`
+                }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
     </Box>
   );

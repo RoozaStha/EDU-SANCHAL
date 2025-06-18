@@ -1,4 +1,4 @@
-import { keyframes, useTheme } from "@mui/material/styles";
+import { keyframes, useTheme, alpha } from "@mui/material/styles";
 import {
   Box,
   Typography,
@@ -13,11 +13,29 @@ import {
   TextField,
   Badge,
   Stack,
+  Paper,
+  Grid,
+  Skeleton,
+  Divider,
+  Button,
+  Tooltip,
+  useMediaQuery,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  AppBar,
+  Toolbar,
+  LinearProgress
 } from "@mui/material";
 import axios from "axios";
 import { baseApi } from "../../../environment";
 import React, { useEffect, useState } from "react";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
+import { motion } from "framer-motion";
 
 // Icons
 import CloseIcon from "@mui/icons-material/Close";
@@ -28,12 +46,21 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SearchIcon from "@mui/icons-material/Search";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
-import NotificationsIcon from "@mui/icons-material/Notifications";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import AddIcon from "@mui/icons-material/Add";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
+import TableChartIcon from '@mui/icons-material/TableChart';
+import TodayIcon from '@mui/icons-material/Today';
+import DownloadIcon from '@mui/icons-material/Download';
+import InfoIcon from '@mui/icons-material/Info';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import MenuIcon from '@mui/icons-material/Menu';
 
 // Animations
 const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
@@ -54,16 +81,27 @@ const shimmer = keyframes`
   100% { background-position: 200% 0; }
 `;
 
-export default function NoticeBoard() {
+export default function TeacherNoticeBoard() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [notices, setNotices] = useState([]);
   const [filteredNotices, setFilteredNotices] = useState([]);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("teacher"); // Default to teacher tab
+  const [activeTab, setActiveTab] = useState("teacher");
   const [newNoticesCount, setNewNoticesCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [bookmarkedNotices, setBookmarkedNotices] = useState([]);
+  const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [showFilters, setShowFilters] = useState(!isMobile);
+  const [stats, setStats] = useState({
+    totalNotices: 0,
+    newNotices: 0,
+    bookmarked: 0
+  });
 
   const audienceOptions = [
     { value: "student", label: "Students", icon: <SchoolIcon /> },
@@ -93,6 +131,13 @@ export default function NoticeBoard() {
         notice => new Date(notice.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       );
       setNewNoticesCount(newNotices.length);
+      
+      // Update stats
+      setStats({
+        totalNotices: sortedNotices.length,
+        newNotices: newNotices.length,
+        bookmarked: bookmarkedNotices.length
+      });
     } catch (error) {
       console.error("Error fetching notices:", error);
       setMessage("Failed to fetch notices");
@@ -130,7 +175,7 @@ export default function NoticeBoard() {
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d ago`;
     
-    return formatDate(dateString).split(',')[0]; // Return just the date part
+    return formatDate(dateString).split(',')[0];
   };
 
   const handleSearch = (term) => {
@@ -149,6 +194,7 @@ export default function NoticeBoard() {
       );
       setFilteredNotices(filtered);
     }
+    setPage(0); // Reset to first page when searching
   };
 
   const filterNoticesByTab = (tabValue) => {
@@ -157,11 +203,12 @@ export default function NoticeBoard() {
     } else {
       setFilteredNotices(notices.filter(notice => notice.audience === tabValue));
     }
+    setPage(0); // Reset to first page when changing tabs
   };
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setSearchTerm(""); // Clear search when changing tabs
+    setSearchTerm("");
     filterNoticesByTab(newValue);
   };
 
@@ -198,22 +245,57 @@ export default function NoticeBoard() {
     }
   };
 
-  // Check if notice is new (within the last 7 days)
   const isNewNotice = (dateString) => {
     const date = new Date(dateString);
     return date > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  };
+
+  const toggleBookmark = (noticeId) => {
+    let updatedBookmarks;
+    if (bookmarkedNotices.includes(noticeId)) {
+      updatedBookmarks = bookmarkedNotices.filter(id => id !== noticeId);
+    } else {
+      updatedBookmarks = [...bookmarkedNotices, noticeId];
+    }
+    setBookmarkedNotices(updatedBookmarks);
+    
+    // Update stats
+    setStats(prev => ({
+      ...prev,
+      bookmarked: updatedBookmarks.length
+    }));
+  };
+
+  const isBookmarked = (noticeId) => {
+    return bookmarkedNotices.includes(noticeId);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
   };
 
   useEffect(() => {
     fetchNotices();
   }, []);
 
-  // Skeleton loader for notices
+  useEffect(() => {
+    // Update bookmarked count in stats
+    setStats(prev => ({
+      ...prev,
+      bookmarked: bookmarkedNotices.length
+    }));
+  }, [bookmarkedNotices]);
+
   const NoticeSkeleton = () => (
     <Card
       variant="outlined"
       sx={{
-        borderRadius: 2,
+        borderRadius: 3,
         overflow: 'hidden',
         transition: 'all 0.3s ease',
         animation: `${fadeIn} 0.5s ease-out`,
@@ -235,9 +317,7 @@ export default function NoticeBoard() {
   return (
     <Box
       sx={{
-        maxWidth: 1000,
-        mx: "auto",
-        p: 3,
+        width: '100%',
         animation: `${fadeIn} 0.5s ease-out`,
       }}
     >
@@ -249,61 +329,261 @@ export default function NoticeBoard() {
         />
       )}
 
-      {/* Title and Stats */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 4,
-        position: 'relative'
-      }}>
-        <Typography
-          variant="h3"
-          component="h1"
-          sx={{
-            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            animation: `${gradientFlow} 6s ease infinite`,
-            backgroundSize: "200% 200%",
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2
-          }}
-        >
-          <NotificationsIcon fontSize="large" sx={{ color: theme.palette.primary.main }} /> 
-          Notice Board
-        </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Chip 
-            icon={<CalendarTodayIcon />}
-            label={`Last updated: ${formatDate(new Date()).split(',')[0]}`} 
-            variant="outlined"
-            size="small"
-          />
-          <Badge badgeContent={newNoticesCount} color="error">
-            <Chip 
-              label={`Total: ${notices.length}`} 
-              variant="outlined" 
-              avatar={<Avatar>{notices.length}</Avatar>}
-              color="primary"
-            />
-          </Badge>
-        </Box>
-      </Box>
+      {/* App Bar */}
+      <AppBar
+        position="static"
+        color="primary"
+        sx={{
+          mb: 3,
+          borderRadius: 2,
+          background: "linear-gradient(135deg, #1976d2 30%, #2196f3 90%)",
+          boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
+        }}
+      >
+        <Toolbar>
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              onClick={() => setShowFilters(!showFilters)}
+              edge="start"
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{
+              bgcolor: 'rgba(255,255,255,0.2)',
+              p: 1,
+              borderRadius: 2,
+            }}>
+              <NotificationsActiveIcon sx={{ 
+                fontSize: 32, 
+                color: 'white',
+                animation: `${pulse} 2s infinite`,
+              }} />
+            </Box>
+            
+            <Box>
+              <Typography
+                variant="h4"
+                component="div"
+                sx={{ flexGrow: 1, fontWeight: "bold", color: "white" }}
+              >
+                Notice Board
+              </Typography>
+              <Typography variant="body1" color="rgba(255,255,255,0.8)">
+                Important announcements and updates
+              </Typography>
+            </Box>
+          </Box>
+          
+          {!isMobile && (
+            <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
+              <Button
+                variant={viewMode === 'card' ? 'contained' : 'outlined'}
+                color="inherit"
+                onClick={() => setViewMode('card')}
+                startIcon={<TodayIcon />}
+                sx={{ 
+                  fontWeight: "bold",
+                  backgroundColor: viewMode === 'card' ? 'rgba(255,255,255,0.2)' : 'transparent'
+                }}
+              >
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                color="inherit"
+                onClick={() => setViewMode('table')}
+                startIcon={<TableChartIcon />}
+                sx={{ 
+                  fontWeight: "bold",
+                  backgroundColor: viewMode === 'table' ? 'rgba(255,255,255,0.2)' : 'transparent'
+                }}
+              >
+                Table
+              </Button>
+            </Box>
+          )}
+        </Toolbar>
+      </AppBar>
 
-      {/* Filter and Search Bar */}
+      {/* Stats Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={4}>
+          <StatCard 
+            icon={<NotificationsActiveIcon fontSize="medium" />}
+            title="Total Notices"
+            value={stats.totalNotices}
+            color={theme.palette.primary.main}
+            loading={loading}
+            subtitle="All notices"
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StatCard 
+            icon={<CheckCircleIcon fontSize="medium" />}
+            title="New Notices"
+            value={stats.newNotices}
+            color={theme.palette.info.main}
+            loading={loading}
+            subtitle="Last 7 days"
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StatCard 
+            icon={<BookmarkIcon fontSize="medium" />}
+            title="Bookmarked"
+            value={stats.bookmarked}
+            color={theme.palette.success.main}
+            loading={loading}
+            subtitle="Saved notices"
+          />
+        </Grid>
+      </Grid>
+
+      {/* Filters Section */}
+      {showFilters && (
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Search notices"
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => handleSearch("")}>
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1,
+                height: '100%'
+              }}>
+                <FilterListIcon color="action" />
+                <Typography variant="body2" color="text.secondary">
+                  Showing: 
+                </Typography>
+                <Chip 
+                  label={activeTab === 'all' ? 'All Notices' : `${getAudienceLabel(activeTab)} Notices`} 
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  sx={{ fontWeight: 600 }}
+                />
+                <Chip 
+                  label={`${filteredNotices.length} notices`} 
+                  size="small" 
+                  color="primary" 
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Box>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+
+      {!showFilters && isMobile && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterListIcon />}
+            onClick={() => setShowFilters(true)}
+            sx={{ mb: 2 }}
+          >
+            Show Filters
+          </Button>
+        </Box>
+      )}
+
+      {/* Action Bar */}
       <Box sx={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
         mb: 3,
         gap: 2,
-        flexWrap: {xs: 'wrap', md: 'nowrap'},
-        bgcolor: theme.palette.background.paper,
+        flexWrap: 'wrap',
+      }}>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={fetchNotices}
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                fontWeight: 600,
+                textTransform: 'none',
+                borderWidth: 2,
+                '&:hover': {
+                  borderWidth: 2,
+                }
+              }}
+            >
+              Refresh
+            </Button>
+          </motion.div>
+        
+        </Box>
+        
+        {/* View Mode Toggle for Mobile */}
+        {isMobile && (
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            gap: 1
+          }}>
+            <Button
+              variant={viewMode === 'card' ? 'contained' : 'outlined'}
+              onClick={() => setViewMode('card')}
+              startIcon={<TodayIcon />}
+              size="small"
+            >
+              Cards
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'contained' : 'outlined'}
+              onClick={() => setViewMode('table')}
+              startIcon={<TableChartIcon />}
+              size="small"
+            >
+              Table
+            </Button>
+          </Box>
+        )}
+      </Box>
+
+      {/* Tabs */}
+      <Box sx={{ 
+        borderBottom: 1, 
+        borderColor: 'divider', 
+        mb: 2,
+        backgroundColor: theme.palette.background.paper,
         borderRadius: 2,
-        p: 1,
         boxShadow: theme.shadows[1]
       }}>
         <Tabs 
@@ -312,16 +592,22 @@ export default function NoticeBoard() {
           variant="scrollable"
           scrollButtons="auto"
           sx={{ 
-            flexGrow: 1,
+            minHeight: 48,
             '& .MuiTabs-indicator': {
               height: 3,
-              borderRadius: 3
+              borderRadius: 3,
+              backgroundColor: theme.palette.primary.main,
             },
             '& .MuiTab-root': {
               minHeight: 48,
               fontWeight: 600,
               borderRadius: 1,
-              mx: 0.5
+              mx: 0.5,
+              textTransform: 'none',
+              fontSize: '0.9rem',
+              '&.Mui-selected': {
+                color: theme.palette.primary.main,
+              }
             }
           }}
         >
@@ -344,194 +630,439 @@ export default function NoticeBoard() {
             iconPosition="start" 
           />
         </Tabs>
-        
-        <TextField
-          variant="outlined"
-          placeholder="Search notices..."
-          size="small"
-          value={searchTerm}
-          onChange={(e) => handleSearch(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-            endAdornment: searchTerm && (
-              <InputAdornment position="end">
-                <IconButton size="small" onClick={() => handleSearch("")}>
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-          sx={{ 
-            minWidth: {xs: '100%', md: 250},
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 20,
-            }
-          }}
-        />
       </Box>
 
       {/* Notices List */}
-      <Box>
-        <Typography
-          variant="h5"
-          sx={{
-            mb: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-          }}
-        >
-          <FilterListIcon color="primary" />
-          {activeTab === 'all' ? 'All Notices' : `${getAudienceLabel(activeTab)} Notices`}
-          <Chip 
-            label={`${filteredNotices.length} found`} 
-            size="small" 
-            color="primary" 
-            variant="outlined"
-            sx={{ ml: 1 }}
-          />
-        </Typography>
-
-        {loading ? (
-          <Stack spacing={2}>
-            {[1, 2, 3].map((index) => (
-              <NoticeSkeleton key={index} />
+      {loading ? (
+        <Box sx={{ p: 2 }}>
+          <LinearProgress sx={{ mb: 2 }} />
+          <Grid container spacing={2}>
+            {[...Array(6)].map((_, index) => (
+              <Grid item xs={12} sm={6} md={4} key={index}>
+                <NoticeSkeleton />
+              </Grid>
             ))}
-          </Stack>
-        ) : filteredNotices.length > 0 ? (
-          <Stack spacing={2}>
-            {filteredNotices.map((notice, index) => {
-              const audienceColor = getAudienceColor(notice.audience);
-              const isNew = isNewNotice(notice.createdAt);
-              
-              return (
-                <Card
-                  key={notice._id}
-                  variant="outlined"
+          </Grid>
+        </Box>
+      ) : filteredNotices.length > 0 ? (
+        <>
+          {viewMode === 'card' ? (
+            <Grid container spacing={2}>
+              {filteredNotices
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((notice, index) => {
+                  const audienceColor = getAudienceColor(notice.audience);
+                  const isNew = isNewNotice(notice.createdAt);
+                  const bookmarked = isBookmarked(notice._id);
+                  
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={notice._id}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.05 }}
+                      >
+                        <NoticeCard 
+                          notice={notice} 
+                          audienceColor={audienceColor}
+                          isNew={isNew}
+                          bookmarked={bookmarked}
+                          toggleBookmark={toggleBookmark}
+                          formatDate={formatDate}
+                          getTimeAgo={getTimeAgo}
+                          getAudienceLabel={getAudienceLabel}
+                          getAudienceIcon={getAudienceIcon}
+                          theme={theme}
+                        />
+                      </motion.div>
+                    </Grid>
+                  );
+                })}
+            </Grid>
+          ) : (
+            <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 3 }}>
+              <Table>
+                <TableHead
                   sx={{
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                    transition: 'all 0.3s ease',
-                    animation: `${fadeIn} 0.5s ease-out`,
-                    animationDelay: `${index * 50}ms`,
-                    '&:hover': {
-                      transform: 'translateY(-3px)',
-                      boxShadow: theme.shadows[3],
+                    backgroundColor: theme.palette.primary.main,
+                    '& th': { 
+                      fontWeight: 'bold', 
+                      fontSize: theme.typography.pxToRem(14),
+                      color: theme.palette.common.white
                     },
-                    borderLeft: `4px solid ${audienceColor.border}`,
                   }}
                 >
-                  <CardContent>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 2,
-                      flexWrap: 'wrap'
-                    }}>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="h6" sx={{ 
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1
-                        }}>
-                          {notice.title}
-                          {isNew && (
-                            <Chip
-                              label="New"
-                              size="small"
-                              color="error"
-                              sx={{ 
-                                height: 20,
-                                '& .MuiChip-label': {
-                                  px: 1,
-                                  py: 0,
-                                  fontWeight: 'bold',
-                                  fontSize: '0.625rem'
-                                }
-                              }}
-                            />
-                          )}
-                        </Typography>
-                        
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, mb: 1 }}>
-                          <Chip
-                            icon={getAudienceIcon(notice.audience)}
-                            label={getAudienceLabel(notice.audience)}
-                            size="small"
-                            sx={{ 
-                              bgcolor: audienceColor.bg,
-                              color: audienceColor.color,
-                              border: `1px solid ${audienceColor.border}`,
-                            }}
-                          />
-                          
-                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                            {getTimeAgo(notice.createdAt)}
-                          </Typography>
-                        </Box>
-                        
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary" 
+                  <TableRow>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Audience</TableCell>
+                    <TableCell>Message</TableCell>
+                    <TableCell>Created</TableCell>
+                    <TableCell align="center">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredNotices
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((notice) => {
+                      const isNew = isNewNotice(notice.createdAt);
+                      const bookmarked = isBookmarked(notice._id);
+                      
+                      return (
+                        <TableRow 
+                          key={notice._id} 
+                          hover
                           sx={{ 
-                            mt: 1,
-                            lineHeight: 1.6
+                            '&:last-child td, &:last-child th': { border: 0 },
+                            '&:hover': {
+                              backgroundColor: theme.palette.action.hover
+                            }
                           }}
                         >
-                          {notice.message}
-                        </Typography>
-                      </Box>
+                          <TableCell sx={{ fontWeight: 500 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {notice.title}
+                              {isNew && (
+                                <Chip
+                                  label="New"
+                                  size="small"
+                                  color="error"
+                                  sx={{ 
+                                    height: 20,
+                                    '& .MuiChip-label': {
+                                      px: 1,
+                                      py: 0,
+                                      fontWeight: 'bold',
+                                      fontSize: '0.625rem'
+                                    }
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              icon={getAudienceIcon(notice.audience)}
+                              label={getAudienceLabel(notice.audience)}
+                              size="small"
+                              sx={{ 
+                                bgcolor: getAudienceColor(notice.audience).bg,
+                                color: getAudienceColor(notice.audience).color,
+                                border: `1px solid ${getAudienceColor(notice.audience).border}`,
+                                fontWeight: 600,
+                                fontSize: '0.75rem'
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {notice.message.length > 50 
+                                ? `${notice.message.substring(0, 50)}...` 
+                                : notice.message}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                              <Typography variant="body2">
+                                {formatDate(notice.createdAt)}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {getTimeAgo(notice.createdAt)}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                              <IconButton 
+                                size="small" 
+                                onClick={() => toggleBookmark(notice._id)}
+                              >
+                                {bookmarked ? (
+                                  <BookmarkIcon color="secondary" />
+                                ) : (
+                                  <BookmarkBorderIcon />
+                                )}
+                              </IconButton>
+                              <Button 
+                                variant="outlined" 
+                                size="small"
+                                sx={{ 
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                View
+                              </Button>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={filteredNotices.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{ mt: 2 }}
+          />
+        </>
+      ) : (
+        <EmptyState 
+          searchTerm={searchTerm} 
+          activeTab={activeTab} 
+          getAudienceLabel={getAudienceLabel} 
+          fetchNotices={fetchNotices}
+        />
+      )}
+    </Box>
+  );
+}
 
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'flex-end',
-                        minWidth: 150
-                      }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Created: {formatDate(notice.createdAt)}
-                        </Typography>
-                        {notice.publishAt && (
-                          <Typography variant="caption" color="text.secondary">
-                            Published: {formatDate(notice.publishAt)}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </Stack>
-        ) : (
-          <Box
-            sx={{
-              textAlign: 'center',
-              p: 4,
-              borderRadius: 2,
-              bgcolor: theme.palette.action.hover,
-            }}
-          >
-            <AnnouncementIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No notices found
+function StatCard({ icon, title, value, color, loading, subtitle }) {
+  return (
+    <Card sx={{ 
+      borderRadius: 2,
+      boxShadow: 3,
+      transition: 'all 0.3s ease',
+      '&:hover': {
+        transform: 'translateY(-3px)',
+        boxShadow: 4
+      },
+      height: '100%'
+    }}>
+      <CardContent sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 2, 
+        p: 3,
+        height: '100%'
+      }}>
+        <Avatar sx={{ 
+          backgroundColor: `${color}20`, 
+          color: color,
+          width: 56,
+          height: 56
+        }}>
+          {icon}
+        </Avatar>
+        <Box>
+          <Typography variant="subtitle1" color="text.secondary">
+            {title}
+          </Typography>
+          {loading ? (
+            <Skeleton variant="text" width={60} height={40} /> 
+          ) : (
+            <Typography variant="h3" component="div" sx={{ fontWeight: 700 }}>
+              {value}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {searchTerm 
-                ? `No notices match your search for "${searchTerm}"`
-                : activeTab === 'all' 
-                  ? "There are no notices available"
-                  : `No notices for ${getAudienceLabel(activeTab)} found`}
+          )}
+          <Typography variant="caption" color="text.secondary">
+            {subtitle}
+          </Typography>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NoticeCard({ 
+  notice, 
+  audienceColor, 
+  isNew, 
+  bookmarked, 
+  toggleBookmark, 
+  formatDate, 
+  getTimeAgo,
+  getAudienceLabel,
+  getAudienceIcon,
+  theme 
+}) {
+  return (
+    <Card
+      variant="outlined"
+      sx={{
+        borderRadius: 3,
+        overflow: 'hidden',
+        transition: 'all 0.3s ease',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        borderLeft: `4px solid ${audienceColor.border}`,
+        boxShadow: theme.shadows[1],
+        '&:hover': {
+          transform: 'translateY(-5px)',
+          boxShadow: theme.shadows[4],
+        },
+      }}
+    >
+      <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 1
+        }}>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" sx={{ 
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mb: 1
+            }}>
+              {notice.title}
+              {isNew && (
+                <Chip
+                  label="New"
+                  size="small"
+                  color="error"
+                  sx={{ 
+                    height: 20,
+                    '& .MuiChip-label': {
+                      px: 1,
+                      py: 0,
+                      fontWeight: 'bold',
+                      fontSize: '0.625rem'
+                    }
+                  }}
+                />
+              )}
+            </Typography>
+            
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 2,
+                lineHeight: 1.6,
+                minHeight: 60
+              }}
+            >
+              {notice.message.length > 100 
+                ? `${notice.message.substring(0, 100)}...` 
+                : notice.message}
             </Typography>
           </Box>
+
+          <IconButton 
+            size="small" 
+            onClick={() => toggleBookmark(notice._id)}
+            sx={{ mt: -1, mr: -1 }}
+          >
+            {bookmarked ? (
+              <BookmarkIcon color="secondary" />
+            ) : (
+              <BookmarkBorderIcon />
+            )}
+          </IconButton>
+        </Box>
+        
+        <Divider sx={{ my: 1.5 }} />
+        
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 1
+        }}>
+          <Box>
+            <Chip
+              icon={getAudienceIcon(notice.audience)}
+              label={getAudienceLabel(notice.audience)}
+              size="small"
+              sx={{ 
+                bgcolor: audienceColor.bg,
+                color: audienceColor.color,
+                border: `1px solid ${audienceColor.border}`,
+                fontWeight: 600,
+                fontSize: '0.75rem'
+              }}
+            />
+            
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 1, display: 'block', mt: 0.5 }}>
+              {getTimeAgo(notice.createdAt)}
+            </Typography>
+          </Box>
+          
+          <Button 
+            variant="text" 
+            size="small"
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              color: theme.palette.primary.main
+            }}
+          >
+            View Details
+          </Button>
+        </Box>
+      </CardContent>
+      
+      <Box sx={{ 
+        bgcolor: theme.palette.grey[100],
+        p: 1.5,
+        display: 'flex',
+        justifyContent: 'space-between'
+      }}>
+        <Typography variant="caption" color="text.secondary">
+          Created: {formatDate(notice.createdAt)}
+        </Typography>
+        {notice.publishAt && (
+          <Typography variant="caption" color="text.secondary">
+            Published: {formatDate(notice.publishAt)}
+          </Typography>
         )}
       </Box>
-    </Box>
+    </Card>
+  );
+}
+
+function EmptyState({ searchTerm, activeTab, getAudienceLabel, fetchNotices }) {
+  return (
+    <Paper
+      sx={{
+        p: 6,
+        textAlign: 'center',
+        borderRadius: 3,
+        bgcolor: 'background.paper',
+        boxShadow: 3,
+        border: `1px dashed ${theme.palette.divider}`,
+        maxWidth: 600,
+        mx: 'auto',
+        mt: 4
+      }}
+    >
+      <AnnouncementIcon sx={{ 
+        fontSize: 80, 
+        color: theme.palette.text.disabled, 
+        mb: 2,
+        opacity: 0.7
+      }} />
+      <Typography variant="h5" color="text.secondary" gutterBottom sx={{ fontWeight: 600 }}>
+        No notices found
+      </Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        {searchTerm 
+          ? `No notices match your search for "${searchTerm}"`
+          : activeTab === 'all' 
+            ? "There are no notices available"
+            : `No notices for ${getAudienceLabel(activeTab)} found`}
+      </Typography>
+      <Button 
+        variant="outlined" 
+        startIcon={<RefreshIcon />}
+        onClick={fetchNotices}
+        sx={{ borderRadius: 2, fontWeight: 600 }}
+      >
+        Refresh Notices
+      </Button>
+    </Paper>
   );
 }

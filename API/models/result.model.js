@@ -47,10 +47,11 @@ const resultSchema = new mongoose.Schema({
     refPath: 'publishedByModel',
     required: true
   },
-  publishedByModel: {
+ publishedByModel: {
     type: String,
     enum: ['Teacher', 'School'],
-    required: true
+    required: true,
+    default: 'Teacher' // Add default value
   },
   createdAt: {
     type: Date,

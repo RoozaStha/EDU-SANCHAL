@@ -4,7 +4,8 @@ import {
     Select, MenuItem, InputLabel, FormControl, Button, 
     CircularProgress, Divider, Box, Paper, Table, 
     TableBody, TableCell, TableContainer, TableHead, 
-    TableRow, TextField, Tabs, Tab, Chip
+    TableRow, TextField, Tabs, Tab, Chip, useTheme, 
+    Stack, Avatar, AppBar, Toolbar
 } from "@mui/material";
 import { 
     BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -34,8 +35,9 @@ const TeacherAttendance = () => {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [activeTab, setActiveTab] = useState(0);
-
+    
     const token = localStorage.getItem("token");
+    const theme = useTheme();
 
     useEffect(() => {
         fetchTeacherClass();
@@ -199,27 +201,95 @@ const TeacherAttendance = () => {
     };
 
     return (
-        <Container maxWidth="lg">
-            <Typography variant="h4" gutterBottom>
-                Teacher Attendance Dashboard
-            </Typography>
+        <Container maxWidth="lg" sx={{ py: 1 }}>
+            {/* Blue header bar */}
+            <AppBar 
+                position="static" 
+                elevation={0}
+                sx={{ 
+                    bgcolor: theme.palette.primary.main, 
+                    borderRadius: '12px', 
+                    mb: 4,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+                }}
+            >
+                <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
+                    <Typography 
+                        variant="h5" 
+                        component="h1" 
+                        sx={{ 
+                            fontWeight: 600, 
+                            letterSpacing: 0.5,
+                            color: 'white'
+                        }}
+                    >
+                        Teacher Attendance Dashboard
+                    </Typography>
+                </Toolbar>
+            </AppBar>
             
+            {/* Modern Tabs */}
             <Tabs 
                 value={activeTab} 
                 onChange={(e, newValue) => setActiveTab(newValue)}
-                sx={{ mb: 3 }}
+                sx={{ 
+                    mb: 4,
+                    '& .MuiTabs-indicator': {
+                        height: 4,
+                        borderRadius: '4px 4px 0 0'
+                    }
+                }}
+                variant="fullWidth"
+                textColor="primary"
+                indicatorColor="primary"
             >
-                <Tab label="Mark Attendance" />
-                <Tab label="My Attendance" />
-                <Tab label="Class Attendance" />
+                <Tab 
+                    label="Mark Attendance" 
+                    sx={{ 
+                        fontWeight: 600, 
+                        textTransform: 'none',
+                        fontSize: '1rem',
+                        '&.Mui-selected': {
+                            color: theme.palette.primary.main
+                        }
+                    }}
+                />
+                <Tab 
+                    label="My Attendance" 
+                    sx={{ 
+                        fontWeight: 600, 
+                        textTransform: 'none',
+                        fontSize: '1rem',
+                        '&.Mui-selected': {
+                            color: theme.palette.primary.main
+                        }
+                    }}
+                />
+                <Tab 
+                    label="Class Attendance" 
+                    sx={{ 
+                        fontWeight: 600, 
+                        textTransform: 'none',
+                        fontSize: '1rem',
+                        '&.Mui-selected': {
+                            color: theme.palette.primary.main
+                        }
+                    }}
+                />
             </Tabs>
 
             {activeTab === 0 && (
-                <>
+                <Box sx={{ animation: 'fadeIn 0.5s ease' }}>
                     {teacherClass && (
-                        <Box mb={3}>
-                            <Typography variant="h6">
-                                Class: {teacherClass.class_text} (Grade {teacherClass.class_num})
+                        <Box 
+                            mb={3} 
+                            p={2} 
+                            bgcolor={theme.palette.grey[100]} 
+                            borderRadius={2}
+                            boxShadow={1}
+                        >
+                            <Typography variant="h6" fontWeight={600} color="text.secondary">
+                                Class: <Box component="span" color="primary.main" fontWeight={700}>{teacherClass.class_text}</Box> (Grade {teacherClass.class_num})
                             </Typography>
                         </Box>
                     )}
@@ -233,40 +303,54 @@ const TeacherAttendance = () => {
                                 InputLabelProps={{ shrink: true }}
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
+                                variant="outlined"
+                                InputProps={{
+                                    sx: {
+                                        borderRadius: 2,
+                                        bgcolor: 'background.paper'
+                                    }
+                                }}
                             />
                         </Grid>
                     </Grid>
 
                     {studentsLoading ? (
-                        <Box display="flex" justifyContent="center">
-                            <CircularProgress />
+                        <Box display="flex" justifyContent="center" mt={6}>
+                            <CircularProgress size={60} thickness={4} sx={{ color: theme.palette.primary.main }} />
                         </Box>
                     ) : (
                         <>
-                            <Typography variant="h6" gutterBottom>
+                            <Typography variant="h6" gutterBottom fontWeight={600} color="text.primary" mb={2}>
                                 Mark Student Attendance
                             </Typography>
                             
                             <Grid container spacing={2}>
                                 {students.map(student => (
                                     <Grid item xs={12} sm={6} md={4} key={student._id}>
-                                        <Card>
+                                        <Card 
+                                            sx={{ 
+                                                borderRadius: 2, 
+                                                boxShadow: 3,
+                                                transition: 'transform 0.3s, box-shadow 0.3s',
+                                                '&:hover': {
+                                                    transform: 'translateY(-5px)',
+                                                    boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+                                                }
+                                            }}
+                                        >
                                             <CardContent>
-                                                <Box display="flex" alignItems="center" mb={1}>
-                                                    <Box 
-                                                        component="img"
+                                                <Stack direction="row" alignItems="center" spacing={2} mb={1.5}>
+                                                    <Avatar 
                                                         src={`/images/uploaded/student/${student.student_image}`}
                                                         alt={student.name}
-                                                        sx={{
-                                                            width: 40,
-                                                            height: 40,
-                                                            borderRadius: '50%',
-                                                            objectFit: 'cover',
-                                                            mr: 2
+                                                        sx={{ 
+                                                            width: 50, 
+                                                            height: 50,
+                                                            border: `2px solid ${theme.palette.primary.light}`
                                                         }}
                                                     />
-                                                    <Typography>{student.name}</Typography>
-                                                </Box>
+                                                    <Typography fontWeight={600}>{student.name}</Typography>
+                                                </Stack>
                                                 
                                                 <FormControl fullWidth size="small">
                                                     <InputLabel>Status</InputLabel>
@@ -276,6 +360,7 @@ const TeacherAttendance = () => {
                                                             handleStudentAttendanceChange(student._id, e.target.value)
                                                         }
                                                         label="Status"
+                                                        sx={{ borderRadius: 2 }}
                                                     >
                                                         <MenuItem value="Present">Present</MenuItem>
                                                         <MenuItem value="Absent">Absent</MenuItem>
@@ -287,28 +372,39 @@ const TeacherAttendance = () => {
                                 ))}
                             </Grid>
                             
-                            <Box mt={3}>
+                            <Box mt={4} display="flex" justifyContent="center">
                                 <Button
                                     variant="contained"
                                     color="primary"
                                     onClick={submitStudentAttendance}
                                     disabled={loading || !date || !teacherClass || Object.keys(studentAttendance).length === 0}
+                                    sx={{
+                                        py: 1.5,
+                                        px: 4,
+                                        borderRadius: 2,
+                                        fontWeight: 600,
+                                        fontSize: '1rem',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                        '&:hover': {
+                                            boxShadow: '0 6px 16px rgba(0,0,0,0.15)'
+                                        }
+                                    }}
                                 >
-                                    {loading ? <CircularProgress size={24} /> : "Submit Attendance"}
+                                    {loading ? <CircularProgress size={24} sx={{ color: 'white' }} /> : "Submit Attendance"}
                                 </Button>
                             </Box>
                         </>
                     )}
-                </>
+                </Box>
             )}
 
             {activeTab === 1 && (
-                <>
-                    <Typography variant="h6" gutterBottom>
+                <Box sx={{ animation: 'fadeIn 0.5s ease' }}>
+                    <Typography variant="h6" gutterBottom fontWeight={600} color="text.primary" mb={3}>
                         My Attendance Records
                     </Typography>
                     
-                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                    <Grid container spacing={2} sx={{ mb: 4 }}>
                         <Grid item xs={12} sm={6}>
                             <TextField
                                 fullWidth
@@ -317,6 +413,13 @@ const TeacherAttendance = () => {
                                 InputLabelProps={{ shrink: true }}
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
+                                variant="outlined"
+                                InputProps={{
+                                    sx: {
+                                        borderRadius: 2,
+                                        bgcolor: 'background.paper'
+                                    }
+                                }}
                             />
                         </Grid>
                         <Grid item xs={12} sm={6}>
@@ -327,12 +430,26 @@ const TeacherAttendance = () => {
                                 InputLabelProps={{ shrink: true }}
                                 value={endDate}
                                 onChange={(e) => setEndDate(e.target.value)}
+                                variant="outlined"
+                                InputProps={{
+                                    sx: {
+                                        borderRadius: 2,
+                                        bgcolor: 'background.paper'
+                                    }
+                                }}
                             />
                         </Grid>
                         <Grid item xs={12}>
                             <Button
-                                variant="outlined"
+                                variant="contained"
                                 onClick={fetchTeacherAttendance}
+                                sx={{
+                                    borderRadius: 2,
+                                    fontWeight: 600,
+                                    px: 4,
+                                    py: 1,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                }}
                             >
                                 Filter
                             </Button>
@@ -340,8 +457,8 @@ const TeacherAttendance = () => {
                     </Grid>
                     
                     {attendanceLoading ? (
-                        <Box display="flex" justifyContent="center">
-                            <CircularProgress />
+                        <Box display="flex" justifyContent="center" mt={6}>
+                            <CircularProgress size={60} thickness={4} sx={{ color: theme.palette.primary.main }} />
                         </Box>
                     ) : (
                         <>
@@ -349,8 +466,17 @@ const TeacherAttendance = () => {
                                 <>
                                     <Grid container spacing={3} sx={{ mb: 4 }}>
                                         <Grid item xs={12} md={6}>
-                                            <Paper elevation={3} sx={{ p: 2 }}>
-                                                <Typography variant="subtitle1" align="center">
+                                            <Paper 
+                                                elevation={0} 
+                                                sx={{ 
+                                                    p: 3, 
+                                                    borderRadius: 3, 
+                                                    bgcolor: 'background.paper',
+                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                                                    border: '1px solid rgba(0,0,0,0.05)'
+                                                }}
+                                            >
+                                                <Typography variant="subtitle1" align="center" fontWeight={600} mb={2}>
                                                     Attendance Distribution
                                                 </Typography>
                                                 <ResponsiveContainer width="100%" height={300}>
@@ -372,6 +498,7 @@ const TeacherAttendance = () => {
                                                             ]}
                                                             cx="50%"
                                                             cy="50%"
+                                                            innerRadius={60}
                                                             outerRadius={80}
                                                             fill="#8884d8"
                                                             dataKey="value"
@@ -379,19 +506,37 @@ const TeacherAttendance = () => {
                                                                 `${name}: ${(percent * 100).toFixed(0)}%`
                                                             }
                                                         >
-                                                            <Cell fill="#0088FE" />
-                                                            <Cell fill="#FF8042" />
+                                                            <Cell fill="#4e79a7" />
+                                                            <Cell fill="#f28e2c" />
                                                         </Pie>
-                                                        <Tooltip />
-                                                        <Legend />
+                                                        <Tooltip 
+                                                            contentStyle={{ 
+                                                                borderRadius: 8,
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                                            }}
+                                                        />
+                                                        <Legend 
+                                                            layout="vertical" 
+                                                            verticalAlign="middle" 
+                                                            align="right"
+                                                        />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                             </Paper>
                                         </Grid>
                                         
                                         <Grid item xs={12} md={6}>
-                                            <Paper elevation={3} sx={{ p: 2 }}>
-                                                <Typography variant="subtitle1" align="center">
+                                            <Paper 
+                                                elevation={0} 
+                                                sx={{ 
+                                                    p: 3, 
+                                                    borderRadius: 3, 
+                                                    bgcolor: 'background.paper',
+                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                                                    border: '1px solid rgba(0,0,0,0.05)'
+                                                }}
+                                            >
+                                                <Typography variant="subtitle1" align="center" fontWeight={600} mb={2}>
                                                     Attendance Over Time
                                                 </Typography>
                                                 <ResponsiveContainer width="100%" height={300}>
@@ -399,21 +544,34 @@ const TeacherAttendance = () => {
                                                         data={getTeacherAttendanceChartData()}
                                                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                                                     >
-                                                        <CartesianGrid strokeDasharray="3 3" />
-                                                        <XAxis dataKey="date" />
-                                                        <YAxis />
-                                                        <Tooltip />
-                                                        <Legend />
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                        <XAxis dataKey="date" stroke="#777" />
+                                                        <YAxis stroke="#777" />
+                                                        <Tooltip 
+                                                            contentStyle={{ 
+                                                                borderRadius: 8,
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                                            }}
+                                                        />
+                                                        <Legend 
+                                                            iconType="circle"
+                                                            iconSize={10}
+                                                        />
                                                         <Line 
                                                             type="monotone" 
                                                             dataKey="Present" 
-                                                            stroke="#0088FE" 
-                                                            activeDot={{ r: 8 }} 
+                                                            stroke="#4e79a7" 
+                                                            strokeWidth={2}
+                                                            dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                                                            activeDot={{ r: 6, stroke: '#4e79a7', strokeWidth: 2, fill: '#fff' }} 
                                                         />
                                                         <Line 
                                                             type="monotone" 
                                                             dataKey="Absent" 
-                                                            stroke="#FF8042" 
+                                                            stroke="#f28e2c" 
+                                                            strokeWidth={2}
+                                                            dot={{ r: 4, strokeWidth: 2, fill: '#fff' }}
+                                                            activeDot={{ r: 6, stroke: '#f28e2c', strokeWidth: 2, fill: '#fff' }} 
                                                         />
                                                     </LineChart>
                                                 </ResponsiveContainer>
@@ -421,25 +579,52 @@ const TeacherAttendance = () => {
                                         </Grid>
                                     </Grid>
                                     
-                                    <Paper elevation={3} sx={{ p: 2 }}>
+                                    <Paper 
+                                        elevation={0} 
+                                        sx={{ 
+                                            p: 3, 
+                                            borderRadius: 3, 
+                                            bgcolor: 'background.paper',
+                                            boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                                            border: '1px solid rgba(0,0,0,0.05)'
+                                        }}
+                                    >
+                                        <Typography variant="h6" fontWeight={600} mb={2}>
+                                            Attendance Details
+                                        </Typography>
                                         <TableContainer>
                                             <Table size="small">
                                                 <TableHead>
-                                                    <TableRow>
-                                                        <TableCell>Date</TableCell>
-                                                        <TableCell align="center">Status</TableCell>
+                                                    <TableRow sx={{ bgcolor: theme.palette.grey[100] }}>
+                                                        <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                                                        <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
                                                     {teacherAttendanceRecords.map((record) => (
-                                                        <TableRow key={record._id}>
-                                                            <TableCell>
+                                                        <TableRow 
+                                                            key={record._id}
+                                                            sx={{ 
+                                                                '&:nth-of-type(even)': {
+                                                                    bgcolor: theme.palette.grey[50]
+                                                                },
+                                                                '&:hover': {
+                                                                    bgcolor: theme.palette.action.hover
+                                                                }
+                                                            }}
+                                                        >
+                                                            <TableCell sx={{ fontWeight: 500 }}>
                                                                 {moment(record.date).format("MMMM D, YYYY")}
                                                             </TableCell>
                                                             <TableCell align="center">
                                                                 <Chip 
                                                                     label={record.status}
                                                                     color={record.status === "Present" ? "success" : "error"}
+                                                                    sx={{ 
+                                                                        fontWeight: 600,
+                                                                        px: 1,
+                                                                        minWidth: 90
+                                                                    }}
                                                                 />
                                                             </TableCell>
                                                         </TableRow>
@@ -450,22 +635,32 @@ const TeacherAttendance = () => {
                                     </Paper>
                                 </>
                             ) : (
-                                <Typography>No attendance records found</Typography>
+                                <Box 
+                                    textAlign="center" 
+                                    p={4} 
+                                    borderRadius={3} 
+                                    bgcolor="background.paper" 
+                                    boxShadow={1}
+                                >
+                                    <Typography variant="h6" color="text.secondary">
+                                        No attendance records found
+                                    </Typography>
+                                </Box>
                             )}
                         </>
                     )}
-                </>
+                </Box>
             )}
 
             {activeTab === 2 && teacherClass && (
-                <>
-                    <Typography variant="h6" gutterBottom>
-                        Class Attendance Summary: {teacherClass.class_text}
+                <Box sx={{ animation: 'fadeIn 0.5s ease' }}>
+                    <Typography variant="h6" gutterBottom fontWeight={600} color="text.primary" mb={3}>
+                        Class Attendance Summary: <Box component="span" color="primary.main">{teacherClass.class_text}</Box>
                     </Typography>
                     
                     {attendanceLoading ? (
-                        <Box display="flex" justifyContent="center">
-                            <CircularProgress />
+                        <Box display="flex" justifyContent="center" mt={6}>
+                            <CircularProgress size={60} thickness={4} sx={{ color: theme.palette.primary.main }} />
                         </Box>
                     ) : (
                         <>
@@ -473,8 +668,17 @@ const TeacherAttendance = () => {
                                 <>
                                     <Grid container spacing={3} sx={{ mb: 4 }}>
                                         <Grid item xs={12} md={6}>
-                                            <Paper elevation={3} sx={{ p: 2 }}>
-                                                <Typography variant="subtitle1" align="center">
+                                            <Paper 
+                                                elevation={0} 
+                                                sx={{ 
+                                                    p: 3, 
+                                                    borderRadius: 3, 
+                                                    bgcolor: 'background.paper',
+                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                                                    border: '1px solid rgba(0,0,0,0.05)'
+                                                }}
+                                            >
+                                                <Typography variant="subtitle1" align="center" fontWeight={600} mb={2}>
                                                     Class Attendance Distribution
                                                 </Typography>
                                                 <ResponsiveContainer width="100%" height={300}>
@@ -483,6 +687,7 @@ const TeacherAttendance = () => {
                                                             data={getStudentAttendanceChartData()}
                                                             cx="50%"
                                                             cy="50%"
+                                                            innerRadius={60}
                                                             outerRadius={80}
                                                             fill="#8884d8"
                                                             dataKey="value"
@@ -493,20 +698,38 @@ const TeacherAttendance = () => {
                                                             {getStudentAttendanceChartData().map((entry, index) => (
                                                                 <Cell 
                                                                     key={`cell-${index}`} 
-                                                                    fill={COLORS[index % COLORS.length]} 
+                                                                    fill={index === 0 ? '#4e79a7' : '#f28e2c'} 
                                                                 />
                                                             ))}
                                                         </Pie>
-                                                        <Tooltip />
-                                                        <Legend />
+                                                        <Tooltip 
+                                                            contentStyle={{ 
+                                                                borderRadius: 8,
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                                            }}
+                                                        />
+                                                        <Legend 
+                                                            layout="vertical" 
+                                                            verticalAlign="middle" 
+                                                            align="right"
+                                                        />
                                                     </PieChart>
                                                 </ResponsiveContainer>
                                             </Paper>
                                         </Grid>
                                         
                                         <Grid item xs={12} md={6}>
-                                            <Paper elevation={3} sx={{ p: 2 }}>
-                                                <Typography variant="subtitle1" align="center">
+                                            <Paper 
+                                                elevation={0} 
+                                                sx={{ 
+                                                    p: 3, 
+                                                    borderRadius: 3, 
+                                                    bgcolor: 'background.paper',
+                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                                                    border: '1px solid rgba(0,0,0,0.05)'
+                                                }}
+                                            >
+                                                <Typography variant="subtitle1" align="center" fontWeight={600} mb={2}>
                                                     Attendance by Student
                                                 </Typography>
                                                 <ResponsiveContainer width="100%" height={300}>
@@ -531,42 +754,82 @@ const TeacherAttendance = () => {
                                                         }, [])}
                                                         margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                                                     >
-                                                        <CartesianGrid strokeDasharray="3 3" />
-                                                        <XAxis dataKey="name" />
-                                                        <YAxis />
-                                                        <Tooltip />
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                                        <XAxis dataKey="name" stroke="#777" />
+                                                        <YAxis stroke="#777" />
+                                                        <Tooltip 
+                                                            contentStyle={{ 
+                                                                borderRadius: 8,
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                                            }}
+                                                        />
                                                         <Legend />
-                                                        <Bar dataKey="Present" fill="#0088FE" />
-                                                        <Bar dataKey="Absent" fill="#FF8042" />
+                                                        <Bar 
+                                                            dataKey="Present" 
+                                                            fill="#4e79a7" 
+                                                            radius={[4, 4, 0, 0]}
+                                                        />
+                                                        <Bar 
+                                                            dataKey="Absent" 
+                                                            fill="#f28e2c" 
+                                                            radius={[4, 4, 0, 0]}
+                                                        />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             </Paper>
                                         </Grid>
                                     </Grid>
                                     
-                                    <Paper elevation={3} sx={{ p: 2 }}>
+                                    <Paper 
+                                        elevation={0} 
+                                        sx={{ 
+                                            p: 3, 
+                                            borderRadius: 3, 
+                                            bgcolor: 'background.paper',
+                                            boxShadow: '0 8px 24px rgba(0,0,0,0.05)',
+                                            border: '1px solid rgba(0,0,0,0.05)'
+                                        }}
+                                    >
+                                        <Typography variant="h6" fontWeight={600} mb={2}>
+                                            Student Attendance Details
+                                        </Typography>
                                         <TableContainer>
                                             <Table size="small">
                                                 <TableHead>
-                                                    <TableRow>
-                                                        <TableCell>Student</TableCell>
-                                                        <TableCell>Date</TableCell>
-                                                        <TableCell align="center">Status</TableCell>
+                                                    <TableRow sx={{ bgcolor: theme.palette.grey[100] }}>
+                                                        <TableCell sx={{ fontWeight: 600 }}>Student</TableCell>
+                                                        <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                                                        <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
                                                     {studentAttendanceRecords.map((record) => (
-                                                        <TableRow key={record._id}>
-                                                            <TableCell>
+                                                        <TableRow 
+                                                            key={record._id}
+                                                            sx={{ 
+                                                                '&:nth-of-type(even)': {
+                                                                    bgcolor: theme.palette.grey[50]
+                                                                },
+                                                                '&:hover': {
+                                                                    bgcolor: theme.palette.action.hover
+                                                                }
+                                                            }}
+                                                        >
+                                                            <TableCell sx={{ fontWeight: 500 }}>
                                                                 {record.student?.name || 'N/A'}
                                                             </TableCell>
-                                                            <TableCell>
+                                                            <TableCell sx={{ fontWeight: 500 }}>
                                                                 {moment(record.date).format("MMMM D, YYYY")}
                                                             </TableCell>
                                                             <TableCell align="center">
                                                                 <Chip 
                                                                     label={record.status}
                                                                     color={record.status === "Present" ? "success" : "error"}
+                                                                    sx={{ 
+                                                                        fontWeight: 600,
+                                                                        px: 1,
+                                                                        minWidth: 90
+                                                                    }}
                                                                 />
                                                             </TableCell>
                                                         </TableRow>
@@ -577,11 +840,21 @@ const TeacherAttendance = () => {
                                     </Paper>
                                 </>
                             ) : (
-                                <Typography>No attendance records found for this class</Typography>
+                                <Box 
+                                    textAlign="center" 
+                                    p={4} 
+                                    borderRadius={3} 
+                                    bgcolor="background.paper" 
+                                    boxShadow={1}
+                                >
+                                    <Typography variant="h6" color="text.secondary">
+                                        No attendance records found for this class
+                                    </Typography>
+                                </Box>
                             )}
                         </>
                     )}
-                </>
+                </Box>
             )}
             
             <MessageSnackbar
@@ -592,6 +865,14 @@ const TeacherAttendance = () => {
                     if (success) setSuccess("");
                 }}
             />
+            
+            {/* Global animations */}
+            <style jsx global>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </Container>
     );
 };

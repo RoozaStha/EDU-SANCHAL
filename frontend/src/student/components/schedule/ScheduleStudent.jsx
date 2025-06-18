@@ -3,72 +3,66 @@ import { Calendar, momentLocalizer } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Material UI components
 import {
   Box,
   Typography,
-  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   Alert,
   Snackbar,
   CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  Tooltip,
   Paper,
-  Chip,
-  Divider,
+  IconButton,
   useTheme,
   Card,
-  CardContent,
   Grid,
   Skeleton,
   Switch,
   FormControlLabel,
   Tabs,
   Tab,
-  Avatar,
+  Button,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  CardContent,
+  Chip,
+  Divider,
+  alpha,
   List,
   ListItem,
   ListItemAvatar,
   ListItemText,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  LinearProgress,
-  TextField,
-  InputAdornment,
-  Badge,
-  Breadcrumbs,
-  Link,
-  Stack,
+  Avatar
 } from "@mui/material";
 
 // Icons
 import {
-  Refresh as RefreshIcon,
   Event as EventIcon,
   School as SchoolIcon,
-  Person as PersonIcon,
   Info as InfoIcon,
   ViewDay as ViewDayIcon,
   ViewWeek as ViewWeekIcon,
   ViewAgenda as ViewAgendaIcon,
   ArrowBack as ArrowBackIcon,
   ArrowForward as ArrowForwardIcon,
-  FilterList as FilterListIcon,
-  ExpandMore as ExpandMoreIcon,
-  Today as TodayIcon,
-  Subject as SubjectIcon,
+  Refresh as RefreshIcon,
+  BarChart as BarChartIcon,
+  Schedule as ScheduleIcon,
   Class as ClassIcon,
+  Person as PersonIcon,
+  Subject as SubjectIcon,
   AccessTime as TimeIcon,
   CalendarToday as CalendarIcon,
-  Search,
-  Home as HomeIcon,
-  Schedule as ScheduleIcon,
+  Close as CloseIcon
 } from "@mui/icons-material";
 
 const localizer = momentLocalizer(moment);
@@ -86,56 +80,63 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
         mb: 2,
         flexWrap: "wrap",
         gap: 1,
-        backgroundColor: theme.palette.background.paper,
-        p: 2,
-        borderRadius: 1,
-        boxShadow: theme.shadows[1],
+        background: alpha(theme.palette.primary.main, 0.08),
+        p: 1.5,
+        borderRadius: 2,
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <IconButton 
-          onClick={() => onNavigate("PREV")}
-          aria-label="Previous period"
-          sx={{ 
-            backgroundColor: theme.palette.action.hover,
-            '&:hover': {
-              backgroundColor: theme.palette.action.selected,
-            }
-          }}
-        >
-          <ArrowBackIcon />
-        </IconButton>
-        <IconButton 
-          onClick={() => onNavigate("TODAY")}
-          aria-label="Today"
-          sx={{ 
-            backgroundColor: theme.palette.action.hover,
-            '&:hover': {
-              backgroundColor: theme.palette.action.selected,
-            }
-          }}
-        >
-          <TodayIcon />
-        </IconButton>
-        <IconButton 
-          onClick={() => onNavigate("NEXT")}
-          aria-label="Next period"
-          sx={{ 
-            backgroundColor: theme.palette.action.hover,
-            '&:hover': {
-              backgroundColor: theme.palette.action.selected,
-            }
-          }}
-        >
-          <ArrowForwardIcon />
-        </IconButton>
+        <Tooltip title="Previous">
+          <IconButton 
+            onClick={() => onNavigate("PREV")}
+            sx={{
+              background: alpha(theme.palette.primary.main, 0.1),
+              '&:hover': {
+                background: alpha(theme.palette.primary.main, 0.2)
+              }
+            }}
+          >
+            <ArrowBackIcon color="primary" />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Today">
+          <IconButton 
+            onClick={() => onNavigate("TODAY")}
+            sx={{
+              background: alpha(theme.palette.primary.main, 0.1),
+              '&:hover': {
+                background: alpha(theme.palette.primary.main, 0.2)
+              }
+            }}
+          >
+            <EventIcon color="primary" />
+          </IconButton>
+        </Tooltip>
+        
+        <Tooltip title="Next">
+          <IconButton 
+            onClick={() => onNavigate("NEXT")}
+            sx={{
+              background: alpha(theme.palette.primary.main, 0.1),
+              '&:hover': {
+                background: alpha(theme.palette.primary.main, 0.2)
+              }
+            }}
+          >
+            <ArrowForwardIcon color="primary" />
+          </IconButton>
+        </Tooltip>
+        
         <Typography 
           variant="h6" 
           sx={{ 
             fontWeight: 700,
-            color: theme.palette.primary.main,
+            color: theme.palette.primary.dark,
             ml: 1,
-            fontSize: '1.25rem'
+            textTransform: 'uppercase',
+            letterSpacing: 0.5
           }}
         >
           {label}
@@ -149,15 +150,17 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
           minHeight: "unset",
           "& .MuiTabs-indicator": {
             height: 4,
-            borderRadius: '4px 4px 0 0',
+            borderRadius: 2,
             backgroundColor: theme.palette.primary.main,
           },
           "& .MuiTab-root": { 
             minHeight: 40, 
             py: 0.5,
-            textTransform: 'none',
-            fontSize: '0.875rem',
-            fontWeight: 500,
+            borderRadius: 1,
+            mr: 1,
+            '&.Mui-selected': {
+              background: alpha(theme.palette.primary.main, 0.1)
+            }
           },
         }}
       >
@@ -195,9 +198,9 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
                     : theme.palette.text.secondary,
                 "&.Mui-selected": { 
                   color: theme.palette.primary.main,
-                  fontWeight: 600,
+                  fontWeight: 600
                 },
-                minWidth: 'unset',
+                transition: 'all 0.2s ease',
               }}
             />
           );
@@ -207,146 +210,109 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
   );
 };
 
-// Custom event component for student view
-const StudentEvent = ({ event }) => {
+// Custom event component
+const CustomEvent = ({ event }) => {
   const theme = useTheme();
 
   return (
-    <Box
-      sx={{
-        p: 1,
-        height: "100%",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        borderRadius: '6px',
-        borderLeft: `4px solid ${event.resource.subject?.color || theme.palette.primary.main}`,
-        backgroundColor: `${event.resource.subject?.color || theme.palette.primary.main}20`,
-      }}
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2 }}
     >
-      <Typography
-        variant="body2"
-        sx={{ 
-          fontWeight: 600, 
-          mb: 0.5, 
-          lineHeight: 1.2,
-          fontSize: '0.75rem',
-          color: theme.palette.text.primary,
+      <Box
+        sx={{
+          p: 1,
+          height: "100%",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          borderRadius: 1,
+          boxShadow: 1
         }}
       >
-        {event.title}
-      </Typography>
+        <Typography
+          variant="body2"
+          sx={{ 
+            fontWeight: 700, 
+            mb: 0.5, 
+            lineHeight: 1.2,
+            fontSize: '0.8rem'
+          }}
+        >
+          {event.title}
+        </Typography>
 
-      <Typography 
-        variant="caption" 
-        sx={{ 
-          fontSize: "0.65rem",
-          color: theme.palette.text.secondary,
-          fontWeight: 500
-        }}
-      >
-        {moment(event.start).format("h:mm A")} -{" "}
-        {moment(event.end).format("h:mm A")}
-      </Typography>
-    </Box>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mt: "auto",
+          }}
+        >
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              fontSize: "0.65rem",
+              fontWeight: 500,
+              color: alpha('#fff', 0.9)
+            }}
+          >
+            {moment(event.start).format("h:mm A")} -{" "}
+            {moment(event.end).format("h:mm A")}
+          </Typography>
+        </Box>
+      </Box>
+    </motion.div>
   );
 };
 
-export default function StudentSchedule() {
+export default function ScheduleStudent() {
   const theme = useTheme();
   const [classes, setClasses] = useState([]);
+  const [selectedClass, setSelectedClass] = useState("");
   const [currentView, setCurrentView] = useState("week");
   const [events, setEvents] = useState([]);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showWeekends, setShowWeekends] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statsOpen, setStatsOpen] = useState(false);
+  
+  // NEW STATES FOR EVENT DETAILS
   const [eventDetailsOpen, setEventDetailsOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [selectedClass, setSelectedClass] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredSubjects, setFilteredSubjects] = useState([]);
-  const [filteredTeachers, setFilteredTeachers] = useState([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Get student's class from user data or let them select
-  const studentClass = useMemo(() => {
-    // In a real app, this would come from the student's profile
-    return classes.length > 0 ? classes[0]._id : "";
-  }, [classes]);
-
-  // Stats for the schedule
+  // Stats for the selected class
   const stats = useMemo(() => {
     if (!events.length) return null;
 
     const subjectCounts = {};
     const teacherCounts = {};
     let totalHours = 0;
-    const uniqueDays = new Set();
 
     events.forEach((event) => {
       const subjectName = event.title.split(" - ")[0];
       const teacherName = event.title.split(" - ")[1];
       const duration = (event.end - event.start) / (1000 * 60 * 60); // hours
-      const day = moment(event.start).format("YYYY-MM-DD");
 
       subjectCounts[subjectName] = (subjectCounts[subjectName] || 0) + 1;
       teacherCounts[teacherName] = (teacherCounts[teacherName] || 0) + 1;
       totalHours += duration;
-      uniqueDays.add(day);
     });
 
     return {
       totalEvents: events.length,
       totalHours: totalHours.toFixed(1),
-      totalDays: uniqueDays.size,
       subjectCounts,
       teacherCounts,
-      averagePerDay: (totalHours / uniqueDays.size).toFixed(1),
     };
   }, [events]);
 
-  // Filter events based on search and other criteria
-  const filteredEvents = useMemo(() => {
-    let result = [...events];
-    
-    if (!showWeekends) {
-      result = result.filter((event) => {
-        const day = event.start.getDay();
-        return day !== 0 && day !== 6; // 0 is Sunday, 6 is Saturday
-      });
-    }
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(event => 
-        event.title.toLowerCase().includes(term) ||
-        event.resource.subject?.subject_name.toLowerCase().includes(term) ||
-        event.resource.teacher?.name.toLowerCase().includes(term)
-      );
-    }
-
-    if (filteredSubjects.length > 0) {
-      result = result.filter(event => 
-        filteredSubjects.includes(event.resource.subject?._id)
-      );
-    }
-
-    if (filteredTeachers.length > 0) {
-      result = result.filter(event => 
-        filteredTeachers.includes(event.resource.teacher?._id)
-      );
-    }
-
-    return result;
-  }, [events, showWeekends, searchTerm, filteredSubjects, filteredTeachers]);
-
-  // Fetch student's schedule
   const refreshSchedules = useCallback(async () => {
-    if (!studentClass) return;
+    if (!selectedClass) return;
 
     setLoading(true);
     setError(null);
@@ -360,7 +326,7 @@ export default function StudentSchedule() {
       }
 
       const response = await axios.get(
-        `http://localhost:5000/api/schedule/fetch-with-class/${studentClass}`,
+        `http://localhost:5000/api/schedule/fetch-with-class/${selectedClass}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -396,473 +362,331 @@ export default function StudentSchedule() {
     } finally {
       setLoading(false);
     }
-  }, [studentClass]);
-
-  // Fetch classes (for admin view or if student can switch classes)
-  const fetchClasses = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("Authentication token missing. Please log in again.");
-        return;
-      }
-
-      const response = await axios.get(
-        `http://localhost:5000/api/class/all`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (!response.data.success) {
-        setError(response.data.message || "Failed to load classes");
-        return;
-      }
-
-      const fetchedClasses = response.data.data;
-      setClasses(fetchedClasses);
-
-      if (fetchedClasses.length > 0) {
-        setSelectedClass(fetchedClasses[0]._id);
-      }
-    } catch (error) {
-      console.error("Error fetching classes:", error);
-      setError(error.response?.data?.message || "Failed to load classes.");
-    }
-  };
+  }, [selectedClass]);
 
   useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setError("Authentication token missing. Please log in again.");
+          return;
+        }
+
+        const response = await axios.get(
+          `http://localhost:5000/api/class/all`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (!response.data.success) {
+          setError(response.data.message || "Failed to load classes");
+          return;
+        }
+
+        const fetchedClasses = response.data.data;
+        setClasses(fetchedClasses);
+
+        if (fetchedClasses.length > 0) {
+          setSelectedClass(fetchedClasses[0]._id);
+        }
+      } catch (error) {
+        console.error("Error fetching classes:", error);
+        setError(error.response?.data?.message || "Failed to load classes.");
+      }
+    };
+
     fetchClasses();
   }, []);
 
   useEffect(() => {
-    if (studentClass) {
+    if (selectedClass) {
       refreshSchedules();
     }
-  }, [studentClass, refreshSchedules]);
+  }, [selectedClass, refreshSchedules]);
 
+  const handleCloseError = () => setError(null);
+
+  // NEW: Event click handler
   const handleEventClick = (event) => {
     setSelectedEvent(event);
     setEventDetailsOpen(true);
   };
 
+  // NEW: Close event details
   const handleCloseEventDetails = () => {
     setEventDetailsOpen(false);
     setSelectedEvent(null);
   };
 
-  const handleCloseError = () => setError(null);
-  const handleCloseSuccess = () => setSuccess(null);
+  const filteredEvents = useMemo(() => {
+    if (!showWeekends) {
+      return events.filter((event) => {
+        const day = event.start.getDay();
+        return day !== 0 && day !== 6; // 0 is Sunday, 6 is Saturday
+      });
+    }
+    return events;
+  }, [events, showWeekends]);
 
   const eventStyleGetter = (event) => {
-    // Use subject-based color if available, otherwise fall back to a default
-    const subjectColor = event.resource.subject?.color || theme.palette.primary.main;
-    
+    const subjectName = event.title.split(" - ")[0].toLowerCase();
+
+    const stringToColor = (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      let color = "#";
+      for (let i = 0; i < 3; i++) {
+        const value = (hash >> (i * 8)) & 0xff;
+        color += ("00" + value.toString(16)).substr(-2);
+      }
+      return color;
+    };
+
+    const baseColor = stringToColor(subjectName);
+
     return {
       style: {
-        backgroundColor: `${subjectColor}20`,
-        borderRadius: "6px",
+        backgroundColor: baseColor,
+        borderRadius: "8px",
         opacity: 0.9,
-        color: theme.palette.text.primary,
+        color: "white",
         border: "0px",
         display: "block",
         cursor: "pointer",
-        boxShadow: theme.shadows[0],
-        transition: "all 0.2s ease",
+        boxShadow: theme.shadows[2],
+        transition: "all 0.3s ease",
         "&:hover": {
           opacity: 1,
-          boxShadow: theme.shadows[2],
-          transform: 'translateY(-1px)',
-          backgroundColor: `${subjectColor}30`,
+          boxShadow: theme.shadows[4],
+          transform: "translateY(-2px)"
         },
       },
     };
   };
 
-  // Extract unique subjects and teachers for filtering
-  const { subjects, teachers } = useMemo(() => {
-    const subjectsMap = new Map();
-    const teachersMap = new Map();
-
-    events.forEach(event => {
-      if (event.resource.subject) {
-        subjectsMap.set(event.resource.subject._id, {
-          ...event.resource.subject,
-          color: event.resource.subject.color || theme.palette.primary.main
-        });
-      }
-      if (event.resource.teacher) {
-        teachersMap.set(event.resource.teacher._id, event.resource.teacher);
-      }
-    });
-
-    return {
-      subjects: Array.from(subjectsMap.values()),
-      teachers: Array.from(teachersMap.values())
-    };
-  }, [events, theme]);
-
-  const toggleSubjectFilter = (subjectId) => {
-    setFilteredSubjects(prev => 
-      prev.includes(subjectId) 
-        ? prev.filter(id => id !== subjectId) 
-        : [...prev, subjectId]
-    );
-  };
-
-  const toggleTeacherFilter = (teacherId) => {
-    setFilteredTeachers(prev => 
-      prev.includes(teacherId) 
-        ? prev.filter(id => id !== teacherId) 
-        : [...prev, teacherId]
-    );
-  };
-
-  const clearAllFilters = () => {
-    setSearchTerm('');
-    setFilteredSubjects([]);
-    setFilteredTeachers([]);
-    setShowWeekends(true);
-  };
-
-  const hasActiveFilters = searchTerm || filteredSubjects.length > 0 || filteredTeachers.length > 0 || !showWeekends;
-
   return (
-    <Box sx={{ 
-      height: 'calc(100vh - 64px)', 
-      p: { xs: 1, sm: 2, md: 3 },
-      background: theme.palette.mode === 'light' 
-        ? 'linear-gradient(to bottom, #f0f4ff, #ffffff)' 
-        : theme.palette.background.default,
-    }}>
-      {/* Breadcrumb Navigation */}
-      <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-        <Link
-          underline="hover"
-          color="inherit"
-          href="#"
-          sx={{ display: 'flex', alignItems: 'center' }}
-        >
-          <HomeIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-          Home
-        </Link>
-        <Link
-          underline="hover"
-          color="inherit"
-          href="#"
-          sx={{ display: 'flex', alignItems: 'center' }}
-        >
-          <ScheduleIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-          Schedule
-        </Link>
-        <Typography color="text.primary" sx={{ display: 'flex', alignItems: 'center' }}>
-          <EventIcon sx={{ mr: 0.5 }} fontSize="inherit" />
-          My Classes
-        </Typography>
-      </Breadcrumbs>
-
+    <Box sx={{ height: "90vh", p: { xs: 1, sm: 2, md: 3 } }}>
       <Paper
-        elevation={1}
+        elevation={0}
         sx={{
+          p: { xs: 2, sm: 3 },
           height: "100%",
-          borderRadius: 3,
+          borderRadius: 4,
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          bgcolor: 'background.paper',
-          boxShadow: theme.shadows[2],
+          bgcolor: theme.palette.background.paper,
+          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+          boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.1)}`
         }}
       >
-        {/* Header Section */}
         <Box
           sx={{
-            p: 2,
-            backgroundColor: 'background.paper',
-            borderBottom: `1px solid ${theme.palette.divider}`,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+            flexWrap: "wrap",
+            gap: 2,
           }}
         >
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <SchoolIcon sx={{ 
-                color: theme.palette.primary.main, 
-                fontSize: '2rem' 
-              }} />
-              <Typography 
-                variant="h4" 
-                sx={{ 
-                  fontWeight: 700,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <SchoolIcon 
+              sx={{ 
+                fontSize: 40,
+                color: theme.palette.primary.main,
+                background: alpha(theme.palette.primary.main, 0.1),
+                p: 1,
+                borderRadius: 2
+              }} 
+            />
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 800,
+                background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.dark} 90%)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                letterSpacing: -0.5
+              }}
+            >
+              Class Schedule
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant="contained"
+                startIcon={<BarChartIcon />}
+                onClick={() => setStatsOpen(true)}
+                disabled={!events.length}
+                sx={{
+                  borderRadius: 2,
+                  boxShadow: `0 4px 8px ${alpha(theme.palette.primary.main, 0.2)}`,
+                  textTransform: 'none',
+                  fontWeight: 600
                 }}
               >
-                My Class Schedule
-              </Typography>
-            </Box>
+                View Stats
+              </Button>
+            </motion.div>
 
-            <Stack direction="row" spacing={1}>
-              <Tooltip title="View statistics">
+            <Tooltip title="Refresh schedule data">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
                   variant="outlined"
-                  startIcon={<InfoIcon />}
-                  onClick={() => setStatsOpen(true)}
-                  disabled={!events.length}
-                  size="small"
-                  sx={{ 
-                    borderColor: theme.palette.primary.light,
-                    color: theme.palette.primary.main,
-                    '&:hover': {
-                      borderColor: theme.palette.primary.main,
-                    }
-                  }}
-                >
-                  Stats
-                </Button>
-              </Tooltip>
-
-              <Tooltip title="Refresh schedule">
-                <Button
-                  variant="contained"
                   startIcon={<RefreshIcon />}
                   onClick={refreshSchedules}
-                  disabled={!studentClass || loading}
-                  size="small"
+                  disabled={!selectedClass}
                   sx={{
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                    boxShadow: theme.shadows[1],
+                    borderRadius: 2,
+                    borderWidth: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
                     '&:hover': {
-                      boxShadow: theme.shadows[3],
+                      borderWidth: 2
                     }
                   }}
                 >
-                  {loading ? 'Refreshing...' : 'Refresh'}
+                  Refresh
                 </Button>
-              </Tooltip>
-            </Stack>
-          </Stack>
+              </motion.div>
+            </Tooltip>
+          </Box>
         </Box>
 
-        {/* Quick Filter Bar */}
-        <Box
-          sx={{
-            p: 2,
-            backgroundColor: 'background.paper',
-            borderBottom: `1px solid ${theme.palette.divider}`,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            flexWrap: 'wrap',
+        <Box 
+          sx={{ 
+            display: "flex", 
+            gap: 3, 
+            mb: 3, 
+            flexWrap: "wrap",
+            alignItems: 'center'
           }}
         >
-          <TextField
-            size="small"
-            placeholder="Search classes..."
-            variant="outlined"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" />
-                </InputAdornment>
-              ),
-              sx: { 
-                backgroundColor: 'background.paper',
-                width: 250,
+          <FormControl 
+            sx={{ 
+              minWidth: 220, 
+              flex: 1,
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+                borderWidth: 2,
+                '&:hover fieldset': {
+                  borderColor: theme.palette.primary.main
+                }
               }
             }}
-          />
-
-          <Tooltip title="Toggle weekends">
-            <FormControlLabel
-              control={
-                <Switch
-                  size="small"
-                  checked={showWeekends}
-                  onChange={(e) => setShowWeekends(e.target.checked)}
-                  color="primary"
-                />
-              }
-              label="Show Weekends"
-              labelPlacement="start"
-              sx={{ ml: 0 }}
-            />
-          </Tooltip>
-
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<FilterListIcon />}
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            sx={{ ml: 'auto', borderColor: theme.palette.divider }}
           >
-            {filtersOpen ? 'Hide Filters' : 'More Filters'}
-          </Button>
-
-          {hasActiveFilters && (
-            <Button
-              variant="text"
-              size="small"
-              onClick={clearAllFilters}
-              color="error"
-              sx={{ fontWeight: 500 }}
+            <InputLabel 
+              id="class-label"
+              sx={{
+                fontWeight: 600,
+                color: theme.palette.text.primary
+              }}
             >
-              Clear All
-            </Button>
-          )}
-        </Box>
+              Select Class
+            </InputLabel>
+            <Select
+              labelId="class-label"
+              label="Select Class"
+              value={selectedClass}
+              onChange={(e) => setSelectedClass(e.target.value)}
+              startAdornment={
+                <ClassIcon sx={{ mr: 1, ml: -0.5, color: theme.palette.primary.main }} />
+              }
+              MenuProps={{
+                PaperProps: {
+                  sx: {
+                    borderRadius: 2,
+                    mt: 1,
+                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.1)}`
+                  }
+                }
+              }}
+            >
+              {classes.map((cls) => (
+                <MenuItem 
+                  key={cls._id} 
+                  value={cls._id}
+                  sx={{
+                    '&:hover': {
+                      background: alpha(theme.palette.primary.main, 0.1)
+                    },
+                    '&.Mui-selected': {
+                      background: alpha(theme.palette.primary.main, 0.2)
+                    }
+                  }}
+                >
+                  {cls.class_text}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-        {/* Expanded Filters Section */}
-        {filtersOpen && (
-          <Box
-            sx={{
-              p: 2,
-              backgroundColor: 'background.paper',
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            }}
-          >
-            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-              Filter Classes
-            </Typography>
-            
-            {subjects.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="body1" gutterBottom sx={{ fontWeight: 500, mb: 1 }}>
-                  By Subject:
-                </Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                  {subjects.map(subject => (
-                    <Chip
-                      key={subject._id}
-                      label={subject.subject_name}
-                      onClick={() => toggleSubjectFilter(subject._id)}
-                      color={filteredSubjects.includes(subject._id) ? "primary" : "default"}
-                      variant={filteredSubjects.includes(subject._id) ? "filled" : "outlined"}
-                      icon={<SubjectIcon />}
-                      size="medium"
-                      sx={{
-                        '&.MuiChip-filledPrimary': {
-                          backgroundColor: subject.color,
-                          color: 'white',
-                        },
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            {teachers.length > 0 && (
-              <Box>
-                <Typography variant="body1" gutterBottom sx={{ fontWeight: 500, mb: 1 }}>
-                  By Teacher:
-                </Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                  {teachers.map(teacher => (
-                    <Chip
-                      key={teacher._id}
-                      label={teacher.name}
-                      onClick={() => toggleTeacherFilter(teacher._id)}
-                      color={filteredTeachers.includes(teacher._id) ? "secondary" : "default"}
-                      variant={filteredTeachers.includes(teacher._id) ? "filled" : "outlined"}
-                      icon={<PersonIcon />}
-                      size="medium"
-                    />
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </Box>
-        )}
-
-        {/* Status Indicators */}
-        {hasActiveFilters && (
-          <Box
-            sx={{
-              p: 1.5,
-              backgroundColor: theme.palette.action.selected,
-              borderBottom: `1px solid ${theme.palette.divider}`,
-            }}
-          >
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>
-                Active Filters:
+          <FormControlLabel
+            control={
+              <Switch
+                checked={showWeekends}
+                onChange={(e) => setShowWeekends(e.target.checked)}
+                color="primary"
+                sx={{
+                  '& .MuiSwitch-track': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.3)
+                  }
+                }}
+              />
+            }
+            label={
+              <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                Show Weekends
               </Typography>
-              
-              {!showWeekends && (
-                <Chip
-                  label="No weekends"
-                  size="small"
-                  onDelete={() => setShowWeekends(true)}
-                  sx={{ backgroundColor: theme.palette.error.light }}
-                />
-              )}
-              
-              {searchTerm && (
-                <Chip
-                  label={`Search: "${searchTerm}"`}
-                  size="small"
-                  onDelete={() => setSearchTerm('')}
-                />
-              )}
-              
-              {filteredSubjects.length > 0 && (
-                <Chip
-                  label={`${filteredSubjects.length} subject(s)`}
-                  size="small"
-                  onDelete={() => setFilteredSubjects([])}
-                  color="primary"
-                />
-              )}
-              
-              {filteredTeachers.length > 0 && (
-                <Chip
-                  label={`${filteredTeachers.length} teacher(s)`}
-                  size="small"
-                  onDelete={() => setFilteredTeachers([])}
-                  color="secondary"
-                />
-              )}
-            </Stack>
-          </Box>
-        )}
+            }
+            sx={{ ml: 0 }}
+          />
+        </Box>
 
         {error && (
           <Snackbar
             open={!!error}
             autoHideDuration={6000}
             onClose={handleCloseError}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           >
-            <Alert
-              onClose={handleCloseError}
-              severity="error"
-              sx={{ width: "100%" }}
-              variant="filled"
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
             >
-              {error}
-            </Alert>
+              <Alert
+                onClose={handleCloseError}
+                severity="error"
+                sx={{ 
+                  width: "100%",
+                  borderRadius: 2,
+                  boxShadow: theme.shadows[3],
+                  alignItems: 'center'
+                }}
+                variant="filled"
+              >
+                {error}
+              </Alert>
+            </motion.div>
           </Snackbar>
         )}
 
-        {success && (
-          <Snackbar
-            open={!!success}
-            autoHideDuration={6000}
-            onClose={handleCloseSuccess}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert
-              onClose={handleCloseSuccess}
-              severity="success"
-              sx={{ width: "100%" }}
-              variant="filled"
-            >
-              {success}
-            </Alert>
-          </Snackbar>
-        )}
-
-        {/* Main Calendar Content */}
-        <Box sx={{ flex: 1, overflow: "hidden", position: 'relative' }}>
+        <Box 
+          sx={{ 
+            flex: 1, 
+            overflow: "hidden", 
+            borderRadius: 3, 
+            mt: 1,
+            position: 'relative',
+            background: alpha(theme.palette.primary.main, 0.03),
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`
+          }}
+        >
           {loading ? (
             <Box
               sx={{
@@ -870,11 +694,21 @@ export default function StudentSchedule() {
                 flexDirection: "column",
                 gap: 2,
                 height: "100%",
-                p: 3,
+                p: 3
               }}
             >
-              <Skeleton variant="rectangular" width="100%" height={80} animation="wave" />
-              <Skeleton variant="rectangular" width="100%" height="80%" animation="wave" />
+              <Skeleton 
+                variant="rectangular" 
+                width="100%" 
+                height={80} 
+                sx={{ borderRadius: 2 }} 
+              />
+              <Skeleton 
+                variant="rectangular" 
+                width="100%" 
+                height="80%" 
+                sx={{ borderRadius: 2 }} 
+              />
             </Box>
           ) : (
             <Calendar
@@ -885,187 +719,399 @@ export default function StudentSchedule() {
               views={{ week: true, day: true, agenda: true }}
               defaultView="week"
               step={30}
-              timeslots={2}
-              min={new Date(new Date().setHours(7, 0))}
-              max={new Date(new Date().setHours(21, 0))}
+              timeslots={1}
+              min={new Date(new Date().setHours(8, 0))}
+              max={new Date(new Date().setHours(20, 0))}
               startAccessor="start"
               endAccessor="end"
               date={currentDate}
               onNavigate={(date) => setCurrentDate(date)}
+              // ADDED EVENT CLICK HANDLER
               onSelectEvent={handleEventClick}
               showMultiDayTimes
               eventPropGetter={eventStyleGetter}
               style={{
                 height: "100%",
-                backgroundColor: theme.palette.background.default,
+                backgroundColor: theme.palette.background.paper,
+                borderRadius: "12px",
               }}
               components={{
                 toolbar: CustomToolbar,
-                event: StudentEvent,
+                event: CustomEvent,
               }}
             />
           )}
         </Box>
       </Paper>
 
-      {/* Event Details Dialog */}
+      {/* Stats Dialog */}
+      <Dialog
+        open={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{
+          sx: { 
+            borderRadius: 3,
+            background: theme.palette.background.paper,
+            boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.15)}`,
+            overflow: 'hidden'
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            color: 'white',
+            py: 2,
+            px: 3
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <BarChartIcon fontSize="large" />
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Schedule Statistics
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          {stats ? (
+            <>
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={6}>
+                  <motion.div whileHover={{ y: -2 }}>
+                    <Card
+                      sx={{
+                        borderRadius: 2,
+                        boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
+                        borderLeft: `4px solid ${theme.palette.primary.main}`
+                      }}
+                    >
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <ScheduleIcon color="primary" />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Total Events
+                          </Typography>
+                        </Box>
+                        <Typography 
+                          variant="h3" 
+                          sx={{ 
+                            textAlign: "left",
+                            fontWeight: 800,
+                            color: theme.palette.primary.main
+                          }}
+                        >
+                          {stats.totalEvents}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </Grid>
+                <Grid item xs={6}>
+                  <motion.div whileHover={{ y: -2 }}>
+                    <Card
+                      sx={{
+                        borderRadius: 2,
+                        boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.1)}`,
+                        borderLeft: `4px solid ${theme.palette.secondary.main}`
+                      }}
+                    >
+                      <CardContent>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <EventIcon color="secondary" />
+                          <Typography variant="subtitle2" color="text.secondary">
+                            Total Hours
+                          </Typography>
+                        </Box>
+                        <Typography 
+                          variant="h3" 
+                          sx={{ 
+                            textAlign: "left",
+                            fontWeight: 800,
+                            color: theme.palette.secondary.main
+                          }}
+                        >
+                          {stats.totalHours}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography 
+                variant="subtitle1" 
+                sx={{ 
+                  mt: 2, 
+                  mb: 1.5,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                <SchoolIcon color="primary" fontSize="small" />
+                Events by Subject
+              </Typography>
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexWrap: "wrap", 
+                  gap: 1, 
+                  mb: 3,
+                  '& .MuiChip-root': {
+                    borderRadius: 1,
+                    fontWeight: 500
+                  }
+                }}
+              >
+                {Object.entries(stats.subjectCounts).map(([subject, count]) => (
+                  <Chip
+                    key={subject}
+                    label={`${subject}: ${count}`}
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      borderWidth: 2,
+                      '&:hover': {
+                        background: alpha(theme.palette.primary.main, 0.1)
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+
+              <Typography 
+                variant="subtitle1" 
+                sx={{ 
+                  mt: 2, 
+                  mb: 1.5,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                <ClassIcon color="secondary" fontSize="small" />
+                Events by Teacher
+              </Typography>
+              <Box 
+                sx={{ 
+                  display: "flex", 
+                  flexWrap: "wrap", 
+                  gap: 1,
+                  '& .MuiChip-root': {
+                    borderRadius: 1,
+                    fontWeight: 500
+                  }
+                }}
+              >
+                {Object.entries(stats.teacherCounts).map(([teacher, count]) => (
+                  <Chip
+                    key={teacher}
+                    label={`${teacher}: ${count}`}
+                    color="secondary"
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      borderWidth: 2,
+                      '&:hover': {
+                        background: alpha(theme.palette.secondary.main, 0.1)
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+            </>
+          ) : (
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                py: 4,
+                textAlign: 'center'
+              }}
+            >
+              <InfoIcon 
+                sx={{ 
+                  fontSize: 48,
+                  color: theme.palette.text.disabled,
+                  mb: 2
+                }} 
+              />
+              <Typography variant="body1" color="text.secondary">
+                No statistics available for the selected class
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, background: alpha(theme.palette.primary.main, 0.03) }}>
+          <Button 
+            onClick={() => setStatsOpen(false)}
+            variant="contained"
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              fontWeight: 600,
+              textTransform: 'none'
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* NEW: Event Details Dialog */}
       <Dialog
         open={eventDetailsOpen}
         onClose={handleCloseEventDetails}
         fullWidth
         maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 3 } }}
+        PaperProps={{
+          sx: { 
+            borderRadius: 3,
+            overflow: 'hidden',
+            background: theme.palette.background.paper,
+            boxShadow: `0 16px 32px ${alpha(theme.palette.primary.main, 0.2)}`
+          }
+        }}
       >
         {selectedEvent && (
           <>
-            <DialogTitle sx={{ 
-              background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              py: 2,
-            }}>
-              <EventIcon fontSize="large" />
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                Class Details
-              </Typography>
+            <DialogTitle
+              sx={{
+                background: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                color: 'white',
+                py: 2,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <EventIcon />
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  Class Details
+                </Typography>
+              </Box>
+              <IconButton 
+                onClick={handleCloseEventDetails}
+                sx={{ color: 'white' }}
+              >
+                <CloseIcon />
+              </IconButton>
             </DialogTitle>
-            <DialogContent sx={{ pt: 3, pb: 1 }}>
-              <List dense sx={{ py: 1 }}>
-                <ListItem sx={{ py: 1.5 }}>
+            <DialogContent sx={{ py: 3 }}>
+              <List sx={{ py: 0 }}>
+                <ListItem sx={{ py: 2 }}>
                   <ListItemAvatar>
                     <Avatar sx={{ 
-                      bgcolor: selectedEvent.resource.subject?.color || theme.palette.primary.main,
-                      color: 'white',
-                      width: 40,
-                      height: 40
+                      bgcolor: theme.palette.primary.light,
+                      color: theme.palette.primary.contrastText 
                     }}>
                       <SubjectIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Subject"
-                    secondary={selectedEvent.resource.subject?.subject_name || "Unknown"}
-                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
-                    secondaryTypographyProps={{ 
-                      color: 'text.primary',
-                      fontWeight: 500,
-                      fontSize: '1rem'
-                    }}
+                    secondary={selectedEvent.title.split(' - ')[0]}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
                   />
                 </ListItem>
-
-                <Divider component="li" variant="middle" sx={{ my: 1 }} />
-
-                <ListItem sx={{ py: 1.5 }}>
+                
+                <Divider variant="middle" />
+                
+                <ListItem sx={{ py: 2 }}>
                   <ListItemAvatar>
                     <Avatar sx={{ 
-                      bgcolor: theme.palette.secondary.main, 
-                      color: 'white',
-                      width: 40,
-                      height: 40
+                      bgcolor: theme.palette.secondary.light,
+                      color: theme.palette.secondary.contrastText 
                     }}>
                       <PersonIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Teacher"
-                    secondary={selectedEvent.resource.teacher?.name || "Unknown"}
-                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
-                    secondaryTypographyProps={{ 
-                      color: 'text.primary',
-                      fontWeight: 500,
-                      fontSize: '1rem'
-                    }}
+                    secondary={selectedEvent.title.split(' - ')[1]}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
                   />
                 </ListItem>
-
-                <Divider component="li" variant="middle" sx={{ my: 1 }} />
-
-                <ListItem sx={{ py: 1.5 }}>
+                
+                <Divider variant="middle" />
+                
+                <ListItem sx={{ py: 2 }}>
                   <ListItemAvatar>
                     <Avatar sx={{ 
-                      bgcolor: theme.palette.success.main, 
-                      color: 'white',
-                      width: 40,
-                      height: 40
+                      bgcolor: theme.palette.success.light,
+                      color: theme.palette.success.contrastText 
                     }}>
                       <ClassIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Class"
-                    secondary={selectedEvent.resource.class?.class_text || "Unknown"}
-                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
-                    secondaryTypographyProps={{ 
-                      color: 'text.primary',
-                      fontWeight: 500,
-                      fontSize: '1rem'
-                    }}
+                    secondary={selectedEvent.resource.class?.class_text || 'N/A'}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
                   />
                 </ListItem>
-
-                <Divider component="li" variant="middle" sx={{ my: 1 }} />
-
-                <ListItem sx={{ py: 1.5 }}>
+                
+                <Divider variant="middle" />
+                
+                <ListItem sx={{ py: 2 }}>
                   <ListItemAvatar>
                     <Avatar sx={{ 
-                      bgcolor: theme.palette.warning.main, 
-                      color: 'white',
-                      width: 40,
-                      height: 40
+                      bgcolor: theme.palette.warning.light,
+                      color: theme.palette.warning.contrastText 
                     }}>
                       <TimeIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Time"
-                    secondary={`${moment(selectedEvent.start).format("h:mm A")} - ${moment(selectedEvent.end).format("h:mm A")}`}
-                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
-                    secondaryTypographyProps={{ 
-                      color: 'text.primary',
-                      fontWeight: 500,
-                      fontSize: '1rem'
-                    }}
+                    secondary={`${moment(selectedEvent.start).format('h:mm A')} - ${moment(selectedEvent.end).format('h:mm A')}`}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
                   />
                 </ListItem>
-
-                <Divider component="li" variant="middle" sx={{ my: 1 }} />
-
-                <ListItem sx={{ py: 1.5 }}>
+                
+                <Divider variant="middle" />
+                
+                <ListItem sx={{ py: 2 }}>
                   <ListItemAvatar>
                     <Avatar sx={{ 
-                      bgcolor: theme.palette.info.main, 
-                      color: 'white',
-                      width: 40,
-                      height: 40
+                      bgcolor: theme.palette.info.light,
+                      color: theme.palette.info.contrastText 
                     }}>
                       <CalendarIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Date"
-                    secondary={moment(selectedEvent.start).format("dddd, MMMM Do YYYY")}
-                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
-                    secondaryTypographyProps={{ 
-                      color: 'text.primary',
-                      fontWeight: 500,
-                      fontSize: '1rem'
-                    }}
+                    secondary={moment(selectedEvent.start).format('dddd, MMMM D, YYYY')}
+                    primaryTypographyProps={{ fontWeight: 600 }}
+                    secondaryTypographyProps={{ variant: 'body1' }}
                   />
                 </ListItem>
               </List>
             </DialogContent>
-            <DialogActions sx={{ p: 2 }}>
+            <DialogActions sx={{ p: 2, background: alpha(theme.palette.primary.main, 0.05) }}>
               <Button 
                 onClick={handleCloseEventDetails}
                 variant="contained"
                 sx={{
                   borderRadius: 2,
                   px: 3,
-                  py: 1,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  background: `linear-gradient(45deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`
                 }}
               >
                 Close
@@ -1073,196 +1119,6 @@ export default function StudentSchedule() {
             </DialogActions>
           </>
         )}
-      </Dialog>
-
-      {/* Stats Dialog */}
-      <Dialog
-        open={statsOpen}
-        onClose={() => setStatsOpen(false)}
-        fullWidth
-        maxWidth="md"
-        PaperProps={{ sx: { borderRadius: 3 } }}
-      >
-        <DialogTitle sx={{ 
-          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          py: 2,
-        }}>
-          <InfoIcon fontSize="large" />
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
-            Schedule Statistics
-          </Typography>
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3, pb: 1 }}>
-          {stats ? (
-            <>
-              <Grid container spacing={3} sx={{ mb: 3 }}>
-                <Grid item xs={12} sm={4}>
-                  <Card 
-                    variant="outlined"
-                    sx={{ 
-                      borderRadius: 2,
-                      borderColor: theme.palette.divider,
-                      boxShadow: theme.shadows[1],
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                      <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
-                        {stats.totalEvents}
-                      </Typography>
-                      <Typography
-                        variant="subtitle1"
-                        color="text.secondary"
-                        sx={{ fontWeight: 600 }}
-                      >
-                        Total Classes
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Card 
-                    variant="outlined"
-                    sx={{ 
-                      borderRadius: 2,
-                      borderColor: theme.palette.divider,
-                      boxShadow: theme.shadows[1],
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                      <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
-                        {stats.totalHours}
-                      </Typography>
-                      <Typography
-                        variant="subtitle1"
-                        color="text.secondary"
-                        sx={{ fontWeight: 600 }}
-                      >
-                        Total Hours
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <Card 
-                    variant="outlined"
-                    sx={{ 
-                      borderRadius: 2,
-                      borderColor: theme.palette.divider,
-                      boxShadow: theme.shadows[1],
-                    }}
-                  >
-                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
-                      <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
-                        {stats.averagePerDay}
-                      </Typography>
-                      <Typography
-                        variant="subtitle1"
-                        color="text.secondary"
-                        sx={{ fontWeight: 600 }}
-                      >
-                        Avg Hours/Day
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              </Grid>
-
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-                    Classes by Subject
-                  </Typography>
-                  {Object.entries(stats.subjectCounts).map(([subject, count]) => {
-                    const percentage = (count / stats.totalEvents) * 100;
-                    return (
-                      <Box key={subject} sx={{ mb: 2.5 }}>
-                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {subject}
-                          </Typography>
-                          <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
-                            {count} ({percentage.toFixed(1)}%)
-                          </Typography>
-                        </Stack>
-                        <LinearProgress
-                          variant="determinate"
-                          value={percentage}
-                          sx={{ 
-                            height: 10, 
-                            borderRadius: 5,
-                            backgroundColor: theme.palette.grey[200],
-                            '& .MuiLinearProgress-bar': {
-                              borderRadius: 5,
-                              background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                            }
-                          }}
-                        />
-                      </Box>
-                    );
-                  })}
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-                    Classes by Teacher
-                  </Typography>
-                  {Object.entries(stats.teacherCounts).map(([teacher, count]) => {
-                    const percentage = (count / stats.totalEvents) * 100;
-                    return (
-                      <Box key={teacher} sx={{ mb: 2.5 }}>
-                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                            {teacher}
-                          </Typography>
-                          <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
-                            {count} ({percentage.toFixed(1)}%)
-                          </Typography>
-                        </Stack>
-                        <LinearProgress
-                          variant="determinate"
-                          value={percentage}
-                          sx={{ 
-                            height: 10, 
-                            borderRadius: 5,
-                            backgroundColor: theme.palette.grey[200],
-                            '& .MuiLinearProgress-bar': {
-                              borderRadius: 5,
-                              backgroundColor: theme.palette.secondary.main,
-                            }
-                          }}
-                        />
-                      </Box>
-                    );
-                  })}
-                </Grid>
-              </Grid>
-            </>
-          ) : (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography variant="body1" color="text.secondary">
-                No statistics available
-              </Typography>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button 
-            onClick={() => setStatsOpen(false)}
-            variant="contained"
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              py: 1,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-            }}
-          >
-            Close
-          </Button>
-        </DialogActions>
       </Dialog>
     </Box>
   );

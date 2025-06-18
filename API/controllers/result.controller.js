@@ -63,6 +63,8 @@ exports.createResult = async (req, res) => {
         message: "Subject does not belong to this examination"
       });
     }
+   const publishedByModel = req.user.role === 'TEACHER' ? 'Teacher' : 'School';
+
 
     // Create new result
     const newResult = new Result({
@@ -73,7 +75,8 @@ exports.createResult = async (req, res) => {
       marks,
       maxMarks,
       remarks,
-      publishedBy: req.user.id
+      publishedBy: req.user.id,
+      publishedByModel 
     });
 
     const savedResult = await newResult.save();
@@ -391,7 +394,9 @@ exports.createResultsForStudent = async (req, res) => {
           subject: result.subjectId,
           marks: result.marks,
           maxMarks: result.maxMarks,
-          publishedBy: req.user.id
+          publishedBy: req.user.id,
+          publishedByModel: req.user.role === 'TEACHER' ? 'Teacher' : 'School' // Add this
+
         });
 
         const savedResult = await newResult.save({ session });

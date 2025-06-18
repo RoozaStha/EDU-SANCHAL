@@ -77,11 +77,13 @@ import {
   Assessment as AssessmentIcon,
   Grading as GradingIcon,
   AccessTime as AccessTimeIcon,
+  ArrowBack as ArrowBackIcon,
 } from "@mui/icons-material";
 
 const API_BASE = "http://localhost:5000/api";
 const FILE_BASE = API_BASE.replace('/api', '');
 
+// Animation Keyframes
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -102,6 +104,11 @@ const gradientFlow = keyframes`
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+`;
+
+const slideIn = keyframes`
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
 `;
 
 const TeacherAssignmentDashboard = () => {
@@ -151,7 +158,7 @@ const TeacherAssignmentDashboard = () => {
     direction: "asc",
   });
   const [activeTab, setActiveTab] = useState("assignments");
-  const [submissionCounts, setSubmissionCounts] = useState({}); // Track submission counts
+  const [submissionCounts, setSubmissionCounts] = useState({});
 
   const token = localStorage.getItem("token");
   const watchClass = watch("class");
@@ -228,7 +235,6 @@ const TeacherAssignmentDashboard = () => {
       );
       setAssignments(response.data.data);
       
-      // Initialize submission counts
       const initialCounts = {};
       response.data.data.forEach(assignment => {
         initialCounts[assignment._id] = assignment.submissionCount || 0;
@@ -280,7 +286,6 @@ const TeacherAssignmentDashboard = () => {
         );
         setSubmissions(response.data.data);
         
-        // Update submission count for this assignment
         setSubmissionCounts(prev => ({
           ...prev,
           [assignmentId]: response.data.data.length
@@ -381,7 +386,6 @@ const TeacherAssignmentDashboard = () => {
       setIsEditing(true);
       setCurrentAssignment(assignment);
 
-      // Ensure we have valid values for subject and class
       const subjectValue = subjects.some(
         (s) => s._id === assignment.subject?._id
       )
@@ -610,7 +614,6 @@ const TeacherAssignmentDashboard = () => {
       return matchesSearch && matchesClass && matchesSubject;
     });
 
-    // Sorting logic
     if (sortConfig.key) {
       result.sort((a, b) => {
         const aValue = a[sortConfig.key] || "";
@@ -654,6 +657,9 @@ const TeacherAssignmentDashboard = () => {
           p: 2,
           height: 100,
           mb: 2,
+          background: `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.8)} 100%)`,
+          backdropFilter: "blur(10px)",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
         }}
       >
         <Box
@@ -704,6 +710,118 @@ const TeacherAssignmentDashboard = () => {
     []
   );
 
+  // Chart components
+  const BarChart = ({ data, maxValue, color }) => {
+    return (
+      <Box sx={{ display: "flex", alignItems: "flex-end", height: 120, gap: 1, mt: 2 }}>
+        {data.map((value, index) => (
+          <Box
+            key={index}
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
+            <Box
+              sx={{
+                width: "80%",
+                height: `${(value / maxValue) * 100}%`,
+                background: `linear-gradient(to top, ${alpha(color, 0.7)} 0%, ${alpha(color, 1)} 100%)`,
+                borderRadius: "4px 4px 0 0",
+                position: "relative",
+                transition: "height 0.5s ease",
+                animation: `${fadeIn} 0.5s ease-out`,
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  position: "absolute",
+                  top: -25,
+                  left: 0,
+                  right: 0,
+                  textAlign: "center",
+                  fontWeight: "bold",
+                  color: theme.palette.text.primary,
+                }}
+              >
+                {value}
+              </Typography>
+            </Box>
+            <Typography
+              variant="caption"
+              sx={{ mt: 1, fontWeight: "medium", color: theme.palette.text.secondary }}
+            >
+              {index * 10}-{(index + 1) * 10}%
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
+  const TimeChart = ({ data }) => {
+    return (
+      <Box sx={{ position: "relative", height: 120, mt: 2, px: 2 }}>
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 3,
+            backgroundColor: alpha(theme.palette.text.primary, 0.2),
+          }}
+        />
+        {data.map((value, index) => (
+          <Box
+            key={index}
+            sx={{
+              position: "absolute",
+              bottom: 0,
+              left: `${(index / (data.length - 1)) * 100}%`,
+              width: 8,
+              height: `${value}%`,
+              backgroundColor: theme.palette.primary.main,
+              borderRadius: "4px 4px 0 0",
+              transform: "translateX(-50%)",
+              transition: "height 0.5s ease",
+              animation: `${fadeIn} 0.5s ease-out`,
+              "&:after": {
+                content: '""',
+                position: "absolute",
+                top: -8,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                backgroundColor: theme.palette.primary.dark,
+              },
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                position: "absolute",
+                top: -30,
+                left: "50%",
+                transform: "translateX(-50%)",
+                fontWeight: "bold",
+                color: theme.palette.text.primary,
+              }}
+            >
+              {value}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
   // Initial data fetch
   useEffect(() => {
     fetchAssignments();
@@ -724,73 +842,109 @@ const TeacherAssignmentDashboard = () => {
       sx={{
         maxWidth: "lg",
         mx: "auto",
-        p: { xs: 1, sm: 3 },
+        p: { xs: 0, sm: 3 },
         animation: `${fadeIn} 0.5s ease-out`,
       }}
     >
-      {/* Title Section */}
+      {/* Header Section */}
       <Box
         sx={{
-          display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
-          justifyContent: "space-between",
-          alignItems: { xs: "flex-start", sm: "center" },
+          background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+          color: "white",
+          p: 3,
+          borderRadius: { xs: 0, sm: 2 },
+          boxShadow: theme.shadows[4],
           mb: 4,
-          gap: 2,
+          position: "relative",
+          overflow: "hidden",
+          "&:before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "radial-gradient(circle at top right, rgba(255,255,255,0.2) 0%, transparent 40%)",
+          }
         }}
       >
-        <Typography
-          variant="h3"
-          component="h1"
-          sx={{
-            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            animation: `${gradientFlow} 6s ease infinite`,
-            backgroundSize: "200% 200%",
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            fontSize: { xs: "1.8rem", sm: "2.4rem" },
-          }}
-        >
-          <AssignmentIcon fontSize="large" />
-          Assignment Dashboard
-        </Typography>
-
         <Box
           sx={{
             display: "flex",
-            alignItems: "center",
+            flexDirection: { xs: "column", sm: "row" },
+            justifyContent: "space-between",
+            alignItems: { xs: "flex-start", sm: "center" },
             gap: 2,
-            flexWrap: "wrap",
+            position: "relative",
+            zIndex: 1,
           }}
         >
-          <Chip
-            icon={<CalendarIcon />}
-            label={`Last updated: ${formatDate(new Date()).split(",")[0]}`}
-            variant="outlined"
-            size="small"
-            sx={{ fontSize: { xs: "0.7rem", sm: "0.8125rem" } }}
-          />
-          <Badge
-            badgeContent={
-              assignments.filter((a) => new Date(a.dueDate) < new Date()).length
-            }
-            color="error"
+          <Box>
+            <Typography
+              variant="h3"
+              component="h1"
+              sx={{
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                fontSize: { xs: "1.8rem", sm: "2.4rem" },
+                textShadow: "0 2px 4px rgba(0,0,0,0.2)",
+              }}
+            >
+              <AssignmentIcon fontSize="large" sx={{ color: "white" }} />
+              Assignment Dashboard
+            </Typography>
+            <Typography variant="subtitle1" sx={{ opacity: 0.9, mt: 1 }}>
+              Manage and track student assignments
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              flexWrap: "wrap",
+            }}
           >
             <Chip
-              label={`Total: ${assignments.length}`}
+              icon={<CalendarIcon sx={{ color: "white" }} />}
+              label={`Last updated: ${formatDate(new Date()).split(",")[0]}`}
               variant="outlined"
-              avatar={
-                <Avatar sx={{ width: 24, height: 24 }}>
-                  {assignments.length}
-                </Avatar>
-              }
-              color="primary"
-              sx={{ fontSize: { xs: "0.7rem", sm: "0.8125rem" } }}
+              size="small"
+              sx={{ 
+                fontSize: { xs: "0.7rem", sm: "0.8125rem" },
+                color: "white",
+                borderColor: "rgba(255,255,255,0.3)",
+                bgcolor: "rgba(255,255,255,0.1)",
+                backdropFilter: "blur(10px)",
+              }}
             />
-          </Badge>
+            <Badge
+              badgeContent={
+                assignments.filter((a) => new Date(a.dueDate) < new Date()).length
+              }
+              color="error"
+            >
+              <Chip
+                label={`Total: ${assignments.length}`}
+                variant="outlined"
+                avatar={
+                  <Avatar sx={{ width: 24, height: 24, bgcolor: "rgba(255,255,255,0.2)" }}>
+                    {assignments.length}
+                  </Avatar>
+                }
+                sx={{ 
+                  fontSize: { xs: "0.7rem", sm: "0.8125rem" },
+                  color: "white",
+                  borderColor: "rgba(255,255,255,0.3)",
+                  bgcolor: "rgba(255,255,255,0.1)",
+                  backdropFilter: "blur(10px)",
+                }}
+              />
+            </Badge>
+          </Box>
         </Box>
       </Box>
 
@@ -801,13 +955,27 @@ const TeacherAssignmentDashboard = () => {
           onChange={(e, newValue) => setActiveTab(newValue)}
           variant="scrollable"
           scrollButtons="auto"
+          sx={{
+            "& .MuiTab-root": {
+              minHeight: 48,
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: "0.95rem",
+              "&.Mui-selected": {
+                color: theme.palette.primary.main,
+              },
+            },
+            "& .MuiTabs-indicator": {
+              height: 4,
+              borderRadius: "2px 2px 0 0",
+            },
+          }}
         >
           <Tab
             label="Assignments"
             value="assignments"
             icon={<AssignmentIcon />}
             iconPosition="start"
-            sx={{ minHeight: 48 }}
           />
           {selectedAssignmentId && (
             <Tab
@@ -815,7 +983,6 @@ const TeacherAssignmentDashboard = () => {
               value="submissions"
               icon={<SchoolIcon />}
               iconPosition="start"
-              sx={{ minHeight: 48 }}
             />
           )}
           {selectedAssignmentId && analytics && (
@@ -824,7 +991,6 @@ const TeacherAssignmentDashboard = () => {
               value="analytics"
               icon={<AnalyticsIcon />}
               iconPosition="start"
-              sx={{ minHeight: 48 }}
             />
           )}
         </Tabs>
@@ -841,13 +1007,22 @@ const TeacherAssignmentDashboard = () => {
             borderLeft: isEditing
               ? `4px solid ${theme.palette.primary.main}`
               : "none",
+            background: `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+            backdropFilter: "blur(10px)",
           }}
         >
           <CardContent>
             <Typography
               variant="h5"
               component="h2"
-              sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+              sx={{ 
+                mb: 2, 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 1,
+                color: theme.palette.primary.dark,
+                fontWeight: 600,
+              }}
             >
               {isEditing ? (
                 <>
@@ -882,6 +1057,7 @@ const TeacherAssignmentDashboard = () => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 2,
+                    background: alpha(theme.palette.background.paper, 0.8),
                   },
                 }}
               />
@@ -896,6 +1072,7 @@ const TeacherAssignmentDashboard = () => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 2,
+                    background: alpha(theme.palette.background.paper, 0.8),
                   },
                 }}
               />
@@ -905,6 +1082,12 @@ const TeacherAssignmentDashboard = () => {
                   {...register("subject", { required: "Subject is required" })}
                   label="Subject *"
                   value={watch("subject") || ""}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      background: alpha(theme.palette.background.paper, 0.8),
+                    },
+                  }}
                 >
                   <MenuItem value="">
                     <em>Select Subject</em>
@@ -928,6 +1111,12 @@ const TeacherAssignmentDashboard = () => {
                   label="Class *"
                   value={watch("class") || ""}
                   disabled={classes.length === 0}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      background: alpha(theme.palette.background.paper, 0.8),
+                    },
+                  }}
                 >
                   <MenuItem value="">
                     <em>Select Class</em>
@@ -964,6 +1153,7 @@ const TeacherAssignmentDashboard = () => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 2,
+                    background: alpha(theme.palette.background.paper, 0.8),
                   },
                 }}
               />
@@ -984,6 +1174,7 @@ const TeacherAssignmentDashboard = () => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 2,
+                    background: alpha(theme.palette.background.paper, 0.8),
                   },
                 }}
               />
@@ -1029,6 +1220,7 @@ const TeacherAssignmentDashboard = () => {
                   display: "flex",
                   gap: 2,
                   justifyContent: "flex-end",
+                  mt: 2,
                 }}
               >
                 {isEditing && (
@@ -1047,7 +1239,16 @@ const TeacherAssignmentDashboard = () => {
                   variant="contained"
                   color="primary"
                   disabled={loading.form}
-                  sx={{ borderRadius: 2 }}
+                  sx={{ 
+                    borderRadius: 2,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                    boxShadow: theme.shadows[2],
+                    "&:hover": {
+                      boxShadow: theme.shadows[4],
+                      transform: "translateY(-2px)",
+                    },
+                    transition: "all 0.3s ease",
+                  }}
                   startIcon={
                     loading.form ? (
                       <CircularProgress size={20} color="inherit" />
@@ -1064,12 +1265,25 @@ const TeacherAssignmentDashboard = () => {
 
       {/* Filter/Search Section */}
       {activeTab === "assignments" && (
-        <Card sx={{ mb: 4, borderRadius: 2, boxShadow: theme.shadows[1] }}>
+        <Card sx={{ 
+          mb: 4, 
+          borderRadius: 2, 
+          boxShadow: theme.shadows[1],
+          background: `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+          backdropFilter: "blur(10px)",
+        }}>
           <CardContent>
             <Typography
               variant="h5"
               component="h2"
-              sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+              sx={{ 
+                mb: 2, 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 1,
+                color: theme.palette.primary.dark,
+                fontWeight: 600,
+              }}
             >
               <FilterListIcon color="primary" /> Filter Assignments
             </Typography>
@@ -1113,6 +1327,7 @@ const TeacherAssignmentDashboard = () => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 2,
+                    background: alpha(theme.palette.background.paper, 0.8),
                   },
                 }}
               />
@@ -1123,6 +1338,12 @@ const TeacherAssignmentDashboard = () => {
                   value={filterClass}
                   onChange={(e) => setFilterClass(e.target.value)}
                   label="Class"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      background: alpha(theme.palette.background.paper, 0.8),
+                    },
+                  }}
                 >
                   <MenuItem value="">All Classes</MenuItem>
                   {classes.map((cls) => (
@@ -1139,6 +1360,12 @@ const TeacherAssignmentDashboard = () => {
                   value={filterSubject}
                   onChange={(e) => setFilterSubject(e.target.value)}
                   label="Subject"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      background: alpha(theme.palette.background.paper, 0.8),
+                    },
+                  }}
                 >
                   <MenuItem value="">All Subjects</MenuItem>
                   {subjects.map((subject) => (
@@ -1153,7 +1380,16 @@ const TeacherAssignmentDashboard = () => {
                 variant="outlined"
                 onClick={clearFilters}
                 startIcon={<ClearIcon />}
-                sx={{ height: "56px", borderRadius: 2 }}
+                sx={{ 
+                  height: "56px", 
+                  borderRadius: 2,
+                  borderColor: theme.palette.text.disabled,
+                  color: theme.palette.text.secondary,
+                  "&:hover": {
+                    borderColor: theme.palette.error.main,
+                    color: theme.palette.error.main,
+                  },
+                }}
               >
                 Clear
               </Button>
@@ -1164,7 +1400,13 @@ const TeacherAssignmentDashboard = () => {
 
       {/* Assignments List */}
       {activeTab === "assignments" && (
-        <Card sx={{ mb: 4, borderRadius: 2, boxShadow: theme.shadows[1] }}>
+        <Card sx={{ 
+          mb: 4, 
+          borderRadius: 2, 
+          boxShadow: theme.shadows[1],
+          background: `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+          backdropFilter: "blur(10px)",
+        }}>
           <CardContent>
             <Box
               sx={{
@@ -1177,7 +1419,13 @@ const TeacherAssignmentDashboard = () => {
               <Typography
                 variant="h5"
                 component="h2"
-                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                sx={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 1,
+                  color: theme.palette.primary.dark,
+                  fontWeight: 600,
+                }}
               >
                 <AssignmentIcon color="primary" /> Your Assignments
               </Typography>
@@ -1200,11 +1448,17 @@ const TeacherAssignmentDashboard = () => {
                   textAlign: "center",
                   p: 4,
                   borderRadius: 2,
-                  bgcolor: theme.palette.action.hover,
+                  bgcolor: alpha(theme.palette.action.hover, 0.3),
+                  border: `1px dashed ${theme.palette.divider}`,
                 }}
               >
                 <AssignmentIcon
-                  sx={{ fontSize: 60, color: "text.disabled", mb: 2 }}
+                  sx={{ 
+                    fontSize: 60, 
+                    color: "text.disabled", 
+                    mb: 2,
+                    opacity: 0.5,
+                  }}
                 />
                 <Typography variant="h6" color="text.secondary" gutterBottom>
                   No assignments found
@@ -1219,10 +1473,17 @@ const TeacherAssignmentDashboard = () => {
               <TableContainer
                 component={Paper}
                 elevation={0}
-                sx={{ borderRadius: 2 }}
+                sx={{ 
+                  borderRadius: 2,
+                  background: "transparent",
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
               >
                 <Table>
-                  <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
+                  <TableHead sx={{ 
+                    bgcolor: alpha(theme.palette.primary.light, 0.1),
+                    borderBottom: `2px solid ${theme.palette.divider}`,
+                  }}>
                     <TableRow>
                       <TableCell>
                         <Button
@@ -1237,7 +1498,11 @@ const TeacherAssignmentDashboard = () => {
                               )
                             ) : null
                           }
-                          sx={{ textTransform: "none", fontWeight: "bold" }}
+                          sx={{ 
+                            textTransform: "none", 
+                            fontWeight: "bold",
+                            color: theme.palette.text.primary,
+                          }}
                         >
                           Title
                         </Button>
@@ -1255,7 +1520,11 @@ const TeacherAssignmentDashboard = () => {
                               )
                             ) : null
                           }
-                          sx={{ textTransform: "none", fontWeight: "bold" }}
+                          sx={{ 
+                            textTransform: "none", 
+                            fontWeight: "bold",
+                            color: theme.palette.text.primary,
+                          }}
                         >
                           Subject
                         </Button>
@@ -1273,7 +1542,11 @@ const TeacherAssignmentDashboard = () => {
                               )
                             ) : null
                           }
-                          sx={{ textTransform: "none", fontWeight: "bold" }}
+                          sx={{ 
+                            textTransform: "none", 
+                            fontWeight: "bold",
+                            color: theme.palette.text.primary,
+                          }}
                         >
                           Class
                         </Button>
@@ -1291,7 +1564,11 @@ const TeacherAssignmentDashboard = () => {
                               )
                             ) : null
                           }
-                          sx={{ textTransform: "none", fontWeight: "bold" }}
+                          sx={{ 
+                            textTransform: "none", 
+                            fontWeight: "bold",
+                            color: theme.palette.text.primary,
+                          }}
                         >
                           Due Date
                         </Button>
@@ -1311,6 +1588,9 @@ const TeacherAssignmentDashboard = () => {
                           animationDelay: `${
                             filteredAssignments.indexOf(assignment) * 50
                           }ms`,
+                          "&:hover": {
+                            bgcolor: alpha(theme.palette.primary.light, 0.05),
+                          },
                         }}
                       >
                         <TableCell>
@@ -1321,6 +1601,7 @@ const TeacherAssignmentDashboard = () => {
                             variant="body2"
                             color="text.secondary"
                             noWrap
+                            sx={{ maxWidth: 300 }}
                           >
                             {assignment.description}
                           </Typography>
@@ -1340,7 +1621,10 @@ const TeacherAssignmentDashboard = () => {
                             icon={<SubjectIcon />}
                             label={assignment.subject?.subject_name || "N/A"}
                             size="small"
-                            sx={{ bgcolor: theme.palette.primary.light }}
+                            sx={{ 
+                              bgcolor: alpha(theme.palette.primary.light, 0.2),
+                              color: theme.palette.primary.dark,
+                            }}
                           />
                         </TableCell>
                         <TableCell>
@@ -1348,7 +1632,10 @@ const TeacherAssignmentDashboard = () => {
                             icon={<ClassIcon />}
                             label={assignment.class?.class_text || "N/A"}
                             size="small"
-                            sx={{ bgcolor: theme.palette.secondary.light }}
+                            sx={{ 
+                              bgcolor: alpha(theme.palette.secondary.light, 0.2),
+                              color: theme.palette.secondary.dark,
+                            }}
                           />
                         </TableCell>
                         <TableCell>
@@ -1383,7 +1670,10 @@ const TeacherAssignmentDashboard = () => {
                               fetchSubmissions(assignment._id);
                             }}
                             startIcon={<SchoolIcon />}
-                            sx={{ textTransform: "none" }}
+                            sx={{ 
+                              textTransform: "none",
+                              fontWeight: 600,
+                            }}
                           >
                             {submissionCounts[assignment._id] || 0} submissions
                           </Button>
@@ -1399,17 +1689,27 @@ const TeacherAssignmentDashboard = () => {
                             <Tooltip title="Edit">
                               <IconButton
                                 onClick={() => handleEdit(assignment)}
-                                color="primary"
+                                sx={{
+                                  bgcolor: alpha(theme.palette.info.light, 0.1),
+                                  "&:hover": {
+                                    bgcolor: alpha(theme.palette.info.light, 0.2),
+                                  },
+                                }}
                               >
-                                <EditIcon />
+                                <EditIcon color="info" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Delete">
                               <IconButton
                                 onClick={() => openDeleteDialog(assignment)}
-                                color="error"
+                                sx={{
+                                  bgcolor: alpha(theme.palette.error.light, 0.1),
+                                  "&:hover": {
+                                    bgcolor: alpha(theme.palette.error.light, 0.2),
+                                  },
+                                }}
                               >
-                                <DeleteIcon />
+                                <DeleteIcon color="error" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Analytics">
@@ -1419,9 +1719,14 @@ const TeacherAssignmentDashboard = () => {
                                   setActiveTab("analytics");
                                   fetchAnalytics(assignment._id);
                                 }}
-                                color="info"
+                                sx={{
+                                  bgcolor: alpha(theme.palette.success.light, 0.1),
+                                  "&:hover": {
+                                    bgcolor: alpha(theme.palette.success.light, 0.2),
+                                  },
+                                }}
                               >
-                                <AnalyticsIcon />
+                                <AnalyticsIcon color="success" />
                               </IconButton>
                             </Tooltip>
                           </Box>
@@ -1438,7 +1743,13 @@ const TeacherAssignmentDashboard = () => {
 
       {/* Analytics Section */}
       {activeTab === "analytics" && selectedAssignmentId && analytics && (
-        <Card sx={{ mb: 4, borderRadius: 2, boxShadow: theme.shadows[1] }}>
+        <Card sx={{ 
+          mb: 4, 
+          borderRadius: 2, 
+          boxShadow: theme.shadows[1],
+          background: `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+          backdropFilter: "blur(10px)",
+        }}>
           <CardContent>
             <Box
               sx={{
@@ -1451,7 +1762,13 @@ const TeacherAssignmentDashboard = () => {
               <Typography
                 variant="h5"
                 component="h2"
-                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                sx={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 1,
+                  color: theme.palette.primary.dark,
+                  fontWeight: 600,
+                }}
               >
                 <AnalyticsIcon color="primary" /> Assignment Analytics
               </Typography>
@@ -1481,13 +1798,31 @@ const TeacherAssignmentDashboard = () => {
                     p: 2,
                     borderLeft: `4px solid ${theme.palette.primary.main}`,
                     height: "100%",
+                    bgcolor: alpha(theme.palette.background.paper, 0.8),
+                    backdropFilter: "blur(10px)",
+                    boxShadow: theme.shadows[1],
+                    borderRadius: 2,
                   }}
                 >
                   <Typography variant="h4" color="primary">
                     {analytics.totalSubmissions}
                   </Typography>
                   <Typography variant="body2">Total Submissions</Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={analytics.submissionRate} 
+                    sx={{ 
+                      mt: 2, 
+                      height: 8, 
+                      borderRadius: 4,
+                      bgcolor: alpha(theme.palette.primary.light, 0.2),
+                      "& .MuiLinearProgress-bar": {
+                        borderRadius: 4,
+                        bgcolor: theme.palette.primary.main,
+                      },
+                    }} 
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
                     {analytics.submissionRate}% submission rate
                   </Typography>
                 </Card>
@@ -1499,13 +1834,31 @@ const TeacherAssignmentDashboard = () => {
                     p: 2,
                     borderLeft: `4px solid ${theme.palette.success.main}`,
                     height: "100%",
+                    bgcolor: alpha(theme.palette.background.paper, 0.8),
+                    backdropFilter: "blur(10px)",
+                    boxShadow: theme.shadows[1],
+                    borderRadius: 2,
                   }}
                 >
                   <Typography variant="h4" color="success.main">
                     {analytics.gradedSubmissions}
                   </Typography>
                   <Typography variant="body2">Graded</Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={analytics.gradedPercentage} 
+                    sx={{ 
+                      mt: 2, 
+                      height: 8, 
+                      borderRadius: 4,
+                      bgcolor: alpha(theme.palette.success.light, 0.2),
+                      "& .MuiLinearProgress-bar": {
+                        borderRadius: 4,
+                        bgcolor: theme.palette.success.main,
+                      },
+                    }} 
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
                     {analytics.gradedPercentage}% of submissions
                   </Typography>
                 </Card>
@@ -1517,13 +1870,31 @@ const TeacherAssignmentDashboard = () => {
                     p: 2,
                     borderLeft: `4px solid ${theme.palette.error.main}`,
                     height: "100%",
+                    bgcolor: alpha(theme.palette.background.paper, 0.8),
+                    backdropFilter: "blur(10px)",
+                    boxShadow: theme.shadows[1],
+                    borderRadius: 2,
                   }}
                 >
                   <Typography variant="h4" color="error.main">
                     {analytics.lateSubmissions}
                   </Typography>
                   <Typography variant="body2">Late</Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={analytics.latePercentage} 
+                    sx={{ 
+                      mt: 2, 
+                      height: 8, 
+                      borderRadius: 4,
+                      bgcolor: alpha(theme.palette.error.light, 0.2),
+                      "& .MuiLinearProgress-bar": {
+                        borderRadius: 4,
+                        bgcolor: theme.palette.error.main,
+                      },
+                    }} 
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
                     {analytics.latePercentage}% of submissions
                   </Typography>
                 </Card>
@@ -1535,111 +1906,132 @@ const TeacherAssignmentDashboard = () => {
                     p: 2,
                     borderLeft: `4px solid ${theme.palette.warning.main}`,
                     height: "100%",
+                    bgcolor: alpha(theme.palette.background.paper, 0.8),
+                    backdropFilter: "blur(10px)",
+                    boxShadow: theme.shadows[1],
+                    borderRadius: 2,
                   }}
                 >
                   <Typography variant="h4">
                     {analytics.averageGrade.toFixed(1)}%
                   </Typography>
                   <Typography variant="body2">Avg Grade</Typography>
-                  <Typography variant="caption" color="text.secondary">
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={analytics.passingRate} 
+                    sx={{ 
+                      mt: 2, 
+                      height: 8, 
+                      borderRadius: 4,
+                      bgcolor: alpha(theme.palette.warning.light, 0.2),
+                      "& .MuiLinearProgress-bar": {
+                        borderRadius: 4,
+                        bgcolor: theme.palette.warning.main,
+                      },
+                    }} 
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
                     {analytics.passingRate}% passing rate
                   </Typography>
                 </Card>
               </Grid>
               <Grid item xs={12}>
-                <Card sx={{ p: 2 }}>
+                <Card sx={{ 
+                  p: 2,
+                  bgcolor: alpha(theme.palette.background.paper, 0.8),
+                  backdropFilter: "blur(10px)",
+                  boxShadow: theme.shadows[1],
+                  borderRadius: 2,
+                }}>
                   <Typography
                     variant="h6"
                     gutterBottom
-                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    sx={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: 1,
+                      fontWeight: 600,
+                    }}
                   >
                     <AssessmentIcon /> Grade Distribution
                   </Typography>
-                  <Box sx={{ width: "100%", height: 200, p: 2 }}>
-                    {/* Placeholder for chart */}
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "flex-end",
-                        height: "100%",
-                        gap: 1,
-                        justifyContent: "center",
-                      }}
-                    >
-                      {[70, 50, 30, 20, 10, 5].map((value, index) => (
-                        <Box
-                          key={index}
-                          sx={{
-                            width: 40,
-                            height: `${value}%`,
-                            bgcolor: theme.palette.primary.main,
-                            borderRadius: 1,
-                            display: "flex",
-                            alignItems: "flex-end",
-                            justifyContent: "center",
-                            color: "white",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {value}%
-                        </Box>
-                      ))}
-                    </Box>
-                  </Box>
+                  <BarChart 
+                    data={[12, 18, 24, 22, 15, 9]} 
+                    maxValue={30} 
+                    color={theme.palette.primary.main} 
+                  />
                 </Card>
               </Grid>
               <Grid item xs={12} md={6}>
-                <Card sx={{ p: 2 }}>
+                <Card sx={{ 
+                  p: 2,
+                  bgcolor: alpha(theme.palette.background.paper, 0.8),
+                  backdropFilter: "blur(10px)",
+                  boxShadow: theme.shadows[1],
+                  borderRadius: 2,
+                }}>
                   <Typography
                     variant="h6"
                     gutterBottom
-                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    sx={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: 1,
+                      fontWeight: 600,
+                    }}
                   >
                     <GradingIcon /> Submission Timeline
                   </Typography>
-                  <Box sx={{ width: "100%", height: 200, p: 2 }}>
-                    {/* Placeholder for timeline */}
-                    <Box
-                      sx={{
-                        height: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        bgcolor: theme.palette.action.hover,
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        Submission timeline visualization
-                      </Typography>
-                    </Box>
-                  </Box>
+                  <TimeChart data={[35, 45, 60, 75, 65, 50, 40, 30]} />
                 </Card>
               </Grid>
               <Grid item xs={12} md={6}>
-                <Card sx={{ p: 2 }}>
+                <Card sx={{ 
+                  p: 2,
+                  bgcolor: alpha(theme.palette.background.paper, 0.8),
+                  backdropFilter: "blur(10px)",
+                  boxShadow: theme.shadows[1],
+                  borderRadius: 2,
+                }}>
                   <Typography
                     variant="h6"
                     gutterBottom
-                    sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                    sx={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: 1,
+                      fontWeight: 600,
+                    }}
                   >
                     <AccessTimeIcon /> Time Spent Analysis
                   </Typography>
-                  <Box sx={{ width: "100%", height: 200, p: 2 }}>
-                    {/* Placeholder for time spent */}
-                    <Box
-                      sx={{
-                        height: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        bgcolor: theme.palette.action.hover,
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        Average time spent: 45 minutes
-                      </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", mt: 2 }}>
+                    <Box sx={{ 
+                      position: "relative", 
+                      width: 120, 
+                      height: 120,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                      <CircularProgress 
+                        variant="determinate" 
+                        value={75} 
+                        size={120} 
+                        thickness={4}
+                        sx={{ 
+                          color: theme.palette.success.main,
+                          position: "absolute",
+                        }} 
+                      />
+                      <Box sx={{ textAlign: "center", zIndex: 1 }}>
+                        <Typography variant="h5" fontWeight="bold">
+                          45 min
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Average time
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
                 </Card>
@@ -1651,7 +2043,12 @@ const TeacherAssignmentDashboard = () => {
 
       {/* Submissions Section */}
       {activeTab === "submissions" && selectedAssignmentId && (
-        <Card sx={{ borderRadius: 2, boxShadow: theme.shadows[1] }}>
+        <Card sx={{ 
+          borderRadius: 2, 
+          boxShadow: theme.shadows[1],
+          background: `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+          backdropFilter: "blur(10px)",
+        }}>
           <CardContent>
             <Box
               sx={{
@@ -1664,7 +2061,13 @@ const TeacherAssignmentDashboard = () => {
               <Typography
                 variant="h5"
                 component="h2"
-                sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                sx={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 1,
+                  color: theme.palette.primary.dark,
+                  fontWeight: 600,
+                }}
               >
                 <SchoolIcon color="primary" /> Submissions
               </Typography>
@@ -1681,7 +2084,7 @@ const TeacherAssignmentDashboard = () => {
                   setSelectedAssignmentId("");
                   setActiveTab("assignments");
                 }}>
-                  <CloseIcon />
+                  <ArrowBackIcon />
                 </IconButton>
               </Box>
             </Box>
@@ -1698,11 +2101,17 @@ const TeacherAssignmentDashboard = () => {
                   textAlign: "center",
                   p: 4,
                   borderRadius: 2,
-                  bgcolor: theme.palette.action.hover,
+                  bgcolor: alpha(theme.palette.action.hover, 0.3),
+                  border: `1px dashed ${theme.palette.divider}`,
                 }}
               >
                 <SchoolIcon
-                  sx={{ fontSize: 60, color: "text.disabled", mb: 2 }}
+                  sx={{ 
+                    fontSize: 60, 
+                    color: "text.disabled", 
+                    mb: 2,
+                    opacity: 0.5,
+                  }}
                 />
                 <Typography variant="h6" color="text.secondary" gutterBottom>
                   No submissions yet
@@ -1715,10 +2124,17 @@ const TeacherAssignmentDashboard = () => {
               <TableContainer
                 component={Paper}
                 elevation={0}
-                sx={{ borderRadius: 2 }}
+                sx={{ 
+                  borderRadius: 2,
+                  background: "transparent",
+                  border: `1px solid ${theme.palette.divider}`,
+                }}
               >
                 <Table>
-                  <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
+                  <TableHead sx={{ 
+                    bgcolor: alpha(theme.palette.primary.light, 0.1),
+                    borderBottom: `2px solid ${theme.palette.divider}`,
+                  }}>
                     <TableRow>
                       <TableCell>Student</TableCell>
                       <TableCell>Submission</TableCell>
@@ -1736,6 +2152,9 @@ const TeacherAssignmentDashboard = () => {
                           "&:last-child td": { borderBottom: 0 },
                           animation: `${fadeIn} 0.3s ease-out`,
                           animationDelay: `${submissions.indexOf(sub) * 50}ms`,
+                          "&:hover": {
+                            bgcolor: alpha(theme.palette.primary.light, 0.05),
+                          },
                         }}
                       >
                         <TableCell>
@@ -1780,15 +2199,16 @@ const TeacherAssignmentDashboard = () => {
                           </Box>
                         </TableCell>
                         <TableCell>
-                          <Box
-                            sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}
-                          >
+                          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                             {sub.fileUrl && (
                               <Button
                                 variant="outlined"
                                 startIcon={<DownloadIcon />}
                                 onClick={() => handleOpenFile(sub.fileUrl)}
-                                sx={{ textTransform: "none" }}
+                                sx={{ 
+                                  textTransform: "none",
+                                  borderRadius: 2,
+                                }}
                               >
                                 Document
                               </Button>
@@ -1798,7 +2218,10 @@ const TeacherAssignmentDashboard = () => {
                                 variant="outlined"
                                 startIcon={<PlayIcon />}
                                 onClick={() => handleOpenFile(sub.videoUrl)}
-                                sx={{ textTransform: "none" }}
+                                sx={{ 
+                                  textTransform: "none",
+                                  borderRadius: 2,
+                                }}
                               >
                                 Video
                               </Button>
@@ -1855,7 +2278,14 @@ const TeacherAssignmentDashboard = () => {
                                 onChange={(e) =>
                                   handleGradeChange(sub._id, e.target.value)
                                 }
-                                sx={{ width: 80, mb: 1 }}
+                                sx={{ 
+                                  width: 80, 
+                                  mb: 1,
+                                  "& .MuiOutlinedInput-root": {
+                                    borderRadius: 2,
+                                    background: alpha(theme.palette.background.paper, 0.8),
+                                  },
+                                }}
                                 type="number"
                                 inputProps={{ min: 0, max: 100 }}
                               />
@@ -1865,7 +2295,14 @@ const TeacherAssignmentDashboard = () => {
                                 size="small"
                                 multiline
                                 rows={2}
-                                sx={{ width: "100%", mb: 1 }}
+                                sx={{ 
+                                  width: "100%", 
+                                  mb: 1,
+                                  "& .MuiOutlinedInput-root": {
+                                    borderRadius: 2,
+                                    background: alpha(theme.palette.background.paper, 0.8),
+                                  },
+                                }}
                               />
                               <input
                                 id={`feedbackVideo-${sub._id}`}
@@ -1879,7 +2316,10 @@ const TeacherAssignmentDashboard = () => {
                                   size="small"
                                   component="span"
                                   startIcon={<VideoIcon />}
-                                  sx={{ mb: 1 }}
+                                  sx={{ 
+                                    mb: 1,
+                                    borderRadius: 2,
+                                  }}
                                 >
                                   Video Feedback
                                 </Button>
@@ -1889,7 +2329,15 @@ const TeacherAssignmentDashboard = () => {
                                 size="small"
                                 onClick={() => submitGrade(sub._id)}
                                 disabled={isSubmittingGrade}
-                                sx={{ ml: 1 }}
+                                sx={{ 
+                                  ml: 1,
+                                  borderRadius: 2,
+                                  background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                                  boxShadow: theme.shadows[1],
+                                  "&:hover": {
+                                    boxShadow: theme.shadows[2],
+                                  },
+                                }}
                               >
                                 {isSubmittingGrade ? (
                                   <CircularProgress size={20} />
@@ -1905,9 +2353,14 @@ const TeacherAssignmentDashboard = () => {
                             <Tooltip title="View Details">
                               <IconButton
                                 onClick={() => openSubmissionDialog(sub)}
-                                color="primary"
+                                sx={{
+                                  bgcolor: alpha(theme.palette.info.light, 0.1),
+                                  "&:hover": {
+                                    bgcolor: alpha(theme.palette.info.light, 0.2),
+                                  },
+                                }}
                               >
-                                <VisibilityIcon />
+                                <VisibilityIcon color="info" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Grant Extension">
@@ -1915,8 +2368,14 @@ const TeacherAssignmentDashboard = () => {
                                 onClick={() => openExtensionDialog(sub)}
                                 color="secondary"
                                 disabled={sub.grade !== undefined}
+                                sx={{
+                                  bgcolor: alpha(theme.palette.secondary.light, 0.1),
+                                  "&:hover": {
+                                    bgcolor: alpha(theme.palette.secondary.light, 0.2),
+                                  },
+                                }}
                               >
-                                <ExtensionIcon />
+                                <ExtensionIcon color="secondary" />
                               </IconButton>
                             </Tooltip>
                           </Box>
@@ -1946,7 +2405,15 @@ const TeacherAssignmentDashboard = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeDeleteDialog}>Cancel</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
+          <Button 
+            onClick={handleDelete} 
+            color="error" 
+            variant="contained"
+            sx={{
+              background: `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`,
+              boxShadow: theme.shadows[1],
+            }}
+          >
             Delete
           </Button>
         </DialogActions>
@@ -1959,8 +2426,20 @@ const TeacherAssignmentDashboard = () => {
         maxWidth="md"
         fullWidth
         fullScreen={isMobile}
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            background: `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+            backdropFilter: "blur(10px)",
+          }
+        }}
       >
-        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <DialogTitle sx={{ 
+          display: "flex", 
+          alignItems: "center", 
+          gap: 1,
+          fontWeight: 600,
+        }}>
           <VisibilityIcon color="primary" /> Submission Details
         </DialogTitle>
         <DialogContent>
@@ -1998,7 +2477,11 @@ const TeacherAssignmentDashboard = () => {
                           ? "warning"
                           : "error"
                       }
-                      sx={{ mt: 1, fontWeight: "bold" }}
+                      sx={{ 
+                        mt: 1, 
+                        fontWeight: "bold",
+                        boxShadow: theme.shadows[1],
+                      }}
                     />
                   )}
                 </Box>
@@ -2011,6 +2494,7 @@ const TeacherAssignmentDashboard = () => {
                   variant="subtitle1"
                   fontWeight="medium"
                   gutterBottom
+                  sx={{ color: theme.palette.primary.dark }}
                 >
                   Assignment Details
                 </Typography>
@@ -2043,6 +2527,7 @@ const TeacherAssignmentDashboard = () => {
                   variant="subtitle1"
                   fontWeight="medium"
                   gutterBottom
+                  sx={{ color: theme.palette.primary.dark }}
                 >
                   Submission Files
                 </Typography>
@@ -2059,7 +2544,11 @@ const TeacherAssignmentDashboard = () => {
                       variant="contained"
                       startIcon={<DownloadIcon />}
                       onClick={() => handleOpenFile(selectedSubmission.fileUrl)}
-                      sx={{ borderRadius: 2 }}
+                      sx={{ 
+                        borderRadius: 2,
+                        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                        boxShadow: theme.shadows[1],
+                      }}
                     >
                       Download Document
                     </Button>
@@ -2069,7 +2558,11 @@ const TeacherAssignmentDashboard = () => {
                       variant="contained"
                       startIcon={<PlayIcon />}
                       onClick={() => handleOpenFile(selectedSubmission.videoUrl)}
-                      sx={{ borderRadius: 2 }}
+                      sx={{ 
+                        borderRadius: 2,
+                        background: `linear-gradient(135deg, ${theme.palette.secondary.main} 0%, ${theme.palette.secondary.dark} 100%)`,
+                        boxShadow: theme.shadows[1],
+                      }}
                     >
                       Play Submission Video
                     </Button>
@@ -2085,12 +2578,18 @@ const TeacherAssignmentDashboard = () => {
                       variant="subtitle1"
                       fontWeight="medium"
                       gutterBottom
+                      sx={{ color: theme.palette.primary.dark }}
                     >
                       Teacher Feedback
                     </Typography>
                     <Card
                       variant="outlined"
-                      sx={{ p: 2, mb: 2, bgcolor: theme.palette.action.hover }}
+                      sx={{ 
+                        p: 2, 
+                        mb: 2, 
+                        bgcolor: alpha(theme.palette.info.light, 0.1),
+                        borderRadius: 2,
+                      }}
                     >
                       <Typography>{selectedSubmission.feedback}</Typography>
                     </Card>
@@ -2101,7 +2600,11 @@ const TeacherAssignmentDashboard = () => {
                         onClick={() =>
                           handleOpenFile(selectedSubmission.feedbackVideoUrl)
                         }
-                        sx={{ borderRadius: 2 }}
+                        sx={{ 
+                          borderRadius: 2,
+                          background: `linear-gradient(135deg, ${theme.palette.info.main} 0%, ${theme.palette.info.dark} 100%)`,
+                          boxShadow: theme.shadows[1],
+                        }}
                       >
                         Play Feedback Video
                       </Button>
@@ -2118,9 +2621,17 @@ const TeacherAssignmentDashboard = () => {
       </Dialog>
 
       {/* Extension Dialog */}
-      <Dialog open={extensionDialogOpen} onClose={closeExtensionDialog}>
+      <Dialog open={extensionDialogOpen} onClose={closeExtensionDialog}
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            background: `linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.9)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
+            backdropFilter: "blur(10px)",
+          }
+        }}
+      >
         <DialogTitle>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: 600 }}>
             <ExtensionIcon color="primary" /> Grant Extension
           </Box>
         </DialogTitle>
@@ -2156,6 +2667,10 @@ const TeacherAssignmentDashboard = () => {
             onClick={grantExtension}
             variant="contained"
             disabled={!extensionDate}
+            sx={{
+              background: `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`,
+              boxShadow: theme.shadows[1],
+            }}
           >
             Grant Extension
           </Button>
