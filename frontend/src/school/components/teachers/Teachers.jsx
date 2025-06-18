@@ -31,6 +31,12 @@ import {
   FormControlLabel,
   Switch,
   CircularProgress,
+  Fade,
+  Grow,
+  Slide,
+  Zoom,
+  Paper,
+  alpha
 } from "@mui/material";
 import {
   Edit,
@@ -48,6 +54,8 @@ import {
   Male,
   Female,
   School,
+  Class as ClassIcon,
+  Subject as SubjectIcon,
 } from "@mui/icons-material";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -55,6 +63,19 @@ import axios from "axios";
 import { AuthContext } from "../../../context/AuthContext";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
 import { baseApi } from "../../../environment";
+import { keyframes } from "@emotion/react";
+
+const pulseAnimation = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+`;
+
+const floatAnimation = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+`;
 
 const Teacher = () => {
   const theme = useTheme();
@@ -94,7 +115,6 @@ const Teacher = () => {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
 
-      // Ensure we're getting the subjects array properly
       let subjectsData = [];
       if (Array.isArray(response.data)) {
         subjectsData = response.data;
@@ -102,7 +122,6 @@ const Teacher = () => {
         subjectsData = response.data.data;
       }
 
-      console.log("Subjects data:", subjectsData);
       setSubjects(subjectsData);
     } catch (error) {
       console.error("Error fetching subjects:", error);
@@ -210,7 +229,7 @@ const Teacher = () => {
       password: "",
       teacher_image: null,
       class: null,
-      is_class_teacher: false, // New field
+      is_class_teacher: false,
       subjects: [],
     },
     validationSchema,
@@ -219,12 +238,10 @@ const Teacher = () => {
         setLoading(true);
         const formData = new FormData();
 
-        // Append all fields to formData
         Object.keys(values).forEach((key) => {
           if (key === "teacher_image" && values[key]) {
             formData.append(key, values[key]);
           } else if (key === "subjects" ) {
-            // Handle arrays
             if (values[key] && values[key].length > 0) {
               values[key].forEach((item) => {
                 formData.append(`${key}[]`, item);
@@ -284,8 +301,8 @@ const Teacher = () => {
       gender: teacher.gender || "",
       password: "",
       teacher_image: null,
-      class: teacher.class?._id || null, // Changed from classes array
-      is_class_teacher: teacher.is_class_teacher || false, // New field
+      class: teacher.class?._id || null,
+      is_class_teacher: teacher.is_class_teacher || false,
       subjects: teacher.subjects?.map((subject) => subject._id) || [],
     });
     setOpenDialog(true);
@@ -341,116 +358,217 @@ const Teacher = () => {
   ].sort();
 
   const renderTeacherProfile = () => (
-    <Card sx={{ mb: 4 }}>
-      <CardContent>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            mb: 3,
-          }}
-        >
-          <Avatar
-            src={
-              currentTeacher?.teacher_image
-                ? `/images/uploaded/teacher/${currentTeacher.teacher_image}`
-                : ""
-            }
-            sx={{ width: 120, height: 120, mb: 2 }}
+    <Slide in={true} direction="up" timeout={500}>
+      <Card 
+        sx={{ 
+          mb: 4, 
+          borderRadius: 4,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+          overflow: 'hidden',
+          background: 'linear-gradient(145deg, #f0f4ff, #ffffff)',
+          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+          '&:hover': {
+            transform: 'translateY(-5px)',
+            boxShadow: '0 15px 35px rgba(0,0,0,0.15)'
+          }
+        }}
+      >
+        <CardContent>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              mb: 3,
+              py: 3,
+              background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              borderRadius: 3,
+              mx: -2,
+              mt: -2,
+              color: 'white',
+              position: 'relative',
+              overflow: 'hidden',
+              '&:before': {
+                content: '""',
+                position: 'absolute',
+                top: -50,
+                right: -50,
+                width: 200,
+                height: 200,
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '50%'
+              }
+            }}
           >
-            {!currentTeacher?.teacher_image && <Person fontSize="large" />}
-          </Avatar>
-          <Typography variant="h5" component="div">
-            {currentTeacher?.name}
-          </Typography>
-          <Typography color="text.secondary">
-            {currentTeacher?.email}
-          </Typography>
-          <Chip
-            label={currentTeacher?.qualification}
-            icon={<Work />}
-            sx={{ mt: 1 }}
-            color="primary"
-          />
-        </Box>
+            <Avatar
+              src={
+                currentTeacher?.teacher_image
+                  ? `/images/uploaded/teacher/${currentTeacher.teacher_image}`
+                  : ""
+              }
+              sx={{ 
+                width: 140, 
+                height: 140, 
+                mb: 2,
+                border: '4px solid white',
+                boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+                animation: `${floatAnimation} 4s ease-in-out infinite`
+              }}
+            >
+              {!currentTeacher?.teacher_image && <Person fontSize="large" />}
+            </Avatar>
+            <Typography variant="h4" component="div" fontWeight="bold">
+              {currentTeacher?.name}
+            </Typography>
+            <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+              {currentTeacher?.email}
+            </Typography>
+            <Chip
+              label={currentTeacher?.qualification}
+              icon={<Work />}
+              sx={{ 
+                mt: 2, 
+                background: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.9rem',
+                px: 2,
+                py: 1
+              }}
+            />
+          </Box>
 
-        <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 2, borderColor: 'rgba(0,0,0,0.08)' }} />
 
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              <Cake sx={{ mr: 1, color: "text.secondary" }} />
-              <Typography>
-                <strong>Age:</strong> {currentTeacher?.age}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              {currentTeacher?.gender === "Male" ? (
-                <Male sx={{ mr: 1, color: "text.secondary" }} />
-              ) : currentTeacher?.gender === "Female" ? (
-                <Female sx={{ mr: 1, color: "text.secondary" }} />
-              ) : (
-                <Transgender sx={{ mr: 1, color: "text.secondary" }} />
-              )}
-              <Typography>
-                <strong>Gender:</strong> {currentTeacher?.gender}
-              </Typography>
-            </Box>
-          </Grid>
-          {currentTeacher?.classes && currentTeacher.classes.length > 0 && (
-            <Grid item xs={12}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  <strong>Classes:</strong>
-                </Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                  {currentTeacher.classes.map((cls) => (
-                    <Chip
-                      key={cls._id}
-                      label={cls.class_text || cls.name}
-                      size="small"
-                      color="primary"
-                    />
-                  ))}
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ 
+                display: "flex", 
+                alignItems: "center", 
+                mb: 2,
+                p: 2,
+                background: alpha(theme.palette.primary.light, 0.1),
+                borderRadius: 2
+              }}>
+                <Cake sx={{ mr: 2, color: theme.palette.primary.main, fontSize: 30 }} />
+                <Box>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Age
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    {currentTeacher?.age}
+                  </Typography>
                 </Box>
               </Box>
             </Grid>
-          )}
-          {currentTeacher?.subjects && currentTeacher.subjects.length > 0 && (
-            <Grid item xs={12}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  <strong>Subjects:</strong>
-                </Typography>
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                  {currentTeacher.subjects.map((subject) => (
-                    <Chip
-                      key={subject._id}
-                      label={subject.name || subject.subject_name}
-                      size="small"
-                      color="secondary"
-                    />
-                  ))}
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ 
+                display: "flex", 
+                alignItems: "center", 
+                mb: 2,
+                p: 2,
+                background: alpha(theme.palette.secondary.light, 0.1),
+                borderRadius: 2
+              }}>
+                {currentTeacher?.gender === "Male" ? (
+                  <Male sx={{ mr: 2, color: theme.palette.info.main, fontSize: 30 }} />
+                ) : currentTeacher?.gender === "Female" ? (
+                  <Female sx={{ mr: 2, color: theme.palette.error.main, fontSize: 30 }} />
+                ) : (
+                  <Transgender sx={{ mr: 2, color: theme.palette.warning.main, fontSize: 30 }} />
+                )}
+                <Box>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    Gender
+                  </Typography>
+                  <Typography variant="h6" fontWeight="bold">
+                    {currentTeacher?.gender}
+                  </Typography>
                 </Box>
               </Box>
             </Grid>
-          )}
-        </Grid>
+            {currentTeacher?.classes && currentTeacher.classes.length > 0 && (
+              <Grid item xs={12}>
+                <Box sx={{ 
+                  mb: 2,
+                  p: 2,
+                  background: alpha(theme.palette.info.light, 0.08),
+                  borderRadius: 2
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <ClassIcon sx={{ mr: 1, color: theme.palette.info.dark }} />
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      Classes
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
+                    {currentTeacher.classes.map((cls) => (
+                      <Chip
+                        key={cls._id}
+                        label={cls.class_text || cls.name}
+                        size="medium"
+                        color="info"
+                        sx={{ fontWeight: 600, px: 1.5, py: 1 }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Grid>
+            )}
+            {currentTeacher?.subjects && currentTeacher.subjects.length > 0 && (
+              <Grid item xs={12}>
+                <Box sx={{ 
+                  mb: 2,
+                  p: 2,
+                  background: alpha(theme.palette.success.light, 0.08),
+                  borderRadius: 2
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <SubjectIcon sx={{ mr: 1, color: theme.palette.success.dark }} />
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      Subjects
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
+                    {currentTeacher.subjects.map((subject) => (
+                      <Chip
+                        key={subject._id}
+                        label={subject.name || subject.subject_name}
+                        size="medium"
+                        color="success"
+                        sx={{ fontWeight: 600, px: 1.5, py: 1 }}
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </Grid>
+            )}
+          </Grid>
 
-        <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
-          <Button
-            variant="contained"
-            startIcon={<Edit />}
-            onClick={() => handleEdit(currentTeacher)}
-          >
-            Edit Profile
-          </Button>
-        </Box>
-      </CardContent>
-    </Card>
+          <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+            <Button
+              variant="contained"
+              startIcon={<Edit />}
+              onClick={() => handleEdit(currentTeacher)}
+              sx={{
+                px: 4,
+                py: 1.5,
+                borderRadius: 50,
+                fontWeight: 'bold',
+                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                '&:hover': {
+                  boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
+                  animation: `${pulseAnimation} 1.5s infinite`
+                }
+              }}
+            >
+              Edit Profile
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+    </Slide>
   );
 
   const renderTeacherForm = () => (
@@ -459,10 +577,30 @@ const Teacher = () => {
       onClose={handleDialogClose}
       fullWidth
       maxWidth="md"
+      TransitionComponent={Slide}
+      transitionDuration={500}
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          overflow: 'hidden',
+          background: 'linear-gradient(145deg, #f8fbff, #ffffff)',
+          boxShadow: '0 15px 50px rgba(0,0,0,0.2)'
+        }
+      }}
     >
-      <DialogTitle>{editMode ? "Edit Teacher" : "Add New Teacher"}</DialogTitle>
+      <DialogTitle 
+        sx={{ 
+          background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`, 
+          color: 'white',
+          fontWeight: 'bold',
+          py: 2,
+          textAlign: 'center'
+        }}
+      >
+        {editMode ? "Edit Teacher" : "Add New Teacher"}
+      </DialogTitle>
       <DialogContent>
-        <Box component="form" onSubmit={formik.handleSubmit} sx={{ mt: 2 }}>
+        <Box component="form" onSubmit={formik.handleSubmit} sx={{ mt: 3 }}>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
               <TextField
@@ -477,9 +615,14 @@ const Teacher = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Person />
+                      <Person sx={{ color: theme.palette.primary.main }} />
                     </InputAdornment>
                   ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
                 }}
               />
             </Grid>
@@ -499,9 +642,14 @@ const Teacher = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Email />
+                      <Email sx={{ color: theme.palette.primary.main }} />
                     </InputAdornment>
                   ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
                 }}
               />
             </Grid>
@@ -524,9 +672,14 @@ const Teacher = () => {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <School />
+                      <School sx={{ color: theme.palette.primary.main }} />
                     </InputAdornment>
                   ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
                 }}
               />
             </Grid>
@@ -542,6 +695,11 @@ const Teacher = () => {
                 onBlur={formik.handleBlur}
                 error={formik.touched.age && Boolean(formik.errors.age)}
                 helperText={formik.touched.age && formik.errors.age}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
 
@@ -555,6 +713,9 @@ const Teacher = () => {
                   onBlur={formik.handleBlur}
                   error={formik.touched.gender && Boolean(formik.errors.gender)}
                   label="Gender"
+                  sx={{
+                    borderRadius: 2,
+                  }}
                 >
                   <MenuItem value="Male">Male</MenuItem>
                   <MenuItem value="Female">Female</MenuItem>
@@ -592,6 +753,11 @@ const Teacher = () => {
                     </InputAdornment>
                   ),
                 }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
 
@@ -605,6 +771,9 @@ const Teacher = () => {
                   onBlur={formik.handleBlur}
                   label="Class"
                   disabled={classesLoading}
+                  sx={{
+                    borderRadius: 2,
+                  }}
                 >
                   <MenuItem value={null}>Not assigned to a class</MenuItem>
                   {classesLoading ? (
@@ -635,7 +804,14 @@ const Teacher = () => {
                 }
                 label="Is Class Teacher"
                 labelPlacement="start"
-                sx={{ justifyContent: "space-between", ml: 0, width: "100%" }}
+                sx={{ 
+                  justifyContent: "space-between", 
+                  ml: 0, 
+                  width: "100%",
+                  p: 1.5,
+                  borderRadius: 2,
+                  background: alpha(theme.palette.primary.light, 0.1)
+                }}
               />
             </Grid>
 
@@ -650,6 +826,9 @@ const Teacher = () => {
                   onBlur={formik.handleBlur}
                   label="Subjects"
                   disabled={subjectsLoading}
+                  sx={{
+                    borderRadius: 2,
+                  }}
                   renderValue={(selected) => (
                     <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                       {selected.map((value) => {
@@ -658,6 +837,11 @@ const Teacher = () => {
                           <Chip
                             key={value}
                             label={subject.name || subject.subject_name}
+                            sx={{
+                              background: alpha(theme.palette.success.main, 0.1),
+                              color: theme.palette.success.dark,
+                              fontWeight: 600
+                            }}
                           />
                         ) : null;
                       })}
@@ -675,6 +859,7 @@ const Teacher = () => {
                           checked={
                             formik.values.subjects.indexOf(subject._id) > -1
                           }
+                          color="success"
                         />
                         <ListItemText
                           primary={subject.name || subject.subject_name}
@@ -695,19 +880,35 @@ const Teacher = () => {
                 onChange={handleFileChange}
               />
               <label htmlFor="teacher-image-upload">
-                <Button variant="outlined" component="span" fullWidth>
+                <Button 
+                  variant="outlined" 
+                  component="span" 
+                  fullWidth
+                  sx={{
+                    py: 1.5,
+                    borderRadius: 2,
+                    borderWidth: 2,
+                    borderColor: theme.palette.primary.main,
+                    color: theme.palette.primary.main,
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      background: alpha(theme.palette.primary.main, 0.1),
+                      borderWidth: 2
+                    }
+                  }}
+                >
                   {editMode ? "Change Teacher Image" : "Upload Teacher Image"}
                 </Button>
               </label>
               {formik.values.teacher_image && (
-                <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                <Typography variant="caption" display="block" sx={{ mt: 1, ml: 1 }}>
                   {typeof formik.values.teacher_image === "object"
                     ? formik.values.teacher_image.name
                     : formik.values.teacher_image}
                 </Typography>
               )}
               {formik.touched.teacher_image && formik.errors.teacher_image && (
-                <Typography color="error" variant="caption" display="block">
+                <Typography color="error" variant="caption" display="block" sx={{ ml: 1 }}>
                   {formik.errors.teacher_image}
                 </Typography>
               )}
@@ -715,12 +916,38 @@ const Teacher = () => {
           </Grid>
         </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={handleDialogClose}>Cancel</Button>
+      <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+        <Button 
+          onClick={handleDialogClose}
+          sx={{
+            px: 4,
+            py: 1,
+            borderRadius: 2,
+            fontWeight: 'bold',
+            color: theme.palette.text.secondary,
+            '&:hover': {
+              background: alpha(theme.palette.text.secondary, 0.05)
+            }
+          }}
+        >
+          Cancel
+        </Button>
         <Button
           onClick={formik.handleSubmit}
           variant="contained"
           disabled={loading}
+          sx={{
+            px: 4,
+            py: 1,
+            borderRadius: 2,
+            fontWeight: 'bold',
+            background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+            '&:hover': {
+              boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
+              animation: `${pulseAnimation} 1.5s infinite`
+            }
+          }}
         >
           {editMode ? "Update" : "Create"}
         </Button>
@@ -730,8 +957,19 @@ const Teacher = () => {
 
   const renderTeachersList = () => (
     <Box>
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-        <Box sx={{ display: "flex", gap: 2 }}>
+      <Box sx={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        mb: 3,
+        gap: 2,
+        flexWrap: 'wrap'
+      }}>
+        <Box sx={{ 
+          display: "flex", 
+          gap: 2,
+          flexGrow: 1,
+          maxWidth: 600
+        }}>
           <TextField
             variant="outlined"
             placeholder="Search teachers..."
@@ -741,17 +979,33 @@ const Teacher = () => {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <Search />
+                  <Search sx={{ color: theme.palette.text.secondary }} />
                 </InputAdornment>
               ),
+              sx: {
+                borderRadius: 50,
+                background: alpha(theme.palette.primary.light, 0.1),
+                '&:hover': {
+                  background: alpha(theme.palette.primary.light, 0.15)
+                }
+              }
+            }}
+            sx={{
+              flexGrow: 1
             }}
           />
-          <FormControl sx={{ minWidth: 120 }} size="small">
+          <FormControl sx={{ minWidth: 200 }} size="small">
             <InputLabel>Qualification</InputLabel>
             <Select
               value={selectedQualification}
               onChange={(e) => setSelectedQualification(e.target.value)}
               label="Qualification"
+              sx={{
+                borderRadius: 50,
+                '& .MuiSelect-select': {
+                  py: 1
+                }
+              }}
             >
               <MenuItem value="">All Qualifications</MenuItem>
               {uniqueQualifications.map((qualification) => (
@@ -767,6 +1021,18 @@ const Teacher = () => {
             variant="contained"
             startIcon={<Add />}
             onClick={() => setOpenDialog(true)}
+            sx={{
+              borderRadius: 50,
+              px: 4,
+              py: 1.5,
+              fontWeight: 'bold',
+              background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+              boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+              '&:hover': {
+                boxShadow: '0 6px 15px rgba(0,0,0,0.2)',
+                animation: `${pulseAnimation} 1.5s infinite`
+              }
+            }}
           >
             Add Teacher
           </Button>
@@ -775,80 +1041,153 @@ const Teacher = () => {
 
       {filteredTeachers.length > 0 ? (
         <Grid container spacing={3}>
-          {filteredTeachers.map((teacher) => (
+          {filteredTeachers.map((teacher, index) => (
             <Grid item xs={12} sm={6} md={4} key={teacher._id}>
-              <Card
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <Box sx={{ position: "relative", pt: "100%" }}>
-                  <Avatar
-                    src={`/images/uploaded/teacher/${teacher.teacher_image}`}
-                    alt={teacher.name}
-                    sx={{
-                      position: "absolute",
+              <Grow in timeout={500 + (index * 100)}>
+                <Card
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-10px)',
+                      boxShadow: '0 15px 30px rgba(0,0,0,0.15)'
+                    }
+                  }}
+                >
+                  <Box sx={{ position: "relative", pt: "100%", overflow: 'hidden' }}>
+                    <Box sx={{
+                      position: 'absolute',
                       top: 0,
                       left: 0,
-                      width: "100%",
-                      height: "100%",
-                      borderRadius: 0,
-                      objectFit: "cover",
-                    }}
-                  >
-                    {!teacher.teacher_image && <Person fontSize="large" />}
-                  </Avatar>
-                </Box>
-                <CardContent>
-                  <Typography gutterBottom variant="h6" component="div">
-                    {teacher.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                      <Email fontSize="small" sx={{ mr: 1 }} />
-                      {teacher.email}
+                      width: '100%',
+                      height: '100%',
+                      background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                      opacity: 0.9,
+                      zIndex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'opacity 0.3s ease',
+                      '&:hover': {
+                        opacity: 0
+                      }
+                    }}>
+                      <Typography 
+                        variant="h5" 
+                        color="white"
+                        fontWeight="bold"
+                        textAlign="center"
+                        sx={{
+                          textShadow: '0 2px 10px rgba(0,0,0,0.3)'
+                        }}
+                      >
+                        {teacher.name}
+                      </Typography>
                     </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                      <Work fontSize="small" sx={{ mr: 1 }} />
-                      {teacher.qualification}
+                    <Avatar
+                      src={`/images/uploaded/teacher/${teacher.teacher_image}`}
+                      alt={teacher.name}
+                      sx={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "100%",
+                        borderRadius: 0,
+                        objectFit: "cover",
+                      }}
+                    >
+                      {!teacher.teacher_image && <Person fontSize="large" />}
+                    </Avatar>
+                  </Box>
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Typography gutterBottom variant="h6" component="div" fontWeight="bold">
+                      {teacher.name}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                      <Box sx={{ 
+                        background: alpha(theme.palette.primary.main, 0.1), 
+                        borderRadius: 1, 
+                        px: 1.5, 
+                        py: 0.5,
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                      }}>
+                        <Work fontSize="small" sx={{ mr: 1, color: theme.palette.primary.main }} />
+                        <Typography variant="body2" fontWeight="500">
+                          {teacher.qualification}
+                        </Typography>
+                      </Box>
                     </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                      <Cake fontSize="small" sx={{ mr: 1 }} />
-                      Age: {teacher.age}
+                    
+                    <Box sx={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      mb: 1.5,
+                      background: alpha(theme.palette.info.light, 0.1),
+                      borderRadius: 1,
+                      p: 1
+                    }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                        <Cake fontSize="small" sx={{ mr: 1, color: theme.palette.info.dark }} />
+                        <Typography variant="body2">
+                          {teacher.age} years
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {teacher.gender === "Male" ? (
+                          <Male fontSize="small" sx={{ mr: 1, color: theme.palette.info.dark }} />
+                        ) : teacher.gender === "Female" ? (
+                          <Female fontSize="small" sx={{ mr: 1, color: theme.palette.info.dark }} />
+                        ) : (
+                          <Transgender fontSize="small" sx={{ mr: 1, color: theme.palette.info.dark }} />
+                        )}
+                        <Typography variant="body2">
+                          {teacher.gender}
+                        </Typography>
+                      </Box>
                     </Box>
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      {teacher.gender === "Male" ? (
-                        <Male fontSize="small" sx={{ mr: 1 }} />
-                      ) : teacher.gender === "Female" ? (
-                        <Female fontSize="small" sx={{ mr: 1 }} />
-                      ) : (
-                        <Transgender fontSize="small" sx={{ mr: 1 }} />
-                      )}
-                      {teacher.gender}
-                    </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                      <School fontSize="small" sx={{ mr: 1 }} />
-                      <Typography variant="body2">
-                        Class:{" "}
+                    
+                    <Box sx={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      mb: 1.5,
+                      background: alpha(theme.palette.success.light, 0.1),
+                      borderRadius: 1,
+                      p: 1
+                    }}>
+                      <ClassIcon fontSize="small" sx={{ mr: 1, color: theme.palette.success.dark }} />
+                      <Typography variant="body2" fontWeight="500">
                         {teacher.class?.class_text ||
                           teacher.class?.name ||
                           "Not assigned"}
                         {teacher.is_class_teacher && " (Class Teacher)"}
                       </Typography>
                     </Box>
+                    
                     {teacher.subjects && teacher.subjects.length > 0 && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography variant="caption" display="block">
-                          Subjects:
-                        </Typography>
+                      <Box sx={{ 
+                        mt: 2,
+                        background: alpha(theme.palette.warning.light, 0.1),
+                        borderRadius: 1,
+                        p: 1
+                      }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                          <SubjectIcon fontSize="small" sx={{ mr: 1, color: theme.palette.warning.dark }} />
+                          <Typography variant="body2" fontWeight="500">
+                            Subjects:
+                          </Typography>
+                        </Box>
                         <Box
                           sx={{
                             display: "flex",
                             flexWrap: "wrap",
                             gap: 0.5,
-                            mt: 0.5,
                           }}
                         >
                           {teacher.subjects.map((subject) => (
@@ -856,82 +1195,141 @@ const Teacher = () => {
                               key={subject._id}
                               label={subject.name || subject.subject_name}
                               size="small"
-                              color="secondary"
+                              sx={{
+                                background: alpha(theme.palette.warning.main, 0.1),
+                                color: theme.palette.warning.dark,
+                                fontWeight: 500
+                              }}
                             />
                           ))}
                         </Box>
                       </Box>
                     )}
-                  </Typography>
-                </CardContent>
-                {user.role !== "TEACHER" && (
-                  <Box
-                    sx={{
-                      p: 2,
-                      mt: "auto",
-                      display: "flex",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Button
-                      size="small"
-                      startIcon={<Edit />}
-                      onClick={() => handleEdit(teacher)}
-                      variant="outlined"
+                  </CardContent>
+                  {user.role !== "TEACHER" && (
+                    <Box
+                      sx={{
+                        p: 2,
+                        mt: "auto",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        borderTop: '1px solid rgba(0,0,0,0.08)'
+                      }}
                     >
-                      Edit
-                    </Button>
-                    <Button
-                      size="small"
-                      startIcon={<Delete />}
-                      onClick={() => handleDelete(teacher._id)}
-                      variant="outlined"
-                      color="error"
-                    >
-                      Delete
-                    </Button>
-                  </Box>
-                )}
-              </Card>
+                      <Button
+                        size="small"
+                        startIcon={<Edit />}
+                        onClick={() => handleEdit(teacher)}
+                        variant="outlined"
+                        sx={{
+                          borderRadius: 50,
+                          px: 2,
+                          fontWeight: 'bold',
+                          borderWidth: 2,
+                          '&:hover': {
+                            borderWidth: 2
+                          }
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        startIcon={<Delete />}
+                        onClick={() => handleDelete(teacher._id)}
+                        variant="outlined"
+                        color="error"
+                        sx={{
+                          borderRadius: 50,
+                          px: 2,
+                          fontWeight: 'bold',
+                          borderWidth: 2,
+                          '&:hover': {
+                            borderWidth: 2
+                          }
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </Box>
+                  )}
+                </Card>
+              </Grow>
             </Grid>
           ))}
         </Grid>
       ) : (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: 200,
-            border: "1px dashed",
-            borderColor: "divider",
-            borderRadius: 1,
-          }}
-        >
-          <Typography variant="h6" color="text.secondary">
-            No teachers found
-          </Typography>
-        </Box>
+        <Fade in timeout={800}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              height: 300,
+              border: "2px dashed",
+              borderColor: theme.palette.divider,
+              borderRadius: 4,
+              background: alpha(theme.palette.primary.light, 0.03),
+              textAlign: 'center',
+              p: 4
+            }}
+          >
+            <School sx={{ fontSize: 80, color: theme.palette.text.disabled, mb: 2 }} />
+            <Typography variant="h5" color="text.secondary" gutterBottom>
+              No Teachers Found
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Try adjusting your search or add a new teacher
+            </Typography>
+          </Box>
+        </Fade>
       )}
     </Box>
   );
 
   const renderDeleteDialog = () => (
-    <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
-      <DialogTitle>Confirm Delete</DialogTitle>
+    <Dialog 
+      open={openDeleteDialog} 
+      onClose={() => setOpenDeleteDialog(false)}
+      TransitionComponent={Zoom}
+    >
+      <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>Confirm Delete</DialogTitle>
       <DialogContent>
-        <DialogContentText>
-          Are you sure you want to delete this teacher? This action cannot be
-          undone.
-        </DialogContentText>
+        <Box sx={{ textAlign: 'center', p: 2 }}>
+          <Delete sx={{ fontSize: 60, color: theme.palette.error.main, mb: 2 }} />
+          <DialogContentText>
+            Are you sure you want to delete this teacher? This action cannot be undone.
+          </DialogContentText>
+        </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+      <DialogActions sx={{ justifyContent: 'center', p: 3 }}>
+        <Button 
+          onClick={() => setOpenDeleteDialog(false)} 
+          variant="outlined"
+          sx={{
+            px: 4,
+            borderRadius: 50,
+            fontWeight: 'bold'
+          }}
+        >
+          Cancel
+        </Button>
         <Button
           onClick={confirmDelete}
           color="error"
           variant="contained"
           disabled={loading}
+          sx={{
+            px: 4,
+            borderRadius: 50,
+            fontWeight: 'bold',
+            background: `linear-gradient(45deg, ${theme.palette.error.dark}, ${theme.palette.error.main})`,
+            boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+            '&:hover': {
+              boxShadow: '0 6px 15px rgba(0,0,0,0.2)'
+            }
+          }}
         >
           Delete
         </Button>
@@ -940,58 +1338,161 @@ const Teacher = () => {
   );
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography
-        variant="h4"
-        component="h1"
-        gutterBottom
-        sx={{ fontWeight: "bold" }}
-      >
-        {user.role === "TEACHER" ? "My Profile" : "Teacher Management"}
-      </Typography>
-
-      {loading && <LinearProgress />}
-
-      {user.role === "TEACHER" ? (
-        currentTeacher && renderTeacherProfile()
-      ) : (
-        <>
-          <Tabs
-            value={activeTab}
-            onChange={(e, newValue) => setActiveTab(newValue)}
-            sx={{ mb: 3 }}
+    <Fade in timeout={500}>
+      <Container maxWidth="lg" sx={{ py: 1}}>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.primary.main})`,
+            color: 'white',
+            borderRadius: 3,
+            p: 3,
+            mb: 4,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+            position: 'relative',
+            overflow: 'hidden',
+            '&:before': {
+              content: '""',
+              position: 'absolute',
+              top: -50,
+              right: -50,
+              width: 200,
+              height: 200,
+              background: 'rgba(255,255,255,0.1)',
+              borderRadius: '50%'
+            }
+          }}
+        >
+          <Typography
+            variant="h3"
+            component="h1"
+            gutterBottom
+            sx={{ 
+              fontWeight: 800,
+              textShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              position: 'relative',
+              zIndex: 2
+            }}
           >
-            <Tab label="Teachers List" icon={<School />} />
-            <Tab label="Add Teacher" icon={<Add />} />
-          </Tabs>
+            {user.role === "TEACHER" ? "My Profile" : "Teacher Management"}
+          </Typography>
+          <Typography 
+            variant="subtitle1" 
+            sx={{ 
+              opacity: 0.9,
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            {user.role === "TEACHER" 
+              ? "Manage your professional profile" 
+              : "Manage all teacher profiles and information"}
+          </Typography>
+        </Paper>
 
-          {activeTab === 0 ? (
-            renderTeachersList()
-          ) : (
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => setOpenDialog(true)}
-              sx={{ mb: 3 }}
+        {loading && (
+          <LinearProgress 
+            sx={{ 
+              height: 6, 
+              borderRadius: 3, 
+              background: alpha(theme.palette.primary.light, 0.2),
+              '& .MuiLinearProgress-bar': {
+                background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                borderRadius: 3
+              }
+            }} 
+          />
+        )}
+
+        {user.role === "TEACHER" ? (
+          currentTeacher && renderTeacherProfile()
+        ) : (
+          <>
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              sx={{ 
+                mb: 4,
+                '& .MuiTabs-indicator': {
+                  height: 4,
+                  borderRadius: 2,
+                  background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
+                }
+              }}
+              textColor="primary"
             >
-              Add New Teacher
-            </Button>
-          )}
-        </>
-      )}
+              <Tab 
+                label="Teachers List" 
+                icon={<School />} 
+                iconPosition="start"
+                sx={{ 
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                  py: 1.5,
+                  minHeight: 'auto',
+                  '&.Mui-selected': {
+                    color: theme.palette.primary.main
+                  }
+                }} 
+              />
+              <Tab 
+                label="Add Teacher" 
+                icon={<Add />} 
+                iconPosition="start"
+                sx={{ 
+                  fontWeight: 'bold',
+                  fontSize: '1rem',
+                  py: 1.5,
+                  minHeight: 'auto',
+                  '&.Mui-selected': {
+                    color: theme.palette.primary.main
+                  }
+                }} 
+              />
+            </Tabs>
 
-      {renderTeacherForm()}
-      {renderDeleteDialog()}
+            {activeTab === 0 ? (
+              renderTeachersList()
+            ) : (
+              <Box sx={{ textAlign: 'center', mb: 4 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  onClick={() => setOpenDialog(true)}
+                  sx={{
+                    px: 5,
+                    py: 1.5,
+                    borderRadius: 50,
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    boxShadow: '0 5px 15px rgba(0,0,0,0.1)',
+                    '&:hover': {
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                      animation: `${pulseAnimation} 1.5s infinite`
+                    }
+                  }}
+                >
+                  Add New Teacher
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
 
-      <MessageSnackbar
-        message={error || success}
-        type={error ? "error" : "success"}
-        handleClose={() => {
-          if (error) setError("");
-          if (success) setSuccess("");
-        }}
-      />
-    </Container>
+        {renderTeacherForm()}
+        {renderDeleteDialog()}
+
+        <MessageSnackbar
+          message={error || success}
+          type={error ? "error" : "success"}
+          handleClose={() => {
+            if (error) setError("");
+            if (success) setSuccess("");
+          }}
+        />
+      </Container>
+    </Fade>
   );
 };
 

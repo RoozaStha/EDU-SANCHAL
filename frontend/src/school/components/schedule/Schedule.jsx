@@ -4,6 +4,7 @@ import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import ScheduleEvent from "./ScheduleEvent";
 import axios from "axios";
+import { keyframes } from "@emotion/react";
 
 // Material UI components
 import {
@@ -38,6 +39,11 @@ import {
   FormControlLabel,
   Tabs,
   Tab,
+  Fade,
+  Grow,
+  Slide,
+  Zoom,
+  useMediaQuery,
 } from "@mui/material";
 
 // Icons
@@ -56,13 +62,40 @@ import {
   ArrowBack as ArrowBackIcon,
   ArrowForward as ArrowForwardIcon,
   FilterList as FilterListIcon,
+  Menu as MenuIcon,
+  Today as TodayIcon,
 } from "@mui/icons-material";
+
+// Animations
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+`;
+
+const gradientFlow = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+
+const floatAnimation = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+`;
 
 const localizer = momentLocalizer(moment);
 
 // Custom calendar toolbar component
 const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <Box
@@ -73,19 +106,40 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
         mb: 2,
         flexWrap: "wrap",
         gap: 1,
+        p: 1,
+        backgroundColor: alpha(theme.palette.primary.main, 0.05),
+        borderRadius: 2,
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-        <IconButton onClick={() => onNavigate("PREV")}>
+        <IconButton 
+          onClick={() => onNavigate("PREV")}
+          sx={{ 
+            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) }
+          }}
+        >
           <ArrowBackIcon />
         </IconButton>
-        <IconButton onClick={() => onNavigate("TODAY")}>
-          <EventIcon />
+        <IconButton 
+          onClick={() => onNavigate("TODAY")}
+          sx={{ 
+            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) }
+          }}
+        >
+          <TodayIcon />
         </IconButton>
-        <IconButton onClick={() => onNavigate("NEXT")}>
+        <IconButton 
+          onClick={() => onNavigate("NEXT")}
+          sx={{ 
+            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) }
+          }}
+        >
           <ArrowForwardIcon />
         </IconButton>
-        <Typography variant="h6" sx={{ fontWeight: 500 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, color: theme.palette.primary.dark }}>
           {label}
         </Typography>
       </Box>
@@ -97,8 +151,14 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
           minHeight: "unset",
           "& .MuiTabs-indicator": {
             backgroundColor: theme.palette.primary.main,
+            height: 3,
           },
-          "& .MuiTab-root": { minHeight: 40, py: 0.5 },
+          "& .MuiTab-root": { 
+            minHeight: 36, 
+            py: 0.5,
+            px: 1,
+            fontSize: isMobile ? '0.7rem' : '0.875rem',
+          },
         }}
       >
         {views.map((viewName) => {
@@ -122,18 +182,22 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
             <Tab
               key={viewName}
               value={viewName}
-              label={
+              label={isMobile ? icon : (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                   {icon}
                   <span>{label}</span>
                 </Box>
-              }
+              )}
               sx={{
                 color:
                   view === viewName
                     ? theme.palette.primary.main
                     : "text.secondary",
-                "&.Mui-selected": { color: theme.palette.primary.main },
+                "&.Mui-selected": { 
+                  color: theme.palette.primary.main,
+                  fontWeight: 600,
+                },
+                minWidth: 'unset',
               }}
             />
           );
@@ -156,11 +220,18 @@ const CustomEvent = ({ event, onEdit, onDelete }) => {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        borderRadius: 1,
+        boxShadow: theme.shadows[1],
       }}
     >
       <Typography
         variant="body2"
-        sx={{ fontWeight: 600, mb: 0.5, lineHeight: 1.2 }}
+        sx={{ 
+          fontWeight: 600, 
+          mb: 0.5, 
+          lineHeight: 1.2,
+          fontSize: '0.85rem'
+        }}
       >
         {event.title}
       </Typography>
@@ -188,7 +259,8 @@ const CustomEvent = ({ event, onEdit, onDelete }) => {
             sx={{
               color: "white",
               p: 0.25,
-              "&:hover": { backgroundColor: alpha("#fff", 0.15) },
+              backgroundColor: alpha(theme.palette.primary.contrastText, 0.2),
+              "&:hover": { backgroundColor: alpha(theme.palette.primary.contrastText, 0.3) },
             }}
           >
             <EditIcon fontSize="small" />
@@ -203,7 +275,8 @@ const CustomEvent = ({ event, onEdit, onDelete }) => {
             sx={{
               color: "white",
               p: 0.25,
-              "&:hover": { backgroundColor: alpha("#fff", 0.15) },
+              backgroundColor: alpha(theme.palette.error.contrastText, 0.2),
+              "&:hover": { backgroundColor: alpha(theme.palette.error.contrastText, 0.3) },
             }}
           >
             <DeleteIcon fontSize="small" />
@@ -216,6 +289,7 @@ const CustomEvent = ({ event, onEdit, onDelete }) => {
 
 export default function Schedule() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState("");
   const [currentView, setCurrentView] = useState("week");
@@ -230,6 +304,7 @@ export default function Schedule() {
   const [showWeekends, setShowWeekends] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [statsOpen, setStatsOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Stats for the selected class
   const stats = useMemo(() => {
@@ -352,8 +427,6 @@ export default function Schedule() {
 
   // Modified to ensure the dialog opens properly with null event (for adding new schedule)
   const handleOpenDialog = (event = null) => {
-    console.log("Opening dialog with event:", event); // Add this line
-
     setSelectedEvent(event);
     setDialogOpen(true);
   };
@@ -406,11 +479,6 @@ export default function Schedule() {
   }, [events, showWeekends]);
 
   const eventStyleGetter = (event) => {
-    const backgroundColor =
-      event.id === selectedEvent?.id
-        ? theme.palette.secondary.main
-        : theme.palette.primary.main;
-
     const subjectName = event.title.split(" - ")[0].toLowerCase();
 
     // Generate deterministic color based on subject name
@@ -449,99 +517,175 @@ export default function Schedule() {
   };
 
   return (
-    <Box sx={{ height: "90vh", p: { xs: 1, sm: 2, md: 3 } }}>
+    <Box sx={{ 
+      height: "90vh", 
+      p: { xs: 1, sm: 2, md: 3 },
+      animation: `${fadeIn} 0.5s ease-out`,
+    }}>
       <Paper
         elevation={3}
         sx={{
-          p: { xs: 2, sm: 3 },
+          p: { xs: 0, sm: 2 },
           height: "100%",
           borderRadius: 2,
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
           bgcolor: theme.palette.background.default,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
         }}
       >
+        {/* Blue Header Bar */}
         <Box
           sx={{
+            background: "linear-gradient(135deg, #1976d2 0%, #0d47a1 100%)",
+            color: "white",
+            p: 2,
+            borderRadius: "8px 8px 0 0",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mb: 2,
             flexWrap: "wrap",
-            gap: 2,
+            gap: 1,
+            animation: `${gradientFlow} 6s ease infinite`,
+            backgroundSize: '200% 200%',
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <SchoolIcon color="primary" fontSize="large" />
-            <Typography variant="h4" sx={{ fontWeight: 600 }}>
-              Class Schedule
+            <SchoolIcon sx={{ fontSize: 32 }} />
+            <Typography variant="h4" sx={{ fontWeight: 700, letterSpacing: 0.5 }}>
+              Class Schedule Calendar
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Box sx={{ 
+            display: "flex", 
+            gap: 1, 
+            flexWrap: "wrap",
+            animation: `${floatAnimation} 3s ease-in-out infinite`,
+          }}>
             <Button
               variant="outlined"
               startIcon={<InfoIcon />}
               onClick={() => setStatsOpen(true)}
               disabled={!events.length}
+              sx={{ 
+                color: 'white', 
+                borderColor: 'rgba(255,255,255,0.3)',
+                '&:hover': { borderColor: 'white' }
+              }}
             >
               Stats
             </Button>
 
-            <Tooltip title="Refresh schedule">
-              <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={refreshSchedules}
-                disabled={!selectedClass}
-              >
-                Refresh
-              </Button>
-            </Tooltip>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={refreshSchedules}
+              disabled={!selectedClass}
+              sx={{ 
+                color: 'white', 
+                borderColor: 'rgba(255,255,255,0.3)',
+                '&:hover': { borderColor: 'white' }
+              }}
+            >
+              Refresh
+            </Button>
 
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog(null)}
               disabled={!selectedClass}
-              color="primary"
+              color="secondary"
+              sx={{
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                '&:hover': {
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  transform: 'translateY(-1px)'
+                }
+              }}
             >
               Add Schedule
             </Button>
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-          <FormControl sx={{ minWidth: 200, maxWidth: 300, flex: 1 }}>
-            <InputLabel id="class-label">Class</InputLabel>
-            <Select
-              labelId="class-label"
-              label="Class"
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              startAdornment={
-                <SchoolIcon sx={{ mr: 1, ml: -0.5, color: "text.secondary" }} />
-              }
-            >
-              {classes.map((cls) => (
-                <MenuItem key={cls._id} value={cls._id}>
-                  {cls.class_text}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        <Box sx={{ 
+          display: "flex", 
+          gap: 2, 
+          mb: 2, 
+          flexWrap: "wrap", 
+          p: 2,
+          backgroundColor: alpha(theme.palette.primary.main, 0.03),
+          borderRadius: 1,
+          mt: 1
+        }}>
+          <Box sx={{ flex: 1, display: 'flex', gap: 1, alignItems: 'center' }}>
+            {isMobile && (
+              <IconButton 
+                onClick={() => setShowFilters(!showFilters)}
+                sx={{ 
+                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                  '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.2) }
+                }}
+              >
+                <FilterListIcon />
+              </IconButton>
+            )}
+            
+            <FormControl sx={{ minWidth: 200, maxWidth: 300, flex: 1 }}>
+              <InputLabel id="class-label">Class</InputLabel>
+              <Select
+                labelId="class-label"
+                label="Class"
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                startAdornment={
+                  <SchoolIcon sx={{ mr: 1, ml: -0.5, color: "text.secondary" }} />
+                }
+              >
+                {classes.map((cls) => (
+                  <MenuItem key={cls._id} value={cls._id}>
+                    {cls.class_text}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showWeekends}
-                onChange={(e) => setShowWeekends(e.target.checked)}
-                color="primary"
-              />
-            }
-            label="Show Weekends"
-          />
+          {(!isMobile || showFilters) && (
+            <Slide direction="left" in={!isMobile || showFilters} mountOnEnter unmountOnExit>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row', 
+                gap: 1,
+                width: isMobile ? '100%' : 'auto',
+                p: isMobile ? 1 : 0,
+                backgroundColor: isMobile ? alpha(theme.palette.primary.main, 0.03) : 'transparent',
+                borderRadius: 1
+              }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={showWeekends}
+                      onChange={(e) => setShowWeekends(e.target.checked)}
+                      color="primary"
+                    />
+                  }
+                  label="Show Weekends"
+                />
+                
+                <Chip
+                  icon={<EventIcon />}
+                  label={`${filteredEvents.length} events`}
+                  color="info"
+                  variant="outlined"
+                  sx={{ alignSelf: 'flex-start' }}
+                />
+              </Box>
+            </Slide>
+          )}
         </Box>
 
         {error && (
@@ -578,7 +722,13 @@ export default function Schedule() {
           </Snackbar>
         )}
 
-        <Box sx={{ flex: 1, overflow: "hidden", borderRadius: 1, mt: 1 }}>
+        <Box sx={{ 
+          flex: 1, 
+          overflow: "hidden", 
+          borderRadius: 1, 
+          mt: 1,
+          position: 'relative',
+        }}>
           {loading ? (
             <Box
               sx={{
@@ -586,10 +736,14 @@ export default function Schedule() {
                 flexDirection: "column",
                 gap: 2,
                 height: "100%",
+                justifyContent: 'center',
+                alignItems: 'center',
               }}
             >
-              <Skeleton variant="rectangular" width="100%" height={80} />
-              <Skeleton variant="rectangular" width="100%" height="80%" />
+              <CircularProgress size={60} thickness={4} />
+              <Typography variant="h6" color="text.secondary">
+                Loading Schedule...
+              </Typography>
             </Box>
           ) : (
             <Calendar
@@ -646,16 +800,19 @@ export default function Schedule() {
         open={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
         PaperProps={{
-          sx: { borderRadius: 2 },
+          sx: { 
+            borderRadius: 2,
+            boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+          },
         }}
       >
-        <DialogTitle sx={{ pb: 1 }}>
+        <DialogTitle sx={{ pb: 1, backgroundColor: theme.palette.error.light, color: 'white' }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <DeleteIcon color="error" />
+            <DeleteIcon />
             <Typography variant="h6">Confirm Delete</Typography>
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pt: 3 }}>
           <DialogContentText>
             Are you sure you want to delete this schedule?
           </DialogContentText>
@@ -664,8 +821,9 @@ export default function Schedule() {
               sx={{
                 mt: 2,
                 p: 2,
-                bgcolor: alpha(theme.palette.error.main, 0.1),
+                bgcolor: alpha(theme.palette.error.main, 0.05),
                 borderRadius: 1,
+                border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
               }}
             >
               <Typography
@@ -697,6 +855,7 @@ export default function Schedule() {
           <Button
             onClick={() => setDeleteConfirmOpen(false)}
             variant="outlined"
+            color="inherit"
           >
             Cancel
           </Button>
@@ -705,6 +864,7 @@ export default function Schedule() {
             color="error"
             variant="contained"
             startIcon={<DeleteIcon />}
+            sx={{ boxShadow: `0 2px 6px ${alpha(theme.palette.error.main, 0.3)}` }}
           >
             Delete
           </Button>
@@ -718,23 +878,26 @@ export default function Schedule() {
         fullWidth
         maxWidth="sm"
         PaperProps={{
-          sx: { borderRadius: 2 },
+          sx: { 
+            borderRadius: 2,
+            boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+          },
         }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ backgroundColor: theme.palette.primary.main, color: 'white' }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <InfoIcon color="primary" />
+            <InfoIcon />
             <Typography variant="h6">Schedule Statistics</Typography>
           </Box>
         </DialogTitle>
         <DialogContent>
           {stats ? (
             <>
-              <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid container spacing={2} sx={{ mb: 2, mt: 1 }}>
                 <Grid item xs={6}>
-                  <Card>
+                  <Card sx={{ boxShadow: theme.shadows[2] }}>
                     <CardContent>
-                      <Typography variant="h4" sx={{ textAlign: "center" }}>
+                      <Typography variant="h4" sx={{ textAlign: "center", fontWeight: 700 }}>
                         {stats.totalEvents}
                       </Typography>
                       <Typography
@@ -748,9 +911,9 @@ export default function Schedule() {
                   </Card>
                 </Grid>
                 <Grid item xs={6}>
-                  <Card>
+                  <Card sx={{ boxShadow: theme.shadows[2] }}>
                     <CardContent>
-                      <Typography variant="h4" sx={{ textAlign: "center" }}>
+                      <Typography variant="h4" sx={{ textAlign: "center", fontWeight: 700 }}>
                         {stats.totalHours}
                       </Typography>
                       <Typography
@@ -765,40 +928,71 @@ export default function Schedule() {
                 </Grid>
               </Grid>
 
-              <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600 }}>
                 Events by Subject
               </Typography>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+              <Box sx={{ 
+                display: "flex", 
+                flexWrap: "wrap", 
+                gap: 1, 
+                mb: 2,
+                p: 1,
+                backgroundColor: alpha(theme.palette.primary.main, 0.03),
+                borderRadius: 1,
+              }}>
                 {Object.entries(stats.subjectCounts).map(([subject, count]) => (
                   <Chip
                     key={subject}
                     label={`${subject}: ${count}`}
                     color="primary"
                     variant="outlined"
+                    sx={{ fontWeight: 500 }}
                   />
                 ))}
               </Box>
 
-              <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
+              <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 600 }}>
                 Events by Teacher
               </Typography>
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+              <Box sx={{ 
+                display: "flex", 
+                flexWrap: "wrap", 
+                gap: 1,
+                p: 1,
+                backgroundColor: alpha(theme.palette.secondary.main, 0.03),
+                borderRadius: 1,
+              }}>
                 {Object.entries(stats.teacherCounts).map(([teacher, count]) => (
                   <Chip
                     key={teacher}
                     label={`${teacher}: ${count}`}
                     color="secondary"
                     variant="outlined"
+                    sx={{ fontWeight: 500 }}
                   />
                 ))}
               </Box>
             </>
           ) : (
-            <Typography variant="body1">No statistics available</Typography>
+            <Box sx={{ textAlign: 'center', py: 3 }}>
+              <InfoIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
+              <Typography variant="h6" color="text.secondary">
+                No statistics available
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Schedule events to see statistics
+              </Typography>
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setStatsOpen(false)}>Close</Button>
+          <Button 
+            onClick={() => setStatsOpen(false)}
+            variant="contained"
+            color="primary"
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

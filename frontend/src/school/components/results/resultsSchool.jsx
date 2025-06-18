@@ -29,6 +29,17 @@ import {
   CardContent,
   TablePagination,
   Chip,
+  Avatar,
+  LinearProgress,
+  Tooltip,
+  InputAdornment,
+  Divider,
+  Fade,
+  Grow,
+  Zoom,
+  Collapse,
+  Badge,
+  Skeleton
 } from "@mui/material";
 import {
   Search,
@@ -41,6 +52,22 @@ import {
   PictureAsPdf,
   BarChart,
   TrendingUp,
+  FilterList,
+  Refresh,
+  Bookmark,
+  BookmarkBorder,
+  Download,
+  Info,
+  CheckCircle,
+  Menu as MenuIcon,
+  NotificationsActive,
+  Person,
+  School,
+  Groups,
+  AccessTime,
+  MoreVert,
+  ExpandMore,
+  ExpandLess
 } from "@mui/icons-material";
 import axios from "axios";
 import {
@@ -48,7 +75,7 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   BarChart as ReBarChart,
   Bar,
@@ -57,6 +84,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { saveAs } from "file-saver";
+import { motion } from "framer-motion";
+import { keyframes, alpha } from '@mui/material/styles';
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 const examTypeOptions = [
@@ -66,15 +95,100 @@ const examTypeOptions = [
   "Final Term Exam",
 ];
 
+// Animations
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
+
+const pulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+`;
+
+const gradientFlow = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+
+const floating = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+`;
+
+const shimmer = keyframes`
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+`;
+
+function StatCard({ icon, title, value, color, loading, subtitle }) {
+  return (
+    <motion.div whileHover={{ scale: 1.03 }} transition={{ duration: 0.3 }}>
+      <Card sx={{ 
+        borderRadius: 3,
+        boxShadow: 3,
+        transition: 'all 0.3s ease',
+        height: '100%',
+        background: `linear-gradient(135deg, ${alpha(color, 0.1)} 0%, ${alpha(color, 0.05)} 100%)`,
+        border: `1px solid ${alpha(color, 0.2)}`,
+        overflow: 'visible',
+        position: 'relative',
+        '&:before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background: `linear-gradient(90deg, ${color}, ${alpha(color, 0.5)})`,
+          borderTopLeftRadius: 12,
+          borderTopRightRadius: 12,
+        }
+      }}>
+        <CardContent sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 2, 
+          p: 3,
+          height: '100%'
+        }}>
+          <Avatar sx={{ 
+            backgroundColor: `${color}20`, 
+            color: color,
+            width: 56,
+            height: 56,
+            boxShadow: `0 4px 10px ${alpha(color, 0.3)}`,
+          }}>
+            {icon}
+          </Avatar>
+          <Box>
+            <Typography variant="subtitle1" color="text.secondary">
+              {title}
+            </Typography>
+            {loading ? (
+              <Skeleton variant="text" width={60} height={40} /> 
+            ) : (
+              <Typography variant="h3" component="div" sx={{ fontWeight: 700, color }}>
+                {value}
+              </Typography>
+            )}
+            <Typography variant="caption" color="text.secondary">
+              {subtitle}
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
 const SchoolResult = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [activeTab, setActiveTab] = useState(0);
-
-  // Add missing handleTabChange function
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
-  };
 
   // State variables
   const [examinations, setExaminations] = useState([]);
@@ -107,6 +221,7 @@ const SchoolResult = () => {
     maxMarks: "",
     remarks: "",
   });
+  const [bookmarkedResults, setBookmarkedResults] = useState([]);
 
   // State for student performance analysis
   const [studentPerformance, setStudentPerformance] = useState(null);
@@ -539,14 +654,108 @@ const SchoolResult = () => {
     (exam) => exam._id === selectedExamination
   );
 
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  // Toggle bookmark
+  const toggleBookmark = (resultId) => {
+    if (bookmarkedResults.includes(resultId)) {
+      setBookmarkedResults(bookmarkedResults.filter(id => id !== resultId));
+    } else {
+      setBookmarkedResults([...bookmarkedResults, resultId]);
+    }
+  };
+
   return (
-    <Box sx={{ p: isMobile ? 2 : 4 }}>
-      <Typography variant="h4" gutterBottom sx={{ fontWeight: "bold", mb: 3 }}>
-        Exam Results Management
-      </Typography>
+    <Box sx={{ 
+      p: isMobile ? 2 : 1,
+      animation: `${fadeIn} 0.5s ease-out`,
+      background: `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.05)} 0%, ${theme.palette.background.default} 100%)`,
+      minHeight: '100vh'
+    }}>
+      {/* Header Section */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 4,
+          flexWrap: 'wrap',
+          gap: 2,
+          backgroundColor: theme.palette.primary.dark,
+          borderRadius: 3,
+          p: 3,
+          boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+          background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Box sx={{
+              bgcolor: 'rgba(255,255,255,0.2)',
+              p: 2,
+              borderRadius: 2,
+            }}>
+              <motion.div
+                animate={{ rotate: [0, 10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <Assessment sx={{ 
+                  fontSize: 40, 
+                  color: 'white',
+                  animation: `${pulse} 2s infinite`,
+                }} />
+              </motion.div>
+            </Box>
+            
+            <Box>
+              <Typography
+                variant="h3"
+                component="h1"
+                sx={{ 
+                  flexGrow: 1, 
+                  fontWeight: "bold", 
+                  color: "white",
+                  textShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  fontSize: { xs: '1.8rem', md: '2.5rem' },
+                }}
+              >
+                School Results Management
+              </Typography>
+              <Typography variant="body1" color="rgba(255,255,255,0.9)" sx={{ fontStyle: 'italic' }}>
+                Analyze and manage student performance
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+      </motion.div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onChange={handleTabChange} sx={{ mb: 3 }}>
+      <Tabs 
+        value={activeTab} 
+        onChange={handleTabChange} 
+        sx={{ 
+          mb: 3,
+          '& .MuiTabs-indicator': {
+            height: 3,
+            borderRadius: 3,
+            backgroundColor: theme.palette.primary.main,
+          },
+          '& .MuiTab-root': {
+            minHeight: 48,
+            fontWeight: 600,
+            textTransform: 'none',
+            fontSize: '1rem',
+            '&.Mui-selected': {
+              color: theme.palette.primary.main,
+            }
+          }
+        }}
+      >
         <Tab label="Examination Results" icon={<Assessment />} />
         <Tab label="Analysis Dashboard" icon={<BarChart />} />
         <Tab label="Student Analysis" icon={<TrendingUp />} />
@@ -556,138 +765,186 @@ const SchoolResult = () => {
       {activeTab === 0 && (
         <>
           {/* Controls Section */}
-          <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              {/* Exam Type Selection */}
-              <Grid item xs={12} md={3}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Exam Type"
-                  value={selectedExamType}
-                  onChange={(e) => setSelectedExamType(e.target.value)}
-                  disabled={loading}
-                >
-                  <MenuItem value="" disabled>
-                    Choose exam type
-                  </MenuItem>
-                  {examTypeOptions.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <Paper sx={{ 
+              p: 3, 
+              mb: 3, 
+              borderRadius: 3,
+              boxShadow: '0 8px 16px rgba(0,0,0,0.05)',
+              border: `1px solid ${theme.palette.divider}`
+            }}>
+              <Grid container spacing={2} alignItems="center">
+                {/* Exam Type Selection */}
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Exam Type"
+                    value={selectedExamType}
+                    onChange={(e) => setSelectedExamType(e.target.value)}
+                    disabled={loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose exam type
                     </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
+                    {examTypeOptions.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Grid>
 
-              {/* Class Selection */}
-              <Grid item xs={12} md={3}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Class"
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                  disabled={!selectedExamType || loading}
-                >
-                  <MenuItem value="" disabled>
-                    Choose a class
-                  </MenuItem>
-                  {[
-                    ...new Set(
-                      filteredExaminations.map((exam) => exam.class._id)
-                    ),
-                  ]
-                    .map((classId) => {
-                      const cls = classes.find((c) => c._id === classId);
-                      return cls ? (
-                        <MenuItem key={cls._id} value={cls._id}>
-                          {cls.class_text}
+                {/* Class Selection */}
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Class"
+                    value={selectedClass}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    disabled={!selectedExamType || loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose a class
+                    </MenuItem>
+                    {[
+                      ...new Set(
+                        filteredExaminations.map((exam) => exam.class._id)
+                      ),
+                    ]
+                      .map((classId) => {
+                        const cls = classes.find((c) => c._id === classId);
+                        return cls ? (
+                          <MenuItem key={cls._id} value={cls._id}>
+                            {cls.class_text}
+                          </MenuItem>
+                        ) : null;
+                      })
+                      .filter(Boolean)}
+                  </TextField>
+                </Grid>
+
+                {/* Examination Selection */}
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Examination"
+                    value={selectedExamination}
+                    onChange={(e) => setSelectedExamination(e.target.value)}
+                    disabled={!selectedClass || loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose an examination
+                    </MenuItem>
+                    {filteredExaminations
+                      .filter((exam) => exam.class._id === selectedClass)
+                      .map((exam) => (
+                        <MenuItem key={exam._id} value={exam._id}>
+                          {exam.subject.subject_name} -{" "}
+                          {formatDate(exam.examDate)}
                         </MenuItem>
-                      ) : null;
-                    })
-                    .filter(Boolean)}
-                </TextField>
-              </Grid>
+                      ))}
+                  </TextField>
+                </Grid>
 
-              {/* Examination Selection */}
-              <Grid item xs={12} md={3}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Examination"
-                  value={selectedExamination}
-                  onChange={(e) => setSelectedExamination(e.target.value)}
-                  disabled={!selectedClass || loading}
-                >
-                  <MenuItem value="" disabled>
-                    Choose an examination
-                  </MenuItem>
-                  {filteredExaminations
-                    .filter((exam) => exam.class._id === selectedClass)
-                    .map((exam) => (
-                      <MenuItem key={exam._id} value={exam._id}>
-                        {exam.subject.subject_name} -{" "}
-                        {formatDate(exam.examDate)}
-                      </MenuItem>
-                    ))}
-                </TextField>
-              </Grid>
+                {/* Student Selection */}
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Student"
+                    value={selectedStudent}
+                    onChange={(e) => setSelectedStudent(e.target.value)}
+                    disabled={!selectedExamination || loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose a student
+                    </MenuItem>
+                    {students
+                      .filter(
+                        (student) =>
+                          student.student_class?._id === selectedClass
+                      )
+                      .map((student) => (
+                        <MenuItem key={student._id} value={student._id}>
+                          {student.name}
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                </Grid>
 
-              {/* Student Selection */}
-              <Grid item xs={12} md={3}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Student"
-                  value={selectedStudent}
-                  onChange={(e) => setSelectedStudent(e.target.value)}
-                  disabled={!selectedExamination || loading}
+                <Grid
+                  item
+                  xs={12}
+                  sx={{
+                    display: "flex",
+                    gap: 1,
+                    justifyContent: "flex-end",
+                    mt: 2,
+                  }}
                 >
-                  <MenuItem value="" disabled>
-                    Choose a student
-                  </MenuItem>
-                  {students
-                    .filter(
-                      (student) =>
-                        student.student_class?._id === selectedClass
-                    )
-                    .map((student) => (
-                      <MenuItem key={student._id} value={student._id}>
-                        {student.name}
-                      </MenuItem>
-                    ))}
-                </TextField>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<Add />}
+                      onClick={openAddResultDialog}
+                      disabled={!selectedStudent || !selectedExamination || loading}
+                      sx={{
+                        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+                        boxShadow: '0 4px 8px rgba(25, 118, 210, 0.3)',
+                        fontWeight: 600
+                      }}
+                    >
+                      Add Result
+                    </Button>
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<PictureAsPdf />}
+                      onClick={handleExportPDF}
+                      disabled={!selectedExamination || loading}
+                      sx={{
+                        borderWidth: 2,
+                        fontWeight: 600,
+                        '&:hover': {
+                          borderWidth: 2,
+                        }
+                      }}
+                    >
+                      PDF Export
+                    </Button>
+                  </motion.div>
+                </Grid>
               </Grid>
-
-              <Grid
-                item
-                xs={12}
-                sx={{
-                  display: "flex",
-                  gap: 1,
-                  justifyContent: "flex-end",
-                  mt: 2,
-                }}
-              >
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={openAddResultDialog}
-                  disabled={!selectedStudent || !selectedExamination || loading}
-                >
-                  Add Result
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<PictureAsPdf />}
-                  onClick={handleExportPDF}
-                  disabled={!selectedExamination || loading}
-                >
-                  PDF Export
-                </Button>
-              </Grid>
-            </Grid>
-          </Paper>
+            </Paper>
+          </motion.div>
 
           {/* Exam Details */}
           {currentExam && (
@@ -697,6 +954,8 @@ const SchoolResult = () => {
                 p: 2,
                 backgroundColor: theme.palette.background.paper,
                 borderRadius: 2,
+                boxShadow: '0 4px 8px rgba(0,0,0,0.05)',
+                border: `1px solid ${theme.palette.divider}`
               }}
             >
               <Grid container spacing={2}>
@@ -730,52 +989,33 @@ const SchoolResult = () => {
               <>
                 <TableContainer
                   component={Paper}
-                  sx={{ borderRadius: 2, mb: 2 }}
+                  sx={{ 
+                    borderRadius: 2, 
+                    mb: 2,
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.05)',
+                    border: `1px solid ${theme.palette.divider}`
+                  }}
                 >
                   <Table>
                     <TableHead
-                      sx={{ backgroundColor: theme.palette.primary.main }}
+                      sx={{ 
+                        backgroundColor: theme.palette.primary.main,
+                        '& th': { 
+                          fontWeight: 'bold', 
+                          fontSize: theme.typography.pxToRem(14),
+                          color: theme.palette.common.white
+                        },
+                      }}
                     >
                       <TableRow>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>
-                          Student
-                        </TableCell>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>
-                          Subject
-                        </TableCell>
-                        <TableCell
-                          sx={{ color: "white", fontWeight: "bold" }}
-                          align="center"
-                        >
-                          Marks
-                        </TableCell>
-                        <TableCell
-                          sx={{ color: "white", fontWeight: "bold" }}
-                          align="center"
-                        >
-                          Max Marks
-                        </TableCell>
-                        <TableCell
-                          sx={{ color: "white", fontWeight: "bold" }}
-                          align="center"
-                        >
-                          Percentage
-                        </TableCell>
-                        <TableCell
-                          sx={{ color: "white", fontWeight: "bold" }}
-                          align="center"
-                        >
-                          Status
-                        </TableCell>
-                        <TableCell sx={{ color: "white", fontWeight: "bold" }}>
-                          Remarks
-                        </TableCell>
-                        <TableCell
-                          sx={{ color: "white", fontWeight: "bold" }}
-                          align="center"
-                        >
-                          Actions
-                        </TableCell>
+                        <TableCell>Student</TableCell>
+                        <TableCell>Subject</TableCell>
+                        <TableCell align="center">Marks</TableCell>
+                        <TableCell align="center">Max Marks</TableCell>
+                        <TableCell align="center">Percentage</TableCell>
+                        <TableCell align="center">Status</TableCell>
+                        <TableCell>Remarks</TableCell>
+                        <TableCell align="center">Actions</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -785,7 +1025,14 @@ const SchoolResult = () => {
                           page * rowsPerPage + rowsPerPage
                         )
                         .map((result) => (
-                          <TableRow key={result._id}>
+                          <TableRow 
+                            key={result._id}
+                            sx={{ 
+                              '&:hover': {
+                                backgroundColor: theme.palette.action.hover
+                              }
+                            }}
+                          >
                             <TableCell>
                               <Box
                                 sx={{ display: "flex", alignItems: "center" }}
@@ -886,42 +1133,62 @@ const SchoolResult = () => {
 
                             {/* Actions */}
                             <TableCell align="center">
-                              {editMode === result._id ? (
-                                <Box sx={{ display: "flex", gap: 1 }}>
-                                  <IconButton
-                                    color="primary"
-                                    onClick={() => handleSaveEdit(result._id)}
-                                    disabled={loading}
-                                  >
-                                    <Save />
-                                  </IconButton>
-                                  <IconButton
-                                    color="secondary"
-                                    onClick={handleCancelEdit}
-                                  >
-                                    <Cancel />
-                                  </IconButton>
-                                </Box>
-                              ) : (
-                                <Box sx={{ display: "flex", gap: 1 }}>
-                                  <IconButton
-                                    color="primary"
-                                    onClick={() => handleEdit(result)}
-                                    disabled={loading}
-                                  >
-                                    <Edit />
-                                  </IconButton>
-                                  <IconButton
-                                    color="error"
-                                    onClick={() =>
-                                      handleDeleteResult(result._id)
-                                    }
-                                    disabled={loading}
-                                  >
-                                    <Delete />
-                                  </IconButton>
-                                </Box>
-                              )}
+                              <Box sx={{ display: "flex", gap: 1, justifyContent: 'center' }}>
+                                {editMode === result._id ? (
+                                  <>
+                                    <Tooltip title="Save">
+                                      <IconButton
+                                        color="primary"
+                                        onClick={() => handleSaveEdit(result._id)}
+                                        disabled={loading}
+                                      >
+                                        <Save />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Cancel">
+                                      <IconButton
+                                        color="secondary"
+                                        onClick={handleCancelEdit}
+                                      >
+                                        <Cancel />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Tooltip title="Edit">
+                                      <IconButton
+                                        color="primary"
+                                        onClick={() => handleEdit(result)}
+                                        disabled={loading}
+                                      >
+                                        <Edit />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title="Delete">
+                                      <IconButton
+                                        color="error"
+                                        onClick={() =>
+                                          handleDeleteResult(result._id)
+                                        }
+                                        disabled={loading}
+                                      >
+                                        <Delete />
+                                      </IconButton>
+                                    </Tooltip>
+                                    <Tooltip title={bookmarkedResults.includes(result._id) ? "Remove bookmark" : "Bookmark"}>
+                                      <IconButton
+                                        onClick={() => toggleBookmark(result._id)}
+                                      >
+                                        {bookmarkedResults.includes(result._id) ? 
+                                          <Bookmark color="primary" /> : 
+                                          <BookmarkBorder />
+                                        }
+                                      </IconButton>
+                                    </Tooltip>
+                                  </>
+                                )}
+                              </Box>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -936,10 +1203,15 @@ const SchoolResult = () => {
                   page={page}
                   onPageChange={handleChangePage}
                   onRowsPerPageChange={handleChangeRowsPerPage}
+                  sx={{ 
+                    backgroundColor: theme.palette.background.paper,
+                    borderRadius: 2,
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.05)'
+                  }}
                 />
               </>
             ) : (
-              <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
+              <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2, boxShadow: 3 }}>
                 <Typography variant="h6" color="textSecondary">
                   No results found for this examination
                 </Typography>
@@ -955,7 +1227,7 @@ const SchoolResult = () => {
               </Paper>
             )
           ) : (
-            <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
+            <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2, boxShadow: 3 }}>
               <Typography variant="h6" color="textSecondary">
                 {selectedClass
                   ? "Please select an examination"
@@ -969,136 +1241,156 @@ const SchoolResult = () => {
       {/* Analysis Dashboard Tab */}
       {activeTab === 1 && (
         <Box>
-          <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+          <Typography variant="h5" gutterBottom sx={{ mb: 3, fontWeight: 700 }}>
             Examination Analysis
           </Typography>
 
           {/* Analysis Controls */}
-          <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={4}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Exam Type"
-                  value={selectedExamType}
-                  onChange={(e) => setSelectedExamType(e.target.value)}
-                  disabled={loading}
-                >
-                  <MenuItem value="" disabled>
-                    Choose exam type
-                  </MenuItem>
-                  {examTypeOptions.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <Paper sx={{ 
+              p: 3, 
+              mb: 3, 
+              borderRadius: 2,
+              boxShadow: '0 8px 16px rgba(0,0,0,0.05)',
+              border: `1px solid ${theme.palette.divider}`
+            }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Exam Type"
+                    value={selectedExamType}
+                    onChange={(e) => setSelectedExamType(e.target.value)}
+                    disabled={loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose exam type
                     </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Class"
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
-                  disabled={!selectedExamType || loading}
-                >
-                  <MenuItem value="" disabled>
-                    Choose a class
-                  </MenuItem>
-                  {[
-                    ...new Set(
-                      filteredExaminations.map((exam) => exam.class._id)
-                    ),
-                  ]
-                    .map((classId) => {
-                      const cls = classes.find((c) => c._id === classId);
-                      return cls ? (
-                        <MenuItem key={cls._id} value={cls._id}>
-                          {cls.class_text}
-                        </MenuItem>
-                      ) : null;
-                    })
-                    .filter(Boolean)}
-                </TextField>
-              </Grid>
-
-              <Grid item xs={12} md={4}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Examination"
-                  value={selectedExamination}
-                  onChange={(e) => setSelectedExamination(e.target.value)}
-                  disabled={!selectedClass || loading}
-                >
-                  <MenuItem value="" disabled>
-                    Choose an examination
-                  </MenuItem>
-                  {filteredExaminations
-                    .filter((exam) => exam.class._id === selectedClass)
-                    .map((exam) => (
-                      <MenuItem key={exam._id} value={exam._id}>
-                        {exam.subject.subject_name} -{" "}
-                        {formatDate(exam.examDate)}
+                    {examTypeOptions.map((type) => (
+                      <MenuItem key={type} value={type}>
+                        {type}
                       </MenuItem>
                     ))}
-                </TextField>
+                  </TextField>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Class"
+                    value={selectedClass}
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    disabled={!selectedExamType || loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose a class
+                    </MenuItem>
+                    {[
+                      ...new Set(
+                        filteredExaminations.map((exam) => exam.class._id)
+                      ),
+                    ]
+                      .map((classId) => {
+                        const cls = classes.find((c) => c._id === classId);
+                        return cls ? (
+                          <MenuItem key={cls._id} value={cls._id}>
+                            {cls.class_text}
+                          </MenuItem>
+                        ) : null;
+                      })
+                      .filter(Boolean)}
+                  </TextField>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Examination"
+                    value={selectedExamination}
+                    onChange={(e) => setSelectedExamination(e.target.value)}
+                    disabled={!selectedClass || loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose an examination
+                    </MenuItem>
+                    {filteredExaminations
+                      .filter((exam) => exam.class._id === selectedClass)
+                      .map((exam) => (
+                        <MenuItem key={exam._id} value={exam._id}>
+                          {exam.subject.subject_name} -{" "}
+                          {formatDate(exam.examDate)}
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                </Grid>
               </Grid>
-            </Grid>
-          </Paper>
+            </Paper>
+          </motion.div>
 
           {/* Analysis Content */}
           {analytics ? (
             <Grid container spacing={3}>
               {/* Summary Cards */}
               <Grid item xs={12} md={4}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6">Total Students</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-                      {analytics.totalStudents}
-                    </Typography>
-                  </CardContent>
-                </Card>
+                <StatCard 
+                  icon={<Person fontSize="medium" />}
+                  title="Total Students"
+                  value={analytics.totalStudents}
+                  color={theme.palette.primary.main}
+                  loading={loading}
+                  subtitle="All students"
+                />
               </Grid>
 
               <Grid item xs={12} md={4}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6">Passed</Typography>
-                    <Typography
-                      variant="h4"
-                      sx={{ fontWeight: "bold", color: "success.main" }}
-                    >
-                      {analytics.passCount} ({analytics.passPercentage}%)
-                    </Typography>
-                  </CardContent>
-                </Card>
+                <StatCard 
+                  icon={<CheckCircle fontSize="medium" />}
+                  title="Passed"
+                  value={analytics.passCount}
+                  color={theme.palette.success.main}
+                  loading={loading}
+                  subtitle={`${analytics.passPercentage}%`}
+                />
               </Grid>
 
               <Grid item xs={12} md={4}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6">Failed</Typography>
-                    <Typography
-                      variant="h4"
-                      sx={{ fontWeight: "bold", color: "error.main" }}
-                    >
-                      {analytics.failCount} (
-                      {Math.round(100 - analytics.passPercentage)}%)
-                    </Typography>
-                  </CardContent>
-                </Card>
+                <StatCard 
+                  icon={<Info fontSize="medium" />}
+                  title="Failed"
+                  value={analytics.failCount}
+                  color={theme.palette.error.main}
+                  loading={loading}
+                  subtitle={`${Math.round(100 - analytics.passPercentage)}%`}
+                />
               </Grid>
 
               {/* Pie Chart */}
               <Grid item xs={12} md={6}>
-                <Card>
+                <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 3 }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                       Pass/Fail Distribution
                     </Typography>
                     <ResponsiveContainer width="100%" height={300}>
@@ -1119,7 +1411,7 @@ const SchoolResult = () => {
                           <Cell fill="#00C49F" />
                           <Cell fill="#FF8042" />
                         </Pie>
-                        <Tooltip
+                        <RechartsTooltip
                           formatter={(value) => [
                             `${value} students`,
                             value === 1 ? "Student" : "Students",
@@ -1134,9 +1426,9 @@ const SchoolResult = () => {
 
               {/* Student Performance */}
               <Grid item xs={12} md={6}>
-                <Card>
+                <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 3 }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                       Top Performers
                     </Typography>
                     <TableContainer>
@@ -1207,9 +1499,9 @@ const SchoolResult = () => {
 
               {/* Subject-wise Performance */}
               <Grid item xs={12}>
-                <Card>
+                <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                       Subject-wise Performance
                     </Typography>
                     <ResponsiveContainer width="100%" height={400}>
@@ -1231,7 +1523,7 @@ const SchoolResult = () => {
                           height={80}
                         />
                         <YAxis />
-                        <Tooltip />
+                        <RechartsTooltip />
                         <Legend />
                         <Bar
                           dataKey="percentage"
@@ -1245,7 +1537,7 @@ const SchoolResult = () => {
               </Grid>
             </Grid>
           ) : (
-            <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
+            <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2, boxShadow: 3 }}>
               <Typography variant="h6" color="textSecondary">
                 {selectedExamination
                   ? "No analytics available for this examination"
@@ -1259,69 +1551,91 @@ const SchoolResult = () => {
       {/* Student Performance Tab */}
       {activeTab === 2 && (
         <Box>
-          <Typography variant="h5" gutterBottom sx={{ mb: 3 }}>
+          <Typography variant="h5" gutterBottom sx={{ mb: 3, fontWeight: 700 }}>
             Student Performance Analysis
           </Typography>
 
-          <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} md={6}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Class"
-                  value={selectedClassForAnalysis}
-                  onChange={(e) => setSelectedClassForAnalysis(e.target.value)}
-                  disabled={loading}
-                >
-                  <MenuItem value="" disabled>
-                    Choose a class
-                  </MenuItem>
-                  {classes.map((cls) => (
-                    <MenuItem key={cls._id} value={cls._id}>
-                      {cls.class_text}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <Paper sx={{ 
+              p: 3, 
+              mb: 3, 
+              borderRadius: 2,
+              boxShadow: '0 8px 16px rgba(0,0,0,0.05)',
+              border: `1px solid ${theme.palette.divider}`
+            }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Class"
+                    value={selectedClassForAnalysis}
+                    onChange={(e) => setSelectedClassForAnalysis(e.target.value)}
+                    disabled={loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose a class
                     </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  select
-                  fullWidth
-                  label="Select Student"
-                  value={selectedStudentForAnalysis}
-                  onChange={(e) => {
-                    setSelectedStudentForAnalysis(e.target.value);
-                    fetchStudentPerformance(e.target.value);
-                  }}
-                  disabled={!selectedClassForAnalysis || loading}
-                >
-                  <MenuItem value="" disabled>
-                    Choose a student
-                  </MenuItem>
-                  {students
-                    .filter(
-                      (student) =>
-                        student.student_class?._id === selectedClassForAnalysis
-                    )
-                    .map((student) => (
-                      <MenuItem key={student._id} value={student._id}>
-                        {student.name}
+                    {classes.map((cls) => (
+                      <MenuItem key={cls._id} value={cls._id}>
+                        {cls.class_text}
                       </MenuItem>
                     ))}
-                </TextField>
+                  </TextField>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Select Student"
+                    value={selectedStudentForAnalysis}
+                    onChange={(e) => {
+                      setSelectedStudentForAnalysis(e.target.value);
+                      fetchStudentPerformance(e.target.value);
+                    }}
+                    disabled={!selectedClassForAnalysis || loading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Choose a student
+                    </MenuItem>
+                    {students
+                      .filter(
+                        (student) =>
+                          student.student_class?._id === selectedClassForAnalysis
+                      )
+                      .map((student) => (
+                        <MenuItem key={student._id} value={student._id}>
+                          {student.name}
+                        </MenuItem>
+                      ))}
+                  </TextField>
+                </Grid>
               </Grid>
-            </Grid>
-          </Paper>
+            </Paper>
+          </motion.div>
 
           {studentPerformance ? (
             <Grid container spacing={3}>
               {/* Student Summary Card */}
               <Grid item xs={12} md={4}>
-                <Card>
+                <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 3 }}>
                   <CardContent>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                       {studentPerformance.student.name}
                     </Typography>
                     <Typography>
@@ -1333,7 +1647,7 @@ const SchoolResult = () => {
 
                     {studentPerformance.improvement && (
                       <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle2">
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                           Performance Trend
                         </Typography>
                         <Typography
@@ -1362,9 +1676,9 @@ const SchoolResult = () => {
 
               {/* Subject Trends */}
               <Grid item xs={12} md={8}>
-                <Card>
+                <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 3 }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                       Subject Performance Trends
                     </Typography>
                     <ResponsiveContainer width="100%" height={300}>
@@ -1393,7 +1707,7 @@ const SchoolResult = () => {
                           height={80}
                         />
                         <YAxis domain={[0, 100]} />
-                        <Tooltip
+                        <RechartsTooltip
                           formatter={(value) => [`${value}%`, "Percentage"]}
                         />
                         <Legend />
@@ -1415,9 +1729,9 @@ const SchoolResult = () => {
 
               {/* Exam Performance Details */}
               <Grid item xs={12}>
-                <Card>
+                <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
                       Exam Performance Details
                     </Typography>
                     {Object.entries(studentPerformance.exams).map(
@@ -1437,9 +1751,10 @@ const SchoolResult = () => {
                                 sx={{
                                   p: 2,
                                   backgroundColor: theme.palette.grey[100],
+                                  borderRadius: 2
                                 }}
                               >
-                                <Typography variant="subtitle2">
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                                   Overall
                                 </Typography>
                                 <Typography
@@ -1457,8 +1772,8 @@ const SchoolResult = () => {
                             {/* Subject Performance */}
                             {exam.subjects.map((subject, index) => (
                               <Grid item xs={12} md={3} key={index}>
-                                <Paper sx={{ p: 2 }}>
-                                  <Typography variant="subtitle2">
+                                <Paper sx={{ p: 2, borderRadius: 2 }}>
+                                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                                     {subject.subject}
                                   </Typography>
                                   <Typography variant="h6">
@@ -1478,6 +1793,7 @@ const SchoolResult = () => {
                                           subject.percentage >= 50
                                             ? "success.main"
                                             : "error.main",
+                                        fontWeight: 600
                                       }}
                                     >
                                       {subject.percentage}%
@@ -1508,7 +1824,7 @@ const SchoolResult = () => {
               </Grid>
             </Grid>
           ) : (
-            <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2 }}>
+            <Paper sx={{ p: 4, textAlign: "center", borderRadius: 2, boxShadow: 3 }}>
               <Typography variant="h6" color="textSecondary">
                 {selectedStudentForAnalysis
                   ? "Loading performance data..."
@@ -1520,8 +1836,17 @@ const SchoolResult = () => {
       )}
 
       {/* Add Result Dialog */}
-      <Dialog open={addResultDialog} onClose={() => setAddResultDialog(false)}>
-        <DialogTitle>Add New Result</DialogTitle>
+      <Dialog 
+        open={addResultDialog} 
+        onClose={() => setAddResultDialog(false)}
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 16px 32px rgba(0,0,0,0.15)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600 }}>Add New Result</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
@@ -1532,6 +1857,11 @@ const SchoolResult = () => {
                   students.find((s) => s._id === newResult.student)?.name || ""
                 }
                 disabled
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -1540,6 +1870,11 @@ const SchoolResult = () => {
                 label="Subject"
                 value={currentExam?.subject?.subject_name || ""}
                 disabled
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -1548,6 +1883,11 @@ const SchoolResult = () => {
                 label="Date"
                 value={currentExam ? formatDate(currentExam.examDate) : ""}
                 disabled
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={6}>
@@ -1559,6 +1899,11 @@ const SchoolResult = () => {
                 value={newResult.marks}
                 onChange={handleNewResultChange}
                 inputProps={{ min: 0 }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={6}>
@@ -1567,6 +1912,11 @@ const SchoolResult = () => {
                 label="Max Marks"
                 value={newResult.maxMarks}
                 disabled
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
             <Grid item xs={12}>
@@ -1576,15 +1926,34 @@ const SchoolResult = () => {
                 name="remarks"
                 value={newResult.remarks}
                 onChange={handleNewResultChange}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddResultDialog(false)} color="secondary">
+          <Button 
+            onClick={() => setAddResultDialog(false)} 
+            color="secondary"
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
             Cancel
           </Button>
-          <Button onClick={handleAddResult} color="primary" disabled={loading}>
+          <Button 
+            onClick={handleAddResult} 
+            color="primary" 
+            disabled={loading}
+            variant="contained"
+            sx={{
+              borderRadius: 2,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
+            }}
+          >
             {loading ? <CircularProgress size={24} /> : "Add Result"}
           </Button>
         </DialogActions>
@@ -1597,13 +1966,22 @@ const SchoolResult = () => {
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
         >
-          {snackbar.message}
-        </Alert>
+          <Alert
+            onClose={handleCloseSnackbar}
+            severity={snackbar.severity}
+            sx={{ 
+              width: "100%",
+              borderRadius: 2,
+              boxShadow: theme.shadows[4]
+            }}
+          >
+            {snackbar.message}
+          </Alert>
+        </motion.div>
       </Snackbar>
     </Box>
   );

@@ -38,6 +38,11 @@ import {
   AccordionSummary,
   AccordionDetails,
   LinearProgress,
+  Fade,
+  Slide,
+  Grow,
+  Zoom,
+  styled,
 } from "@mui/material";
 import {
   BarChart,
@@ -72,6 +77,8 @@ import {
   InsertChart as ChartIcon,
   ListAlt as ListIcon,
   HelpOutline as HelpIcon,
+  ArrowDropDown as ArrowDropDownIcon,
+  ArrowDropUp as ArrowDropUpIcon,
 } from "@mui/icons-material";
 import { AuthContext } from "../../../context/AuthContext";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
@@ -87,7 +94,56 @@ const COLORS = {
   secondary: "#9c27b0",
   warning: "#ff9800",
   info: "#2196f3",
+  lightBlue: "#e3f2fd",
+  darkBlue: "#1a3a6c",
 };
+
+// Custom styled components
+const HeaderBox = styled(Box)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${COLORS.darkBlue} 0%, ${COLORS.primary} 100%)`,
+  color: "white",
+  padding: theme.spacing(3),
+  borderRadius: "12px 12px 0 0",
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+  marginBottom: theme.spacing(4),
+}));
+
+const StatCard = styled(Card)(({ theme }) => ({
+  height: '100%',
+  borderRadius: 12,
+  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+  transition: "transform 0.3s, box-shadow 0.3s",
+  "&:hover": {
+    transform: "translateY(-5px)",
+    boxShadow: "0 6px 16px rgba(0, 0, 0, 0.1)",
+  },
+}));
+
+const DashboardCard = styled(Card)(({ theme }) => ({
+  borderRadius: 12,
+  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+  marginBottom: theme.spacing(4),
+  overflow: "hidden",
+}));
+
+const CustomTab = styled(Tab)(({ theme }) => ({
+  fontWeight: 600,
+  fontSize: "0.9rem",
+  minHeight: "48px",
+  "&.Mui-selected": {
+    color: theme.palette.primary.main,
+  },
+}));
+
+const StatusBadge = styled(Badge)(({ theme }) => ({
+  "& .MuiBadge-badge": {
+    right: 10,
+    top: 15,
+    padding: "0 4px",
+    fontSize: "0.7rem",
+    fontWeight: "bold",
+  },
+}));
 
 const AttendanceStatusChip = ({ status }) => {
   return (
@@ -97,6 +153,7 @@ const AttendanceStatusChip = ({ status }) => {
       icon={status === "Present" ? <CheckCircleIcon /> : <CancelIcon />}
       color={status === "Present" ? "success" : "error"}
       variant="outlined"
+      sx={{ fontWeight: 600 }}
     />
   );
 };
@@ -129,6 +186,7 @@ const AttendanceDashboard = () => {
     teacherAbsent: 0,
   });
   const [viewMode, setViewMode] = useState("cards"); // 'cards' or 'table'
+  const [prevStats, setPrevStats] = useState({...stats});
 
   const token = localStorage.getItem("token");
 
@@ -150,6 +208,7 @@ const AttendanceDashboard = () => {
 
   useEffect(() => {
     if (studentSummary.length > 0 || teacherSummary.length > 0) {
+      setPrevStats(stats);
       calculateStats();
     }
   }, [studentSummary, teacherSummary]);
@@ -542,22 +601,35 @@ const AttendanceDashboard = () => {
   const renderStatsCard = (title, present, absent, icon, color) => {
     const total = present + absent;
     const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+    const prevTotal = prevStats.studentPresent + prevStats.studentAbsent;
+    const prevPercentage = prevTotal > 0 ? Math.round((prevStats.studentPresent / prevTotal) * 100) : 0;
+    const diff = percentage - prevPercentage;
     
     return (
-      <Card sx={{ height: '100%' }}>
+      <StatCard>
         <CardContent>
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="h6" color="textSecondary" gutterBottom>
               {title}
             </Typography>
-            <Avatar sx={{ bgcolor: `${color}.light`, color: `${color}.dark` }}>
+            <Avatar sx={{ bgcolor: `${color}.light`, color: `${color}.dark`, boxShadow: 1 }}>
               {icon}
             </Avatar>
           </Box>
           <Box mt={2}>
-            <Typography variant="h4" component="div">
-              {percentage}%
-            </Typography>
+            <Box display="flex" alignItems="flex-end">
+              <Typography variant="h4" component="div">
+                {percentage}%
+              </Typography>
+              {diff !== 0 && (
+                <Box ml={1} display="flex" alignItems="center" color={diff > 0 ? COLORS.present : COLORS.absent}>
+                  {diff > 0 ? <ArrowDropUpIcon /> : <ArrowDropDownIcon />}
+                  <Typography variant="body2" fontWeight="bold">
+                    {Math.abs(diff)}%
+                  </Typography>
+                </Box>
+              )}
+            </Box>
             <Typography variant="body2" color="textSecondary">
               {present} Present / {absent} Absent
             </Typography>
@@ -571,24 +643,28 @@ const AttendanceDashboard = () => {
             />
           </Box>
         </CardContent>
-      </Card>
+      </StatCard>
     );
   };
 
   const renderAttendanceTable = (data, type) => {
     return (
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} sx={{ borderRadius: 2, overflow: "hidden" }}>
         <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: theme.palette.grey[100] }}>
-              <TableCell>Name</TableCell>
-              <TableCell align="center">Status</TableCell>
-              <TableCell align="right">Date</TableCell>
+          <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 600 }}>Date</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {data.slice(0, 10).map((attendance) => (
-              <TableRow key={`${type === 'student' ? attendance.student._id : attendance.teacher._id}-${attendance.date}`}>
+              <TableRow 
+                key={`${type === 'student' ? attendance.student._id : attendance.teacher._id}-${attendance.date}`}
+                hover
+                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+              >
                 <TableCell>
                   <Box display="flex" alignItems="center">
                     <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: type === 'student' ? COLORS.primary : COLORS.secondary }}>
@@ -612,220 +688,387 @@ const AttendanceDashboard = () => {
   };
 
   return (
-    <Container maxWidth="xl">
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-          <DashboardIcon color="primary" sx={{ verticalAlign: 'middle', mr: 1 }} />
-          Attendance Dashboard
-        </Typography>
-        <Box>
-          <Tooltip title="Refresh Data">
-            <IconButton onClick={refreshData} color="primary" sx={{ mr: 1 }}>
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-          <Button 
-            variant="contained" 
-            startIcon={<PdfIcon />}
-            onClick={exportPDF}
-            disabled={studentSummary.length === 0 && teacherSummary.length === 0}
-            sx={{ ml: 1 }}
-          >
-            Export
-          </Button>
-        </Box>
-      </Box>
+    <Container maxWidth="xl" sx={{ py: 1 }}>
+      <Slide direction="down" in={true} timeout={500}>
+        <HeaderBox>
+          <Grid container alignItems="center">
+            <Grid item xs={12} md={6}>
+              <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
+                <DashboardIcon sx={{ verticalAlign: 'middle', mr: 2, color: "white" }} />
+                Attendance Dashboard
+              </Typography>
+              <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
+                Monitor and manage attendance records efficiently
+              </Typography>
+            </Grid>
+            <Grid item xs={12} md={6} sx={{ textAlign: 'right', mt: { xs: 2, md: 0 } }}>
+              <Button 
+                variant="contained" 
+                color="secondary"
+                startIcon={<PdfIcon />}
+                onClick={exportPDF}
+                disabled={studentSummary.length === 0 && teacherSummary.length === 0}
+                sx={{ 
+                  mr: 1,
+                  bgcolor: "white",
+                  color: COLORS.primary,
+                  fontWeight: 600,
+                  "&:hover": {
+                    bgcolor: "white",
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.2)"
+                  }
+                }}
+              >
+                Export Report
+              </Button>
+              <Tooltip title="Refresh Data">
+                <IconButton 
+                  onClick={refreshData} 
+                  sx={{ 
+                    bgcolor: "rgba(255,255,255,0.2)", 
+                    color: "white",
+                    "&:hover": {
+                      bgcolor: "rgba(255,255,255,0.3)"
+                    }
+                  }}
+                >
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+            </Grid>
+          </Grid>
+        </HeaderBox>
+      </Slide>
 
       {/* Stats Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
-          {renderStatsCard(
-            "Student Attendance", 
-            stats.studentPresent, 
-            stats.studentAbsent, 
-            <PeopleIcon />, 
-            "success"
-          )}
+          <Grow in={true} timeout={600}>
+            {renderStatsCard(
+              "Student Attendance", 
+              stats.studentPresent, 
+              stats.studentAbsent, 
+              <PeopleIcon />, 
+              "success"
+            )}
+          </Grow>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          {renderStatsCard(
-            "Teacher Attendance", 
-            stats.teacherPresent, 
-            stats.teacherAbsent, 
-            <SchoolIcon />, 
-            "secondary"
-          )}
+          <Grow in={true} timeout={800}>
+            {renderStatsCard(
+              "Teacher Attendance", 
+              stats.teacherPresent, 
+              stats.teacherAbsent, 
+              <SchoolIcon />, 
+              "secondary"
+            )}
+          </Grow>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6" color="textSecondary" gutterBottom>
-                  Total Students
+          <Grow in={true} timeout={1000}>
+            <StatCard>
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="h6" color="textSecondary" gutterBottom>
+                    Total Students
+                  </Typography>
+                  <Avatar sx={{ bgcolor: 'info.light', color: 'info.dark', boxShadow: 1 }}>
+                    <PeopleIcon />
+                  </Avatar>
+                </Box>
+                <Typography variant="h4" component="div">
+                  {students.length}
                 </Typography>
-                <Avatar sx={{ bgcolor: 'info.light', color: 'info.dark' }}>
-                  <PeopleIcon />
-                </Avatar>
-              </Box>
-              <Typography variant="h4" component="div">
-                {students.length}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                {selectedClass ? `In selected class` : 'Select a class to view students'}
-              </Typography>
-            </CardContent>
-          </Card>
+                <Typography variant="body2" color="textSecondary">
+                  {selectedClass ? `In selected class` : 'Select a class to view students'}
+                </Typography>
+                <Box mt={2} height={8} bgcolor="divider" borderRadius={4} />
+              </CardContent>
+            </StatCard>
+          </Grow>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6" color="textSecondary" gutterBottom>
-                  Total Teachers
+          <Grow in={true} timeout={1200}>
+            <StatCard>
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="h6" color="textSecondary" gutterBottom>
+                    Total Teachers
+                  </Typography>
+                  <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.dark', boxShadow: 1 }}>
+                    <SchoolIcon />
+                  </Avatar>
+                </Box>
+                <Typography variant="h4" component="div">
+                  {teachers.length}
                 </Typography>
-                <Avatar sx={{ bgcolor: 'warning.light', color: 'warning.dark' }}>
-                  <SchoolIcon />
-                </Avatar>
-              </Box>
-              <Typography variant="h4" component="div">
-                {teachers.length}
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                All teaching staff
-              </Typography>
-            </CardContent>
-          </Card>
+                <Typography variant="body2" color="textSecondary">
+                  All teaching staff
+                </Typography>
+                <Box mt={2} height={8} bgcolor="divider" borderRadius={4} />
+              </CardContent>
+            </StatCard>
+          </Grow>
         </Grid>
       </Grid>
 
       {/* Filters Section */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
-            <FilterIcon color="action" sx={{ mr: 1 }} />
-            Filters
-          </Typography>
-          <Box>
-            <Button 
-              variant="outlined" 
-              startIcon={<DateRangeIcon />}
-              onClick={() => setFilterDialogOpen(true)}
-              sx={{ mr: 1 }}
-            >
-              Advanced Filters
-            </Button>
-          </Box>
-        </Box>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
-            <TextField
-              fullWidth
-              type="date"
-              label="Date"
-              InputLabelProps={{ shrink: true }}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <TodayIcon color="action" sx={{ mr: 1 }} />
-                ),
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <FormControl fullWidth>
-              <InputLabel>Select Class</InputLabel>
-              <Select
-                value={selectedClass}
-                label="Select Class"
-                onChange={(e) => setSelectedClass(e.target.value)}
-                startAdornment={
-                  <ClassIcon color="action" sx={{ mr: 1 }} />
-                }
-              >
-                <MenuItem value="">
-                  <em>All Classes</em>
-                </MenuItem>
-                {Array.isArray(classes) &&
-                  classes.map((cls) => (
-                    <MenuItem key={cls._id} value={cls._id}>
-                      {cls.class_text}
-                    </MenuItem>
-                  ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Box display="flex" gap={1} height="100%">
-              <Button
-                variant={viewMode === 'cards' ? 'contained' : 'outlined'}
-                onClick={() => setViewMode('cards')}
-                fullWidth
-                startIcon={<DashboardIcon />}
-              >
-                Cards
-              </Button>
-              <Button
-                variant={viewMode === 'table' ? 'contained' : 'outlined'}
-                onClick={() => setViewMode('table')}
-                fullWidth
-                startIcon={<ListIcon />}
-              >
-                Table
-              </Button>
+      <Slide direction="up" in={true} timeout={600}>
+        <DashboardCard>
+          <CardContent sx={{ bgcolor: COLORS.lightBlue }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', fontWeight: 600 }}>
+                <FilterIcon color="primary" sx={{ mr: 1 }} />
+                Filters & Controls
+              </Typography>
+              <Box>
+                <Button 
+                  variant="outlined" 
+                  color="primary"
+                  startIcon={<DateRangeIcon />}
+                  onClick={() => setFilterDialogOpen(true)}
+                  sx={{ mr: 1, fontWeight: 600 }}
+                >
+                  Advanced Filters
+                </Button>
+              </Box>
             </Box>
-          </Grid>
-        </Grid>
-      </Paper>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Date"
+                  InputLabelProps={{ shrink: true }}
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <TodayIcon color="primary" sx={{ mr: 1 }} />
+                    ),
+                  }}
+                  variant="outlined"
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Select Class</InputLabel>
+                  <Select
+                    value={selectedClass}
+                    label="Select Class"
+                    onChange={(e) => setSelectedClass(e.target.value)}
+                    startAdornment={
+                      <ClassIcon color="primary" sx={{ mr: 1 }} />
+                    }
+                    variant="outlined"
+                  >
+                    <MenuItem value="">
+                      <em>All Classes</em>
+                    </MenuItem>
+                    {Array.isArray(classes) &&
+                      classes.map((cls) => (
+                        <MenuItem key={cls._id} value={cls._id}>
+                          {cls.class_text}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Box display="flex" gap={1} height="100%">
+                  <Button
+                    variant={viewMode === 'cards' ? 'contained' : 'outlined'}
+                    color={viewMode === 'cards' ? 'primary' : 'inherit'}
+                    onClick={() => setViewMode('cards')}
+                    fullWidth
+                    startIcon={<DashboardIcon />}
+                    sx={{ fontWeight: 600 }}
+                  >
+                    Cards View
+                  </Button>
+                  <Button
+                    variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                    color={viewMode === 'table' ? 'primary' : 'inherit'}
+                    onClick={() => setViewMode('table')}
+                    fullWidth
+                    startIcon={<ListIcon />}
+                    sx={{ fontWeight: 600 }}
+                  >
+                    Table View
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </DashboardCard>
+      </Slide>
 
       {/* Tabs for Attendance Entry */}
-      <Paper elevation={2} sx={{ mb: 3 }}>
+      <DashboardCard>
         <Tabs
           value={activeTab}
           onChange={(e, newValue) => setActiveTab(newValue)}
           variant="fullWidth"
-          indicatorColor="secondary"
-          textColor="secondary"
+          indicatorColor="primary"
+          textColor="primary"
+          sx={{ bgcolor: COLORS.lightBlue }}
         >
-          <Tab 
-            label="Student Attendance" 
-            icon={<PeopleIcon />} 
-            iconPosition="start" 
+          <CustomTab 
+            label={
+              <Box display="flex" alignItems="center">
+                <PeopleIcon sx={{ mr: 1 }} />
+                Student Attendance
+              </Box>
+            }
             disabled={!selectedClass}
           />
-          <Tab 
-            label="Teacher Attendance" 
-            icon={<SchoolIcon />} 
-            iconPosition="start" 
+          <CustomTab 
+            label={
+              <Box display="flex" alignItems="center">
+                <SchoolIcon sx={{ mr: 1 }} />
+                Teacher Attendance
+              </Box>
+            }
           />
         </Tabs>
-        <Box p={2}>
-          {activeTab === 0 && (
-            <>
-              {selectedClass ? (
+        <Box p={3}>
+          <Fade in={true} timeout={500}>
+            <Box>
+              {activeTab === 0 && (
                 <>
-                  <Typography variant="subtitle1" gutterBottom>
-                    Mark attendance for {students.length} students in {classes.find(c => c._id === selectedClass)?.class_text || 'selected class'}
+                  {selectedClass ? (
+                    <>
+                      <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                        Mark attendance for {students.length} students in {classes.find(c => c._id === selectedClass)?.class_text || 'selected class'}
+                      </Typography>
+                      {viewMode === 'cards' ? (
+                        <Grid container spacing={2}>
+                          {students.map((student) => (
+                            <Grid item xs={12} sm={6} md={4} lg={3} key={student._id}>
+                              <Card variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
+                                <CardContent>
+                                  <Box display="flex" alignItems="center" mb={1}>
+                                    <Avatar sx={{ 
+                                      width: 40, 
+                                      height: 40, 
+                                      mr: 2, 
+                                      bgcolor: COLORS.primary,
+                                      boxShadow: 1
+                                    }}>
+                                      {student.name.charAt(0)}
+                                    </Avatar>
+                                    <Typography variant="subtitle1" fontWeight={500}>{student.name}</Typography>
+                                  </Box>
+                                  <FormControl fullWidth size="small">
+                                    <Select
+                                      value={studentAttendance[student._id] || ""}
+                                      onChange={(e) =>
+                                        handleStudentChange(student._id, e.target.value)
+                                      }
+                                      displayEmpty
+                                      variant="outlined"
+                                    >
+                                      <MenuItem value="" disabled>
+                                        <em>Select status</em>
+                                      </MenuItem>
+                                      <MenuItem value="Present">Present</MenuItem>
+                                      <MenuItem value="Absent">Absent</MenuItem>
+                                    </Select>
+                                  </FormControl>
+                                </CardContent>
+                              </Card>
+                            </Grid>
+                          ))}
+                        </Grid>
+                      ) : (
+                        <TableContainer component={Paper} sx={{ borderRadius: 2, overflow: "hidden" }}>
+                          <Table>
+                            <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
+                              <TableRow>
+                                <TableCell sx={{ fontWeight: 600 }}>Student</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {students.map((student) => (
+                                <TableRow key={student._id} hover>
+                                  <TableCell>
+                                    <Box display="flex" alignItems="center">
+                                      <Avatar sx={{ 
+                                        width: 32, 
+                                        height: 32, 
+                                        mr: 1, 
+                                        bgcolor: COLORS.primary,
+                                        boxShadow: 1
+                                      }}>
+                                        {student.name.charAt(0)}
+                                      </Avatar>
+                                      {student.name}
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Select
+                                      fullWidth
+                                      size="small"
+                                      value={studentAttendance[student._id] || ""}
+                                      onChange={(e) =>
+                                        handleStudentChange(student._id, e.target.value)
+                                      }
+                                      variant="outlined"
+                                    >
+                                      <MenuItem value="Present">Present</MenuItem>
+                                      <MenuItem value="Absent">Absent</MenuItem>
+                                    </Select>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      )}
+                    </>
+                  ) : (
+                    <Box textAlign="center" py={4}>
+                      <ClassIcon color="action" sx={{ fontSize: 48, mb: 1 }} />
+                      <Typography variant="h6" color="textSecondary">
+                        Please select a class to view students
+                      </Typography>
+                    </Box>
+                  )}
+                </>
+              )}
+              {activeTab === 1 && (
+                <>
+                  <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+                    Mark attendance for {teachers.length} teachers
                   </Typography>
                   {viewMode === 'cards' ? (
                     <Grid container spacing={2}>
-                      {students.map((student) => (
-                        <Grid item xs={12} sm={6} md={4} lg={3} key={student._id}>
-                          <Card variant="outlined">
+                      {teachers.map((teacher) => (
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={teacher._id}>
+                          <Card variant="outlined" sx={{ borderRadius: 2, overflow: "hidden" }}>
                             <CardContent>
                               <Box display="flex" alignItems="center" mb={1}>
-                                <Avatar sx={{ width: 40, height: 40, mr: 2, bgcolor: COLORS.primary }}>
-                                  {student.name.charAt(0)}
+                                <Avatar sx={{ 
+                                  width: 40, 
+                                  height: 40, 
+                                  mr: 2, 
+                                  bgcolor: COLORS.secondary,
+                                  boxShadow: 1
+                                }}>
+                                  {teacher.name.charAt(0)}
                                 </Avatar>
-                                <Typography variant="subtitle1">{student.name}</Typography>
+                                <Typography variant="subtitle1" fontWeight={500}>{teacher.name}</Typography>
                               </Box>
                               <FormControl fullWidth size="small">
                                 <Select
-                                  value={studentAttendance[student._id] || ""}
+                                  value={teacherAttendance[teacher._id] || ""}
                                   onChange={(e) =>
-                                    handleStudentChange(student._id, e.target.value)
+                                    handleTeacherChange(teacher._id, e.target.value)
                                   }
                                   displayEmpty
+                                  variant="outlined"
                                 >
                                   <MenuItem value="" disabled>
                                     <em>Select status</em>
@@ -840,33 +1083,40 @@ const AttendanceDashboard = () => {
                       ))}
                     </Grid>
                   ) : (
-                    <TableContainer component={Paper}>
+                    <TableContainer component={Paper} sx={{ borderRadius: 2, overflow: "hidden" }}>
                       <Table>
-                        <TableHead>
+                        <TableHead sx={{ bgcolor: theme.palette.grey[100] }}>
                           <TableRow>
-                            <TableCell>Student</TableCell>
-                            <TableCell align="center">Status</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Teacher</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 600 }}>Status</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {students.map((student) => (
-                            <TableRow key={student._id}>
+                          {teachers.map((teacher) => (
+                            <TableRow key={teacher._id} hover>
                               <TableCell>
                                 <Box display="flex" alignItems="center">
-                                  <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: COLORS.primary }}>
-                                    {student.name.charAt(0)}
+                                  <Avatar sx={{ 
+                                    width: 32, 
+                                    height: 32, 
+                                    mr: 1, 
+                                    bgcolor: COLORS.secondary,
+                                    boxShadow: 1
+                                  }}>
+                                    {teacher.name.charAt(0)}
                                   </Avatar>
-                                  {student.name}
+                                  {teacher.name}
                                 </Box>
                               </TableCell>
                               <TableCell>
                                 <Select
                                   fullWidth
                                   size="small"
-                                  value={studentAttendance[student._id] || ""}
+                                  value={teacherAttendance[teacher._id] || ""}
                                   onChange={(e) =>
-                                    handleStudentChange(student._id, e.target.value)
+                                    handleTeacherChange(teacher._id, e.target.value)
                                   }
+                                  variant="outlined"
                                 >
                                   <MenuItem value="Present">Present</MenuItem>
                                   <MenuItem value="Absent">Absent</MenuItem>
@@ -879,96 +1129,11 @@ const AttendanceDashboard = () => {
                     </TableContainer>
                   )}
                 </>
-              ) : (
-                <Box textAlign="center" py={4}>
-                  <ClassIcon color="action" sx={{ fontSize: 48, mb: 1 }} />
-                  <Typography variant="h6" color="textSecondary">
-                    Please select a class to view students
-                  </Typography>
-                </Box>
               )}
-            </>
-          )}
-          {activeTab === 1 && (
-            <>
-              <Typography variant="subtitle1" gutterBottom>
-                Mark attendance for {teachers.length} teachers
-              </Typography>
-              {viewMode === 'cards' ? (
-                <Grid container spacing={2}>
-                  {teachers.map((teacher) => (
-                    <Grid item xs={12} sm={6} md={4} lg={3} key={teacher._id}>
-                      <Card variant="outlined">
-                        <CardContent>
-                          <Box display="flex" alignItems="center" mb={1}>
-                            <Avatar sx={{ width: 40, height: 40, mr: 2, bgcolor: COLORS.secondary }}>
-                              {teacher.name.charAt(0)}
-                            </Avatar>
-                            <Typography variant="subtitle1">{teacher.name}</Typography>
-                          </Box>
-                          <FormControl fullWidth size="small">
-                            <Select
-                              value={teacherAttendance[teacher._id] || ""}
-                              onChange={(e) =>
-                                handleTeacherChange(teacher._id, e.target.value)
-                              }
-                              displayEmpty
-                            >
-                              <MenuItem value="" disabled>
-                                <em>Select status</em>
-                              </MenuItem>
-                              <MenuItem value="Present">Present</MenuItem>
-                              <MenuItem value="Absent">Absent</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : (
-                <TableContainer component={Paper}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Teacher</TableCell>
-                        <TableCell align="center">Status</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {teachers.map((teacher) => (
-                        <TableRow key={teacher._id}>
-                          <TableCell>
-                            <Box display="flex" alignItems="center">
-                              <Avatar sx={{ width: 32, height: 32, mr: 1, bgcolor: COLORS.secondary }}>
-                                {teacher.name.charAt(0)}
-                              </Avatar>
-                              {teacher.name}
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              fullWidth
-                              size="small"
-                              value={teacherAttendance[teacher._id] || ""}
-                              onChange={(e) =>
-                                handleTeacherChange(teacher._id, e.target.value)
-                              }
-                            >
-                              <MenuItem value="Present">Present</MenuItem>
-                              <MenuItem value="Absent">Absent</MenuItem>
-                            </Select>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </>
-          )}
+            </Box>
+          </Fade>
         </Box>
-        <Box p={2} bgcolor={theme.palette.grey[100]} display="flex" justifyContent="flex-end">
+        <Box p={2} bgcolor={theme.palette.grey[50]} display="flex" justifyContent="flex-end">
           <Button
             variant="contained"
             color="primary"
@@ -978,7 +1143,7 @@ const AttendanceDashboard = () => {
                 ? studentLoading || !date || !selectedClass || Object.keys(studentAttendance).length === 0
                 : teacherLoading || !date || Object.keys(teacherAttendance).length === 0
             }
-            sx={{ mr: 2 }}
+            sx={{ mr: 2, fontWeight: 600 }}
           >
             {studentLoading || teacherLoading ? (
               <CircularProgress size={24} />
@@ -996,22 +1161,25 @@ const AttendanceDashboard = () => {
               (Object.keys(studentAttendance).length === 0 )&& 
               (Object.keys(teacherAttendance).length === 0)
             }
+            sx={{ fontWeight: 600 }}
           >
             {loading ? <CircularProgress size={24} /> : "Submit All"}
           </Button>
         </Box>
-      </Paper>
+      </DashboardCard>
 
       {/* Charts and Analytics Section */}
-      <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-          <ChartIcon color="action" sx={{ mr: 1 }} />
-          Analytics Dashboard
-        </Typography>
+      <DashboardCard>
+        <CardContent sx={{ bgcolor: COLORS.lightBlue }}>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', fontWeight: 600 }}>
+            <ChartIcon color="primary" sx={{ mr: 1 }} />
+            Analytics Dashboard
+          </Typography>
+        </CardContent>
         
         <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography>Student Attendance Analytics</Typography>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: theme.palette.grey[50] }}>
+            <Typography fontWeight={600}>Student Attendance Analytics</Typography>
           </AccordionSummary>
           <AccordionDetails>
             {studentLoading ? (
@@ -1021,8 +1189,8 @@ const AttendanceDashboard = () => {
             ) : studentSummary.length > 0 ? (
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <Paper elevation={0} sx={{ p: 2, height: '100%' }}>
-                    <Typography variant="subtitle1" align="center" gutterBottom>
+                  <Paper elevation={0} sx={{ p: 2, height: '100%', borderRadius: 2 }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom fontWeight={600}>
                       Attendance Trend (Last 7 Days)
                     </Typography>
                     <ResponsiveContainer width="100%" height={300}>
@@ -1032,7 +1200,13 @@ const AttendanceDashboard = () => {
                           .sort((a, b) => new Date(a.date) - new Date(b.date))}
                         margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <defs>
+                          <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={COLORS.present} stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor={COLORS.present} stopOpacity={0.1}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.grey[300]} />
                         <XAxis 
                           dataKey="date" 
                           tickFormatter={(date) => moment(date).format('MMM D')} 
@@ -1040,6 +1214,7 @@ const AttendanceDashboard = () => {
                         <YAxis />
                         <ChartTooltip 
                           labelFormatter={(date) => moment(date).format('MMMM D, YYYY')}
+                          contentStyle={{ borderRadius: 8, border: 'none' }}
                         />
                         <Area
                           type="monotone"
@@ -1047,15 +1222,16 @@ const AttendanceDashboard = () => {
                           name="Present"
                           stackId="1"
                           stroke={COLORS.present}
-                          fill={COLORS.present}
+                          fillOpacity={1}
+                          fill="url(#colorPresent)"
                         />
                       </AreaChart>
                     </ResponsiveContainer>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Paper elevation={0} sx={{ p: 2, height: '100%' }}>
-                    <Typography variant="subtitle1" align="center" gutterBottom>
+                  <Paper elevation={0} sx={{ p: 2, height: '100%', borderRadius: 2 }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom fontWeight={600}>
                       Student Attendance Distribution
                     </Typography>
                     <ResponsiveContainer width="100%" height={300}>
@@ -1088,15 +1264,15 @@ const AttendanceDashboard = () => {
                           <Cell fill={COLORS.present} />
                           <Cell fill={COLORS.absent} />
                         </Pie>
-                        <ChartTooltip />
+                        <ChartTooltip contentStyle={{ borderRadius: 8, border: 'none' }} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   </Paper>
                 </Grid>
                 <Grid item xs={12}>
-                  <Paper elevation={0} sx={{ p: 2 }}>
-                    <Typography variant="subtitle1" align="center" gutterBottom>
+                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom fontWeight={600}>
                       Recent Student Attendance Records
                     </Typography>
                     {renderAttendanceTable(studentSummary, 'student')}
@@ -1118,8 +1294,8 @@ const AttendanceDashboard = () => {
         </Accordion>
 
         <Accordion defaultExpanded>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography>Teacher Attendance Analytics</Typography>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: theme.palette.grey[50] }}>
+            <Typography fontWeight={600}>Teacher Attendance Analytics</Typography>
           </AccordionSummary>
           <AccordionDetails>
             {teacherLoading ? (
@@ -1129,8 +1305,8 @@ const AttendanceDashboard = () => {
             ) : teacherSummary.length > 0 ? (
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <Paper elevation={0} sx={{ p: 2, height: '100%' }}>
-                    <Typography variant="subtitle1" align="center" gutterBottom>
+                  <Paper elevation={0} sx={{ p: 2, height: '100%', borderRadius: 2 }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom fontWeight={600}>
                       Attendance by Teacher
                     </Typography>
                     <ResponsiveContainer width="100%" height={300}>
@@ -1138,30 +1314,32 @@ const AttendanceDashboard = () => {
                         data={getTeacherChartData().filter(d => d.name !== "Overall")}
                         margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.grey[300]} />
                         <XAxis dataKey="name" />
                         <YAxis />
-                        <ChartTooltip />
+                        <ChartTooltip contentStyle={{ borderRadius: 8, border: 'none' }} />
                         <Legend />
                         <Bar
                           dataKey="Present"
                           stackId="a"
                           fill={COLORS.present}
                           name="Present"
+                          radius={[4, 4, 0, 0]}
                         />
                         <Bar
                           dataKey="Absent"
                           stackId="a"
                           fill={COLORS.absent}
                           name="Absent"
+                          radius={[4, 4, 0, 0]}
                         />
                       </BarChart>
                     </ResponsiveContainer>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Paper elevation={0} sx={{ p: 2, height: '100%' }}>
-                    <Typography variant="subtitle1" align="center" gutterBottom>
+                  <Paper elevation={0} sx={{ p: 2, height: '100%', borderRadius: 2 }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom fontWeight={600}>
                       Teacher Attendance Distribution
                     </Typography>
                     <ResponsiveContainer width="100%" height={300}>
@@ -1194,15 +1372,15 @@ const AttendanceDashboard = () => {
                           <Cell fill={COLORS.present} />
                           <Cell fill={COLORS.absent} />
                         </Pie>
-                        <ChartTooltip />
+                        <ChartTooltip contentStyle={{ borderRadius: 8, border: 'none' }} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   </Paper>
                 </Grid>
                 <Grid item xs={12}>
-                  <Paper elevation={0} sx={{ p: 2 }}>
-                    <Typography variant="subtitle1" align="center" gutterBottom>
+                  <Paper elevation={0} sx={{ p: 2, borderRadius: 2 }}>
+                    <Typography variant="subtitle1" align="center" gutterBottom fontWeight={600}>
                       Recent Teacher Attendance Records
                     </Typography>
                     {renderAttendanceTable(teacherSummary, 'teacher')}
@@ -1222,18 +1400,18 @@ const AttendanceDashboard = () => {
             )}
           </AccordionDetails>
         </Accordion>
-      </Paper>
+      </DashboardCard>
 
       {/* Filter Dialog */}
-      <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)}>
-        <DialogTitle>
+      <Dialog open={filterDialogOpen} onClose={() => setFilterDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ bgcolor: COLORS.lightBlue }}>
           <Box display="flex" alignItems="center">
-            <FilterIcon color="action" sx={{ mr: 1 }} />
+            <FilterIcon color="primary" sx={{ mr: 1 }} />
             Advanced Filters
           </Box>
         </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+        <DialogContent sx={{ pt: 3 }}>
+          <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
@@ -1242,6 +1420,8 @@ const AttendanceDashboard = () => {
                 InputLabelProps={{ shrink: true }}
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
+                variant="outlined"
+                size="small"
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -1252,12 +1432,14 @@ const AttendanceDashboard = () => {
                 InputLabelProps={{ shrink: true }}
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
+                variant="outlined"
+                size="small"
               />
             </Grid>
             <Grid item xs={12}>
-              <FormControl fullWidth>
+              <FormControl fullWidth size="small">
                 <InputLabel>Status Filter</InputLabel>
-                <Select multiple value={[]} onChange={() => {}}>
+                <Select multiple value={[]} onChange={() => {}} variant="outlined">
                   <MenuItem value="Present">Present</MenuItem>
                   <MenuItem value="Absent">Absent</MenuItem>
                 </Select>
@@ -1266,13 +1448,17 @@ const AttendanceDashboard = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setFilterDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setFilterDialogOpen(false)} sx={{ fontWeight: 600 }}>
+            Cancel
+          </Button>
           <Button 
             variant="contained" 
+            color="primary"
             onClick={() => {
               // Apply filters here
               setFilterDialogOpen(false);
             }}
+            sx={{ fontWeight: 600 }}
           >
             Apply Filters
           </Button>
