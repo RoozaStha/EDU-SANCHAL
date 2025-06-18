@@ -3,7 +3,8 @@ const Result = require('../models/result.model');
 const Student = require('../models/student.model');
 const Examination = require('../models/examination.model');
 const Subject = require('../models/subject.model');
-const Class = require('../models/class.model'); // Make sure to import Class model
+const Class = require('../models/class.model');
+// Make sure to import Class model
 const PDFDocument = require('pdfkit');
 
 exports.createResult = async (req, res) => {
@@ -18,11 +19,11 @@ exports.createResult = async (req, res) => {
       });
     }
 
-    // Check permissions
-    if (req.user.role !== 'TEACHER') {
+    // Check permissions - UPDATED TO ALLOW SCHOOL ADMINS
+    if (req.user.role !== 'TEACHER' && req.user.role !== 'SCHOOL') {
       return res.status(403).json({
         success: false,
-        message: "Only teachers can create results"
+        message: "Only teachers and school admins can create results"
       });
     }
 
@@ -38,7 +39,6 @@ exports.createResult = async (req, res) => {
       });
     }
 
-    // NEW VALIDATIONS ADDED HERE
     const examination = await Examination.findById(examinationId);
     if (!examination) {
       return res.status(404).json({
@@ -63,7 +63,6 @@ exports.createResult = async (req, res) => {
         message: "Subject does not belong to this examination"
       });
     }
-    // END OF NEW VALIDATIONS
 
     // Create new result
     const newResult = new Result({
@@ -484,7 +483,7 @@ exports.getExaminationAnalytics = async (req, res) => {
       const overallPercentage = parseFloat(
         ((student.totalMarks / student.totalMaxMarks) * 100).toFixed(2)
       );
-      
+
       // Student passes only if all subjects are passed
       const status = student.passedSubjects === student.totalSubjects ? 'Pass' : 'Fail';
 
@@ -694,6 +693,441 @@ exports.getClassesForExamination = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch classes",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+// Fix getMyPerformance function
+exports.getMyPerformance = async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    // Get student and verify school
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found"
+      });
+    }
+
+    // Get all results for the student
+    const results = await Result.find({ student: studentId })
+      .populate('examination', 'examType examDate')
+      .populate('subject', 'subject_name')
+      .lean();
+
+    // Calculate overall performance
+    const performance = results.reduce((acc, result) => {
+      if (!result.examination || !result.subject) return acc;
+
+      const examType = result.examination.examType;
+
+      if (!acc[examType]) {
+        acc[examType] = {
+          totalMarks: 0,
+          totalMaxMarks: 0,
+          count: 0,
+          subjects: []
+        };
+      }
+
+      acc[examType].totalMarks += result.marks;
+      acc[examType].totalMaxMarks += result.maxMarks;
+      acc[examType].count++;
+      acc[examType].subjects.push({
+        subject: result.subject.subject_name,
+        marks: result.marks,
+        maxMarks: result.maxMarks,
+        percentage: result.percentage,
+        examDate: result.examination.examDate
+      });
+
+      return acc;
+    }, {});
+
+    // Calculate overall percentages
+    Object.keys(performance).forEach(examType => {
+      performance[examType].overallPercentage =
+        (performance[examType].totalMarks / performance[examType].totalMaxMarks) * 100;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: performance
+    });
+
+  } catch (error) {
+    console.error("Get my performance error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get performance data",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+// NEW: Get detailed student performance analysis
+exports.getDetailedStudentPerformance = async (req, res) => {
+  try {
+    const studentId = req.params.studentId;
+
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid student ID"
+      });
+    }
+
+    // Get student and verify school
+    const student = await Student.findById(studentId);
+    if (!student || student.school.toString() !== req.user.schoolId) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found or unauthorized"
+      });
+    }
+
+    // Get all results for the student
+    const results = await Result.find({ student: studentId })
+      .populate('examination', 'examType examDate class')
+      .populate('subject', 'subject_name')
+      .lean();
+
+    if (!results.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No results found for this student"
+      });
+    }
+
+    // Organize by examination
+    const performanceByExam = {};
+    results.forEach(result => {
+      if (!result.examination || !result.subject) return;
+
+      const examId = result.examination._id.toString();
+
+      if (!performanceByExam[examId]) {
+        performanceByExam[examId] = {
+          examType: result.examination.examType,
+          examDate: result.examination.examDate,
+          class: result.examination.class,
+          subjects: [],
+          totalMarks: 0,
+          totalMaxMarks: 0
+        };
+      }
+
+      performanceByExam[examId].subjects.push({
+        subject: result.subject.subject_name,
+        marks: result.marks,
+        maxMarks: result.maxMarks,
+        percentage: result.percentage
+      });
+
+      performanceByExam[examId].totalMarks += result.marks;
+      performanceByExam[examId].totalMaxMarks += result.maxMarks;
+    });
+
+    // Calculate overall percentages
+    Object.keys(performanceByExam).forEach(examId => {
+      const exam = performanceByExam[examId];
+      exam.overallPercentage = parseFloat(
+        ((exam.totalMarks / exam.totalMaxMarks) * 100).toFixed(2)
+      );
+    });
+
+    // Calculate trends and improvements
+    const exams = Object.values(performanceByExam).sort((a, b) =>
+      new Date(a.examDate) - new Date(b.examDate)
+    );
+
+    const subjectTrends = {};
+    exams.forEach(exam => {
+      exam.subjects.forEach(subject => {
+        if (!subjectTrends[subject.subject]) {
+          subjectTrends[subject.subject] = [];
+        }
+        subjectTrends[subject.subject].push({
+          examType: exam.examType,
+          examDate: exam.examDate,
+          percentage: subject.percentage
+        });
+      });
+    });
+
+    // Calculate overall improvement
+    let improvement = null;
+    if (exams.length > 1) {
+      const firstExam = exams[0];
+      const lastExam = exams[exams.length - 1];
+      improvement = {
+        from: firstExam.overallPercentage,
+        to: lastExam.overallPercentage,
+        change: parseFloat((lastExam.overallPercentage - firstExam.overallPercentage).toFixed(2))
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Student performance analysis fetched",
+      data: {
+        student: {
+          name: student.name,
+          class: student.student_class
+        },
+        exams: performanceByExam,
+        subjectTrends,
+        improvement,
+        examCount: exams.length
+      }
+    });
+  } catch (error) {
+    console.error("Detailed student performance error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get student performance analysis",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// NEW: Get class-wise performance comparison
+exports.getClassPerformanceComparison = async (req, res) => {
+  try {
+    const { classId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(classId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid class ID"
+      });
+    }
+
+    // Get class and verify school
+    const classObj = await Class.findById(classId);
+    if (!classObj || classObj.school.toString() !== req.user.schoolId) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found or unauthorized"
+      });
+    }
+
+    // Get all students in the class
+    const students = await Student.find({ student_class: classId });
+    const studentIds = students.map(s => s._id);
+
+    // Get all results for these students
+    const results = await Result.find({ student: { $in: studentIds } })
+      .populate('examination', 'examType examDate')
+      .populate('subject', 'subject_name')
+      .populate('student', 'name')
+      .lean();
+
+    // Organize by student
+    const studentPerformance = {};
+    results.forEach(result => {
+      if (!result.examination || !result.subject || !result.student) return;
+
+      const studentId = result.student._id.toString();
+
+      if (!studentPerformance[studentId]) {
+        studentPerformance[studentId] = {
+          student: result.student,
+          exams: {},
+          totalMarks: 0,
+          totalMaxMarks: 0,
+          subjectCount: 0
+        };
+      }
+
+      const examId = result.examination._id.toString();
+      if (!studentPerformance[studentId].exams[examId]) {
+        studentPerformance[studentId].exams[examId] = {
+          examType: result.examination.examType,
+          examDate: result.examination.examDate,
+          subjects: [],
+          totalMarks: 0,
+          totalMaxMarks: 0
+        };
+      }
+
+      studentPerformance[studentId].exams[examId].subjects.push({
+        subject: result.subject.subject_name,
+        marks: result.marks,
+        maxMarks: result.maxMarks,
+        percentage: result.percentage
+      });
+
+      studentPerformance[studentId].exams[examId].totalMarks += result.marks;
+      studentPerformance[studentId].exams[examId].totalMaxMarks += result.maxMarks;
+
+      // Add to overall student totals
+      studentPerformance[studentId].totalMarks += result.marks;
+      studentPerformance[studentId].totalMaxMarks += result.maxMarks;
+      studentPerformance[studentId].subjectCount++;
+    });
+
+    // Calculate overall percentages
+    Object.keys(studentPerformance).forEach(studentId => {
+      const student = studentPerformance[studentId];
+      student.overallPercentage = parseFloat(
+        ((student.totalMarks / student.totalMaxMarks) * 100).toFixed(2)
+      );
+
+      // Calculate exam percentages
+      Object.keys(student.exams).forEach(examId => {
+        const exam = student.exams[examId];
+        exam.overallPercentage = parseFloat(
+          ((exam.totalMarks / exam.totalMaxMarks) * 100).toFixed(2)
+        );
+      });
+    });
+
+    // Convert to array and sort by performance
+    const classPerformance = Object.values(studentPerformance).sort(
+      (a, b) => b.overallPercentage - a.overallPercentage
+    );
+
+    // Calculate class average
+    const totalPercentage = classPerformance.reduce(
+      (sum, student) => sum + student.overallPercentage, 0
+    );
+    const classAverage = parseFloat(
+      (totalPercentage / classPerformance.length).toFixed(2)
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Class performance comparison fetched",
+      data: {
+        className: classObj.class_text,
+        students: classPerformance,
+        studentCount: classPerformance.length,
+        classAverage
+      }
+    });
+  } catch (error) {
+    console.error("Class performance error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get class performance",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Fix getMyDetailedPerformance
+exports.getMyDetailedPerformance = async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    // Get student and verify school
+    const student = await Student.findById(studentId).populate('student_class');
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found"
+      });
+    }
+
+    // Get all results for the student
+    const results = await Result.find({ student: studentId })
+      .populate('examination', 'examType examDate class')
+      .populate('subject', 'subject_name')
+      .lean();
+
+    if (!results.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No results found for this student"
+      });
+    }
+
+    // Organize by examination
+    const exams = {};
+    const subjectPerformance = {};
+
+    results.forEach(result => {
+      if (!result.examination || !result.subject) return;
+
+      const examId = result.examination._id.toString();
+
+      if (!exams[examId]) {
+        exams[examId] = {
+          examType: result.examination.examType,
+          examDate: result.examination.examDate,
+          class: result.examination.class,
+          subjects: [],
+          totalMarks: 0,
+          totalMaxMarks: 0
+        };
+      }
+
+      exams[examId].subjects.push({
+        subject: result.subject.subject_name,
+        marks: result.marks,
+        maxMarks: result.maxMarks,
+        percentage: result.percentage
+      });
+
+      exams[examId].totalMarks += result.marks;
+      exams[examId].totalMaxMarks += result.maxMarks;
+
+      // Track subject performance
+      const subjectName = result.subject.subject_name;
+      if (!subjectPerformance[subjectName]) {
+        subjectPerformance[subjectName] = {
+          totalMarks: 0,
+          totalMaxMarks: 0,
+          count: 0,
+          exams: []
+        };
+      }
+
+      subjectPerformance[subjectName].totalMarks += result.marks;
+      subjectPerformance[subjectName].totalMaxMarks += result.maxMarks;
+      subjectPerformance[subjectName].count++;
+      subjectPerformance[subjectName].exams.push({
+        examType: result.examination.examType,
+        examDate: result.examination.examDate,
+        percentage: result.percentage
+      });
+    });
+
+    // Calculate overall percentages
+    Object.keys(exams).forEach(examId => {
+      exams[examId].overallPercentage =
+        (exams[examId].totalMarks / exams[examId].totalMaxMarks) * 100;
+    });
+
+    // Calculate subject averages
+    const subjectTrends = {};
+    Object.keys(subjectPerformance).forEach(subject => {
+      const subj = subjectPerformance[subject];
+      subjectTrends[subject] = {
+        averagePercentage: (subj.totalMarks / subj.totalMaxMarks) * 100,
+        exams: subj.exams
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        student: {
+          name: student.name,
+          class: student.student_class?.class_text || "N/A"
+        },
+        exams,
+        subjectTrends,
+        examCount: Object.keys(exams).length
+      }
+    });
+  } catch (error) {
+    console.error("Detailed student performance error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get student performance analysis",
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

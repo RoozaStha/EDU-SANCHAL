@@ -3,6 +3,7 @@ const router = express.Router();
 
 // Simulate a knowledge base or connect to OpenAI/GPT endpoint
 const knowledgeBase = {
+  "hi":"hello",
   "how to mark attendance": "To mark attendance, go to the dashboard, select class, and click on 'Take Attendance'.",
   "how to apply leave": "You can apply for leave under the 'Leave Request' section in your profile."
 };

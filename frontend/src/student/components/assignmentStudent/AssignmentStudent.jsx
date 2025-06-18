@@ -5,19 +5,23 @@ import {
   Container, Box, Typography, Card, CardContent, CardActions, Button,
   Chip, Avatar, Divider, LinearProgress, CircularProgress, IconButton,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Snackbar, Alert, Badge, Tooltip, Grid, Paper, Stack, Tabs, Tab
+  Snackbar, Alert, Grid, Paper, Stack, Tabs, Tab,
+  AppBar, Toolbar, useMediaQuery, useTheme,
+  MenuItem
 } from '@mui/material';
 import {
   Assignment, Description, CalendarToday, CheckCircle,
   Pending, Error, Upload, Download, Close,
-  VideoLibrary, PlayCircle, Subject, Class, Person
+  VideoLibrary, PlayCircle, Subject, Class, Person, FilterList
 } from '@mui/icons-material';
 import { format, parseISO, isBefore } from 'date-fns';
 
 const API_BASE = "http://localhost:5000/api";
-const FILE_BASE = API_BASE.replace('/api', ''); // Fix file base URL
+const FILE_BASE = API_BASE.replace('/api', '');
 
 const StudentAssignmentDashboard = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,6 +35,9 @@ const StudentAssignmentDashboard = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [submissions, setSubmissions] = useState([]);
   const [activeTab, setActiveTab] = useState(0);
+  const [showFilters, setShowFilters] = useState(!isMobile);
+  const [filterSubject, setFilterSubject] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
   const navigate = useNavigate();
 
   // File handling helper
@@ -63,7 +70,7 @@ const StudentAssignmentDashboard = () => {
     }
   };
 
-  // FIXED: Fetch student submissions with correct endpoint
+  // Fetch student submissions
   const fetchSubmissions = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -136,7 +143,7 @@ const StudentAssignmentDashboard = () => {
     }
   };
 
-  // FIXED: Status calculation logic
+  // Status calculation logic
   const getAssignmentStatus = (assignment, submission) => {
     if (!assignment) return {
       status: 'Error',
@@ -181,7 +188,7 @@ const StudentAssignmentDashboard = () => {
     return format(parseISO(dateString), 'MMM dd, yyyy');
   };
 
-  // FIXED: Find submission for assignment
+  // Find submission for assignment
   const findSubmission = (assignmentId) => {
     return submissions.find(
       s => s.assignment && s.assignment._id === assignmentId
@@ -206,22 +213,132 @@ const StudentAssignmentDashboard = () => {
     };
   };
 
-  return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 1 }}>
-          <Assignment sx={{ verticalAlign: 'middle', mr: 2, fontSize: 40 }} />
-          Assignment Dashboard
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          View your assignments, submit your work, and track your submissions
-        </Typography>
-      </Box>
+  // Filter assignments based on subject and status
+  const filteredAssignments = assignments.filter(assignment => {
+    const subjectMatch = filterSubject ? 
+      assignment.subject.subject_name.includes(filterSubject) : true;
+    
+    const statusMatch = filterStatus ? 
+      getAssignmentStatus(assignment, findSubmission(assignment._id)).status === filterStatus : true;
+    
+    return subjectMatch && statusMatch;
+  });
 
-      <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
-        <Tab label="Active Assignments" />
-        <Tab label="My Submissions" />
+  // Get unique subjects for filter dropdown
+  const uniqueSubjects = [...new Set(assignments.map(a => a.subject.subject_name))];
+
+  return (
+    <Box sx={{ p: isMobile ? 1 : 1 }}>
+      {/* App Bar with Title */}
+      <AppBar
+        position="static"
+        color="primary"
+        sx={{
+          mb: 3,
+          borderRadius: 2,
+          background: "linear-gradient(135deg, #1976d2 30%, #2196f3 90%)",
+          boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
+        }}
+      >
+        <Toolbar>
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              onClick={() => setShowFilters(!showFilters)}
+              edge="start"
+              sx={{ mr: 2 }}
+            >
+              <FilterList />
+            </IconButton>
+          )}
+          <Typography
+            variant="h4"
+            component="div"
+            sx={{ flexGrow: 1, fontWeight: "bold" }}
+          >
+            <Box component="span" sx={{ color: "#ffffff" }}>
+              Assignment
+            </Box>
+            <Box component="span" sx={{ color: "#ffffff", ml: 1 }}>
+              Dashboard
+            </Box>
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
+      <Tabs
+        value={activeTab}
+        onChange={(_, newValue) => setActiveTab(newValue)}
+        sx={{ 
+          mb: 3, 
+          background: "#f5f9ff", 
+          borderRadius: 2,
+          boxShadow: theme.shadows[1]
+        }}
+        variant={isMobile ? "scrollable" : "standard"}
+      >
+        <Tab
+          label="Active Assignments"
+          icon={<Assignment />}
+          sx={{ fontWeight: "bold", minHeight: 60 }}
+        />
+        <Tab
+          label="My Submissions"
+          icon={<Description />}
+          sx={{ fontWeight: "bold", minHeight: 60 }}
+        />
       </Tabs>
+
+      {/* Filters Section */}
+      {showFilters && activeTab === 0 && (
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Filter by Subject"
+                select
+                value={filterSubject}
+                onChange={(e) => setFilterSubject(e.target.value)}
+              >
+                <MenuItem value="">All Subjects</MenuItem>
+                {uniqueSubjects.map(subject => (
+                  <MenuItem key={subject} value={subject}>{subject}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Filter by Status"
+                select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <MenuItem value="">All Statuses</MenuItem>
+                <MenuItem value="Pending">Pending</MenuItem>
+                <MenuItem value="Submitted">Submitted</MenuItem>
+                <MenuItem value="Overdue">Overdue</MenuItem>
+                <MenuItem value="Graded">Graded</MenuItem>
+              </TextField>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+      
+      {!showFilters && isMobile && activeTab === 0 && (
+        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterList />}
+            onClick={() => setShowFilters(true)}
+            sx={{ mb: 2 }}
+          >
+            Show Filters
+          </Button>
+        </Box>
+      )}
 
       {/* Active Assignments Tab */}
       {activeTab === 0 && (
@@ -234,8 +351,8 @@ const StudentAssignmentDashboard = () => {
             <Alert severity="error" sx={{ mb: 3 }}>
               {error}
             </Alert>
-          ) : assignments.length === 0 ? (
-            <Card sx={{ p: 4, textAlign: 'center' }}>
+          ) : filteredAssignments.length === 0 ? (
+            <Card sx={{ p: 4, textAlign: 'center', borderRadius: 2, boxShadow: 3 }}>
               <Typography variant="h6" color="text.secondary">
                 No assignments available at this time
               </Typography>
@@ -245,7 +362,7 @@ const StudentAssignmentDashboard = () => {
             </Card>
           ) : (
             <Grid container spacing={3}>
-              {assignments.map((assignment) => {
+              {filteredAssignments.map((assignment) => {
                 const submission = findSubmission(assignment._id);
                 const status = getAssignmentStatus(assignment, submission);
                
@@ -256,11 +373,18 @@ const StudentAssignmentDashboard = () => {
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
+                        borderRadius: 2,
+                        boxShadow: 3,
                         borderLeft: `4px solid ${
                           status.color === 'success' ? '#4caf50' :
                           status.color === 'warning' ? '#ff9800' :
                           '#f44336'
-                        }`
+                        }`,
+                        transition: 'transform 0.3s, box-shadow 0.3s',
+                        '&:hover': {
+                          transform: 'translateY(-5px)',
+                          boxShadow: 6
+                        }
                       }}
                     >
                       <CardContent sx={{ flexGrow: 1 }}>
@@ -280,6 +404,7 @@ const StudentAssignmentDashboard = () => {
                             color={status.color}
                             size="small"
                             variant="outlined"
+                            sx={{ fontWeight: 'bold' }}
                           />
                         </Box>
                        
@@ -345,7 +470,8 @@ const StudentAssignmentDashboard = () => {
                                     justifyContent: 'flex-start',
                                     maxWidth: '100%',
                                     overflow: 'hidden',
-                                    textOverflow: 'ellipsis'
+                                    textOverflow: 'ellipsis',
+                                    borderRadius: 1
                                   }}
                                 />
                               ))}
@@ -362,7 +488,7 @@ const StudentAssignmentDashboard = () => {
                               icon={<VideoLibrary />}
                               label="Watch Video"
                               onClick={() => handleOpenFile(assignment.videoUrl)}
-                              sx={{ cursor: 'pointer' }}
+                              sx={{ cursor: 'pointer', borderRadius: 1 }}
                               color="primary"
                             />
                           </Box>
@@ -373,7 +499,12 @@ const StudentAssignmentDashboard = () => {
                             Max Points: {assignment.maxPoints}
                           </Typography>
                           {assignment.peerReviewEnabled && (
-                            <Chip label="Peer Review" size="small" color="secondary" />
+                            <Chip 
+                              label="Peer Review" 
+                              size="small" 
+                              color="secondary" 
+                              sx={{ fontWeight: 'bold' }}
+                            />
                           )}
                         </Box>
                       </CardContent>
@@ -388,6 +519,13 @@ const StudentAssignmentDashboard = () => {
                               setSubmissionDialogOpen(true);
                             }}
                             disabled={isBefore(parseISO(assignment.dueDate), new Date()) && !assignment.allowLateSubmission}
+                            sx={{ 
+                              fontWeight: 'bold',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                              '&:hover': {
+                                boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+                              }
+                            }}
                           >
                             {isBefore(parseISO(assignment.dueDate), new Date()) && !assignment.allowLateSubmission
                               ? 'Submission Closed'
@@ -404,6 +542,7 @@ const StudentAssignmentDashboard = () => {
                                 });
                               }, 100);
                             }}
+                            sx={{ fontWeight: 'bold' }}
                           >
                             View Submission
                           </Button>
@@ -422,7 +561,7 @@ const StudentAssignmentDashboard = () => {
       {activeTab === 1 && (
         <Box>
           {submissions.length === 0 ? (
-            <Card sx={{ p: 4, textAlign: 'center' }}>
+            <Card sx={{ p: 4, textAlign: 'center', borderRadius: 2, boxShadow: 3 }}>
               <Typography variant="h6" color="text.secondary">
                 You haven't submitted any assignments yet
               </Typography>
@@ -433,7 +572,6 @@ const StudentAssignmentDashboard = () => {
           ) : (
             <Grid container spacing={3}>
               {submissions.map((submission) => {
-                // Skip submissions without assignment data
                 if (!submission.assignment) return null;
                 
                 const assignment = assignments.find(a => a._id === submission.assignment._id) || submission.assignment;
@@ -441,7 +579,7 @@ const StudentAssignmentDashboard = () => {
                
                 return (
                   <Grid item xs={12} key={submission._id} id={`submission-${submission._id}`}>
-                    <Paper elevation={2} sx={{ p: 3 }}>
+                    <Paper elevation={3} sx={{ p: 3, borderRadius: 2, boxShadow: 3 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                           {assignment.title}
@@ -451,6 +589,7 @@ const StudentAssignmentDashboard = () => {
                           label={status.status}
                           color={status.color}
                           size="small"
+                          sx={{ fontWeight: 'bold' }}
                         />
                       </Box>
                      
@@ -465,7 +604,7 @@ const StudentAssignmentDashboard = () => {
                               label="Late Submission"
                               size="small"
                               color="error"
-                              sx={{ mt: 1 }}
+                              sx={{ mt: 1, fontWeight: 'bold' }}
                             />
                           )}
                          
@@ -474,7 +613,7 @@ const StudentAssignmentDashboard = () => {
                               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                                 Your Remarks:
                               </Typography>
-                              <Typography variant="body2" sx={{ mt: 1 }}>
+                              <Typography variant="body2" sx={{ mt: 1, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
                                 {submission.remarks}
                               </Typography>
                             </Box>
@@ -489,6 +628,7 @@ const StudentAssignmentDashboard = () => {
                                 variant="outlined"
                                 startIcon={<Download />}
                                 onClick={() => handleOpenFile(submission.fileUrl)}
+                                sx={{ fontWeight: 'bold' }}
                               >
                                 Download File
                               </Button>
@@ -506,6 +646,7 @@ const StudentAssignmentDashboard = () => {
                                 onClick={() =>
                                   handleOpenFile(submission.videoUrl || submission.feedbackVideoUrl)
                                 }
+                                sx={{ fontWeight: 'bold' }}
                               >
                                 {submission.videoUrl ? 'Watch Your Video' : 'Watch Feedback'}
                               </Button>
@@ -522,7 +663,14 @@ const StudentAssignmentDashboard = () => {
                               <LinearProgress
                                 variant="determinate"
                                 value={submission.grade}
-                                sx={{ height: 10, borderRadius: 5 }}
+                                sx={{ 
+                                  height: 10, 
+                                  borderRadius: 5,
+                                  backgroundColor: theme.palette.grey[300],
+                                  '& .MuiLinearProgress-bar': {
+                                    borderRadius: 5
+                                  }
+                                }}
                                 color={
                                   submission.grade >= 90 ? 'success' :
                                   submission.grade >= 70 ? 'primary' :
@@ -566,7 +714,14 @@ const StudentAssignmentDashboard = () => {
                                     <LinearProgress
                                       variant="determinate"
                                       value={(score || 0) / criteria.maxScore * 100}
-                                      sx={{ height: 6, borderRadius: 3 }}
+                                      sx={{ 
+                                        height: 6, 
+                                        borderRadius: 3,
+                                        backgroundColor: theme.palette.grey[300],
+                                        '& .MuiLinearProgress-bar': {
+                                          borderRadius: 3
+                                        }
+                                      }}
                                     />
                                   </Box>
                                 );
@@ -590,26 +745,27 @@ const StudentAssignmentDashboard = () => {
         onClose={() => setSubmissionDialogOpen(false)}
         maxWidth="md"
         fullWidth
+        PaperProps={{ sx: { borderRadius: 2 } }}
       >
-        <DialogTitle>
+        <DialogTitle sx={{ bgcolor: theme.palette.primary.main, color: 'white' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
               Submit Assignment: {selectedAssignment?.title}
             </Typography>
-            <IconButton onClick={() => setSubmissionDialogOpen(false)}>
+            <IconButton onClick={() => setSubmissionDialogOpen(false)} sx={{ color: 'white' }}>
               <Close />
             </IconButton>
           </Box>
         </DialogTitle>
        
-        <DialogContent>
+        <DialogContent sx={{ p: 3 }}>
           {selectedAssignment && (
             <>
               <Typography variant="body1" sx={{ mb: 2 }}>
                 {selectedAssignment.description}
               </Typography>
              
-              <Box sx={{ mb: 3, p: 2, bgcolor: '#f9f9f9', borderRadius: 1 }}>
+              <Box sx={{ mb: 3, p: 2, bgcolor: '#f9f9f9', borderRadius: 2 }}>
                 <Grid container spacing={1}>
                   <Grid item xs={12} sm={6}>
                     <Typography variant="body2">
@@ -647,6 +803,7 @@ const StudentAssignmentDashboard = () => {
                 value={submissionRemarks}
                 onChange={(e) => setSubmissionRemarks(e.target.value)}
                 sx={{ mb: 3 }}
+                variant="outlined"
               />
              
               <Box sx={{ mb: 3 }}>
@@ -657,7 +814,7 @@ const StudentAssignmentDashboard = () => {
                   variant="outlined"
                   component="label"
                   startIcon={<Upload />}
-                  sx={{ mr: 2 }}
+                  sx={{ mr: 2, fontWeight: 'bold' }}
                 >
                   Choose File
                   <input
@@ -668,7 +825,7 @@ const StudentAssignmentDashboard = () => {
                   />
                 </Button>
                 {submissionFile && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold' }}>
                     Selected: {submissionFile.name}
                   </Typography>
                 )}
@@ -687,7 +844,7 @@ const StudentAssignmentDashboard = () => {
                     variant="outlined"
                     component="label"
                     startIcon={<Upload />}
-                    sx={{ alignSelf: 'flex-start' }}
+                    sx={{ alignSelf: 'flex-start', fontWeight: 'bold' }}
                   >
                     Choose Video File
                     <input
@@ -698,7 +855,7 @@ const StudentAssignmentDashboard = () => {
                     />
                   </Button>
                   {submissionVideo && (
-                    <Typography variant="body2">
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                       Selected: {submissionVideo.name}
                     </Typography>
                   )}
@@ -712,6 +869,7 @@ const StudentAssignmentDashboard = () => {
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
                     placeholder="https://www.youtube.com/watch?v=..."
+                    variant="outlined"
                   />
                 </Box>
               </Box>
@@ -728,7 +886,11 @@ const StudentAssignmentDashboard = () => {
                         icon={<Description />}
                         label={file.split('/').pop()}
                         onClick={() => handleOpenFile(file)}
-                        sx={{ cursor: 'pointer', justifyContent: 'flex-start' }}
+                        sx={{ 
+                          cursor: 'pointer', 
+                          justifyContent: 'flex-start',
+                          borderRadius: 1
+                        }}
                       />
                     ))}
                   </Stack>
@@ -739,7 +901,10 @@ const StudentAssignmentDashboard = () => {
         </DialogContent>
        
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setSubmissionDialogOpen(false)}>
+          <Button 
+            onClick={() => setSubmissionDialogOpen(false)}
+            sx={{ fontWeight: 'bold' }}
+          >
             Cancel
           </Button>
           <Button
@@ -747,6 +912,13 @@ const StudentAssignmentDashboard = () => {
             onClick={handleSubmitAssignment}
             disabled={submitting || (!submissionFile && !submissionVideo && !videoUrl)}
             startIcon={submitting ? <CircularProgress size={20} /> : <Upload />}
+            sx={{ 
+              fontWeight: 'bold',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              '&:hover': {
+                boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+              }
+            }}
           >
             {submitting ? 'Submitting...' : 'Submit Assignment'}
           </Button>
@@ -758,9 +930,17 @@ const StudentAssignmentDashboard = () => {
         open={!!successMessage}
         autoHideDuration={5000}
         onClose={() => setSuccessMessage('')}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={() => setSuccessMessage('')} severity="success" sx={{ width: '100%' }}>
+        <Alert 
+          onClose={() => setSuccessMessage('')} 
+          severity="success" 
+          sx={{ 
+            width: '100%',
+            fontWeight: 'bold',
+            boxShadow: 3
+          }}
+        >
           {successMessage}
         </Alert>
       </Snackbar>
@@ -770,13 +950,21 @@ const StudentAssignmentDashboard = () => {
         open={!!error}
         autoHideDuration={6000}
         onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+        <Alert 
+          onClose={() => setError(null)} 
+          severity="error" 
+          sx={{ 
+            width: '100%',
+            fontWeight: 'bold',
+            boxShadow: 3
+          }}
+        >
           {error}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 };
 

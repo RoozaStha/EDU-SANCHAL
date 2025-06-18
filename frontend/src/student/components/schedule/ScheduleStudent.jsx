@@ -89,6 +89,7 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
         backgroundColor: theme.palette.background.paper,
         p: 2,
         borderRadius: 1,
+        boxShadow: theme.shadows[1],
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -128,7 +129,15 @@ const CustomToolbar = ({ label, onNavigate, onView, view, views }) => {
         >
           <ArrowForwardIcon />
         </IconButton>
-        <Typography variant="h6" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontWeight: 700,
+            color: theme.palette.primary.main,
+            ml: 1,
+            fontSize: '1.25rem'
+          }}
+        >
           {label}
         </Typography>
       </Box>
@@ -211,7 +220,9 @@ const StudentEvent = ({ event }) => {
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        borderRadius: '4px',
+        borderRadius: '6px',
+        borderLeft: `4px solid ${event.resource.subject?.color || theme.palette.primary.main}`,
+        backgroundColor: `${event.resource.subject?.color || theme.palette.primary.main}20`,
       }}
     >
       <Typography
@@ -221,31 +232,23 @@ const StudentEvent = ({ event }) => {
           mb: 0.5, 
           lineHeight: 1.2,
           fontSize: '0.75rem',
-          color: 'white',
+          color: theme.palette.text.primary,
         }}
       >
         {event.title}
       </Typography>
 
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mt: "auto",
+      <Typography 
+        variant="caption" 
+        sx={{ 
+          fontSize: "0.65rem",
+          color: theme.palette.text.secondary,
+          fontWeight: 500
         }}
       >
-        <Typography 
-          variant="caption" 
-          sx={{ 
-            fontSize: "0.65rem",
-            color: 'rgba(255,255,255,0.8)',
-          }}
-        >
-          {moment(event.start).format("h:mm A")} -{" "}
-          {moment(event.end).format("h:mm A")}
-        </Typography>
-      </Box>
+        {moment(event.start).format("h:mm A")} -{" "}
+        {moment(event.end).format("h:mm A")}
+      </Typography>
     </Box>
   );
 };
@@ -451,23 +454,24 @@ export default function StudentSchedule() {
 
   const eventStyleGetter = (event) => {
     // Use subject-based color if available, otherwise fall back to a default
-    const subjectColor = event.resource.subject?.color || '#3f51b5';
+    const subjectColor = event.resource.subject?.color || theme.palette.primary.main;
     
     return {
       style: {
-        backgroundColor: subjectColor,
+        backgroundColor: `${subjectColor}20`,
         borderRadius: "6px",
         opacity: 0.9,
-        color: "white",
+        color: theme.palette.text.primary,
         border: "0px",
         display: "block",
         cursor: "pointer",
-        boxShadow: theme.shadows[1],
+        boxShadow: theme.shadows[0],
         transition: "all 0.2s ease",
         "&:hover": {
           opacity: 1,
-          boxShadow: theme.shadows[3],
+          boxShadow: theme.shadows[2],
           transform: 'translateY(-1px)',
+          backgroundColor: `${subjectColor}30`,
         },
       },
     };
@@ -482,7 +486,7 @@ export default function StudentSchedule() {
       if (event.resource.subject) {
         subjectsMap.set(event.resource.subject._id, {
           ...event.resource.subject,
-          color: event.resource.subject.color || '#3f51b5'
+          color: event.resource.subject.color || theme.palette.primary.main
         });
       }
       if (event.resource.teacher) {
@@ -494,7 +498,7 @@ export default function StudentSchedule() {
       subjects: Array.from(subjectsMap.values()),
       teachers: Array.from(teachersMap.values())
     };
-  }, [events]);
+  }, [events, theme]);
 
   const toggleSubjectFilter = (subjectId) => {
     setFilteredSubjects(prev => 
@@ -522,7 +526,13 @@ export default function StudentSchedule() {
   const hasActiveFilters = searchTerm || filteredSubjects.length > 0 || filteredTeachers.length > 0 || !showWeekends;
 
   return (
-    <Box sx={{ height: 'calc(100vh - 64px)', p: { xs: 1, sm: 2 } }}>
+    <Box sx={{ 
+      height: 'calc(100vh - 64px)', 
+      p: { xs: 1, sm: 2, md: 3 },
+      background: theme.palette.mode === 'light' 
+        ? 'linear-gradient(to bottom, #f0f4ff, #ffffff)' 
+        : theme.palette.background.default,
+    }}>
       {/* Breadcrumb Navigation */}
       <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
         <Link
@@ -550,15 +560,15 @@ export default function StudentSchedule() {
       </Breadcrumbs>
 
       <Paper
-        elevation={0}
+        elevation={1}
         sx={{
           height: "100%",
-          borderRadius: 2,
+          borderRadius: 3,
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          bgcolor: 'background.default',
-          border: `1px solid ${theme.palette.divider}`,
+          bgcolor: 'background.paper',
+          boxShadow: theme.shadows[2],
         }}
       >
         {/* Header Section */}
@@ -571,8 +581,19 @@ export default function StudentSchedule() {
         >
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <SchoolIcon color="primary" fontSize="large" />
-              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+              <SchoolIcon sx={{ 
+                color: theme.palette.primary.main, 
+                fontSize: '2rem' 
+              }} />
+              <Typography 
+                variant="h4" 
+                sx={{ 
+                  fontWeight: 700,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
                 My Class Schedule
               </Typography>
             </Box>
@@ -585,6 +606,13 @@ export default function StudentSchedule() {
                   onClick={() => setStatsOpen(true)}
                   disabled={!events.length}
                   size="small"
+                  sx={{ 
+                    borderColor: theme.palette.primary.light,
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      borderColor: theme.palette.primary.main,
+                    }
+                  }}
                 >
                   Stats
                 </Button>
@@ -597,6 +625,13 @@ export default function StudentSchedule() {
                   onClick={refreshSchedules}
                   disabled={!studentClass || loading}
                   size="small"
+                  sx={{
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    boxShadow: theme.shadows[1],
+                    '&:hover': {
+                      boxShadow: theme.shadows[3],
+                    }
+                  }}
                 >
                   {loading ? 'Refreshing...' : 'Refresh'}
                 </Button>
@@ -608,12 +643,12 @@ export default function StudentSchedule() {
         {/* Quick Filter Bar */}
         <Box
           sx={{
-            p: 1,
+            p: 2,
             backgroundColor: 'background.paper',
             borderBottom: `1px solid ${theme.palette.divider}`,
             display: 'flex',
             alignItems: 'center',
-            gap: 1,
+            gap: 2,
             flexWrap: 'wrap',
           }}
         >
@@ -631,7 +666,7 @@ export default function StudentSchedule() {
               ),
               sx: { 
                 backgroundColor: 'background.paper',
-                width: 200,
+                width: 250,
               }
             }}
           />
@@ -646,18 +681,18 @@ export default function StudentSchedule() {
                   color="primary"
                 />
               }
-              label="Weekends"
+              label="Show Weekends"
               labelPlacement="start"
               sx={{ ml: 0 }}
             />
           </Tooltip>
 
           <Button
-            variant="text"
+            variant="outlined"
             size="small"
             startIcon={<FilterListIcon />}
             onClick={() => setFiltersOpen(!filtersOpen)}
-            sx={{ ml: 'auto' }}
+            sx={{ ml: 'auto', borderColor: theme.palette.divider }}
           >
             {filtersOpen ? 'Hide Filters' : 'More Filters'}
           </Button>
@@ -668,6 +703,7 @@ export default function StudentSchedule() {
               size="small"
               onClick={clearAllFilters}
               color="error"
+              sx={{ fontWeight: 500 }}
             >
               Clear All
             </Button>
@@ -683,13 +719,13 @@ export default function StudentSchedule() {
               borderBottom: `1px solid ${theme.palette.divider}`,
             }}
           >
-            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
               Filter Classes
             </Typography>
             
             {subjects.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" gutterBottom sx={{ fontWeight: 500 }}>
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="body1" gutterBottom sx={{ fontWeight: 500, mb: 1 }}>
                   By Subject:
                 </Typography>
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
@@ -701,7 +737,7 @@ export default function StudentSchedule() {
                       color={filteredSubjects.includes(subject._id) ? "primary" : "default"}
                       variant={filteredSubjects.includes(subject._id) ? "filled" : "outlined"}
                       icon={<SubjectIcon />}
-                      size="small"
+                      size="medium"
                       sx={{
                         '&.MuiChip-filledPrimary': {
                           backgroundColor: subject.color,
@@ -716,7 +752,7 @@ export default function StudentSchedule() {
 
             {teachers.length > 0 && (
               <Box>
-                <Typography variant="body2" gutterBottom sx={{ fontWeight: 500 }}>
+                <Typography variant="body1" gutterBottom sx={{ fontWeight: 500, mb: 1 }}>
                   By Teacher:
                 </Typography>
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
@@ -728,7 +764,7 @@ export default function StudentSchedule() {
                       color={filteredTeachers.includes(teacher._id) ? "secondary" : "default"}
                       variant={filteredTeachers.includes(teacher._id) ? "filled" : "outlined"}
                       icon={<PersonIcon />}
-                      size="small"
+                      size="medium"
                     />
                   ))}
                 </Box>
@@ -741,13 +777,13 @@ export default function StudentSchedule() {
         {hasActiveFilters && (
           <Box
             sx={{
-              p: 1,
+              p: 1.5,
               backgroundColor: theme.palette.action.selected,
               borderBottom: `1px solid ${theme.palette.divider}`,
             }}
           >
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="caption" sx={{ fontWeight: 500 }}>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: theme.palette.text.secondary }}>
                 Active Filters:
               </Typography>
               
@@ -756,6 +792,7 @@ export default function StudentSchedule() {
                   label="No weekends"
                   size="small"
                   onDelete={() => setShowWeekends(true)}
+                  sx={{ backgroundColor: theme.palette.error.light }}
                 />
               )}
               
@@ -772,6 +809,7 @@ export default function StudentSchedule() {
                   label={`${filteredSubjects.length} subject(s)`}
                   size="small"
                   onDelete={() => setFilteredSubjects([])}
+                  color="primary"
                 />
               )}
               
@@ -780,6 +818,7 @@ export default function StudentSchedule() {
                   label={`${filteredTeachers.length} teacher(s)`}
                   size="small"
                   onDelete={() => setFilteredTeachers([])}
+                  color="secondary"
                 />
               )}
             </Stack>
@@ -831,11 +870,11 @@ export default function StudentSchedule() {
                 flexDirection: "column",
                 gap: 2,
                 height: "100%",
-                p: 2,
+                p: 3,
               }}
             >
-              <Skeleton variant="rectangular" width="100%" height={80} />
-              <Skeleton variant="rectangular" width="100%" height="80%" />
+              <Skeleton variant="rectangular" width="100%" height={80} animation="wave" />
+              <Skeleton variant="rectangular" width="100%" height="80%" animation="wave" />
             </Box>
           ) : (
             <Calendar
@@ -858,7 +897,7 @@ export default function StudentSchedule() {
               eventPropGetter={eventStyleGetter}
               style={{
                 height: "100%",
-                backgroundColor: theme.palette.background.paper,
+                backgroundColor: theme.palette.background.default,
               }}
               components={{
                 toolbar: CustomToolbar,
@@ -875,26 +914,32 @@ export default function StudentSchedule() {
         onClose={handleCloseEventDetails}
         fullWidth
         maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 3 } }}
       >
         {selectedEvent && (
           <>
             <DialogTitle sx={{ 
-              backgroundColor: theme.palette.primary.main,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
               color: 'white',
               display: 'flex',
               alignItems: 'center',
               gap: 1,
+              py: 2,
             }}>
-              <EventIcon />
-              <Typography variant="h6">Class Details</Typography>
+              <EventIcon fontSize="large" />
+              <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                Class Details
+              </Typography>
             </DialogTitle>
-            <DialogContent sx={{ pt: 3 }}>
-              <List dense>
-                <ListItem>
+            <DialogContent sx={{ pt: 3, pb: 1 }}>
+              <List dense sx={{ py: 1 }}>
+                <ListItem sx={{ py: 1.5 }}>
                   <ListItemAvatar>
                     <Avatar sx={{ 
                       bgcolor: selectedEvent.resource.subject?.color || theme.palette.primary.main,
                       color: 'white',
+                      width: 40,
+                      height: 40
                     }}>
                       <SubjectIcon />
                     </Avatar>
@@ -902,73 +947,129 @@ export default function StudentSchedule() {
                   <ListItemText
                     primary="Subject"
                     secondary={selectedEvent.resource.subject?.subject_name || "Unknown"}
-                    secondaryTypographyProps={{ color: 'text.primary' }}
+                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
+                    secondaryTypographyProps={{ 
+                      color: 'text.primary',
+                      fontWeight: 500,
+                      fontSize: '1rem'
+                    }}
                   />
                 </ListItem>
 
-                <Divider component="li" variant="inset" />
+                <Divider component="li" variant="middle" sx={{ my: 1 }} />
 
-                <ListItem>
+                <ListItem sx={{ py: 1.5 }}>
                   <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: theme.palette.secondary.main, color: 'white' }}>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.secondary.main, 
+                      color: 'white',
+                      width: 40,
+                      height: 40
+                    }}>
                       <PersonIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Teacher"
                     secondary={selectedEvent.resource.teacher?.name || "Unknown"}
-                    secondaryTypographyProps={{ color: 'text.primary' }}
+                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
+                    secondaryTypographyProps={{ 
+                      color: 'text.primary',
+                      fontWeight: 500,
+                      fontSize: '1rem'
+                    }}
                   />
                 </ListItem>
 
-                <Divider component="li" variant="inset" />
+                <Divider component="li" variant="middle" sx={{ my: 1 }} />
 
-                <ListItem>
+                <ListItem sx={{ py: 1.5 }}>
                   <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: theme.palette.success.main, color: 'white' }}>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.success.main, 
+                      color: 'white',
+                      width: 40,
+                      height: 40
+                    }}>
                       <ClassIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Class"
                     secondary={selectedEvent.resource.class?.class_text || "Unknown"}
-                    secondaryTypographyProps={{ color: 'text.primary' }}
+                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
+                    secondaryTypographyProps={{ 
+                      color: 'text.primary',
+                      fontWeight: 500,
+                      fontSize: '1rem'
+                    }}
                   />
                 </ListItem>
 
-                <Divider component="li" variant="inset" />
+                <Divider component="li" variant="middle" sx={{ my: 1 }} />
 
-                <ListItem>
+                <ListItem sx={{ py: 1.5 }}>
                   <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: theme.palette.warning.main, color: 'white' }}>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.warning.main, 
+                      color: 'white',
+                      width: 40,
+                      height: 40
+                    }}>
                       <TimeIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Time"
                     secondary={`${moment(selectedEvent.start).format("h:mm A")} - ${moment(selectedEvent.end).format("h:mm A")}`}
-                    secondaryTypographyProps={{ color: 'text.primary' }}
+                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
+                    secondaryTypographyProps={{ 
+                      color: 'text.primary',
+                      fontWeight: 500,
+                      fontSize: '1rem'
+                    }}
                   />
                 </ListItem>
 
-                <Divider component="li" variant="inset" />
+                <Divider component="li" variant="middle" sx={{ my: 1 }} />
 
-                <ListItem>
+                <ListItem sx={{ py: 1.5 }}>
                   <ListItemAvatar>
-                    <Avatar sx={{ bgcolor: theme.palette.info.main, color: 'white' }}>
+                    <Avatar sx={{ 
+                      bgcolor: theme.palette.info.main, 
+                      color: 'white',
+                      width: 40,
+                      height: 40
+                    }}>
                       <CalendarIcon />
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary="Date"
                     secondary={moment(selectedEvent.start).format("dddd, MMMM Do YYYY")}
-                    secondaryTypographyProps={{ color: 'text.primary' }}
+                    primaryTypographyProps={{ fontWeight: 600, color: 'text.primary' }}
+                    secondaryTypographyProps={{ 
+                      color: 'text.primary',
+                      fontWeight: 500,
+                      fontSize: '1rem'
+                    }}
                   />
                 </ListItem>
               </List>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCloseEventDetails}>Close</Button>
+            <DialogActions sx={{ p: 2 }}>
+              <Button 
+                onClick={handleCloseEventDetails}
+                variant="contained"
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                }}
+              >
+                Close
+              </Button>
             </DialogActions>
           </>
         )}
@@ -980,30 +1081,42 @@ export default function StudentSchedule() {
         onClose={() => setStatsOpen(false)}
         fullWidth
         maxWidth="md"
+        PaperProps={{ sx: { borderRadius: 3 } }}
       >
         <DialogTitle sx={{ 
-          backgroundColor: theme.palette.primary.main,
+          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
           color: 'white',
           display: 'flex',
           alignItems: 'center',
           gap: 1,
+          py: 2,
         }}>
-          <InfoIcon />
-          <Typography variant="h6">Schedule Statistics</Typography>
+          <InfoIcon fontSize="large" />
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            Schedule Statistics
+          </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
+        <DialogContent sx={{ pt: 3, pb: 1 }}>
           {stats ? (
             <>
-              <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid container spacing={3} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={4}>
-                  <Card variant="outlined">
-                    <CardContent sx={{ textAlign: 'center' }}>
-                      <Typography variant="h3" sx={{ fontWeight: 700 }}>
+                  <Card 
+                    variant="outlined"
+                    sx={{ 
+                      borderRadius: 2,
+                      borderColor: theme.palette.divider,
+                      boxShadow: theme.shadows[1],
+                    }}
+                  >
+                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
                         {stats.totalEvents}
                       </Typography>
                       <Typography
                         variant="subtitle1"
                         color="text.secondary"
+                        sx={{ fontWeight: 600 }}
                       >
                         Total Classes
                       </Typography>
@@ -1011,14 +1124,22 @@ export default function StudentSchedule() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                  <Card variant="outlined">
-                    <CardContent sx={{ textAlign: 'center' }}>
-                      <Typography variant="h3" sx={{ fontWeight: 700 }}>
+                  <Card 
+                    variant="outlined"
+                    sx={{ 
+                      borderRadius: 2,
+                      borderColor: theme.palette.divider,
+                      boxShadow: theme.shadows[1],
+                    }}
+                  >
+                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
                         {stats.totalHours}
                       </Typography>
                       <Typography
                         variant="subtitle1"
                         color="text.secondary"
+                        sx={{ fontWeight: 600 }}
                       >
                         Total Hours
                       </Typography>
@@ -1026,14 +1147,22 @@ export default function StudentSchedule() {
                   </Card>
                 </Grid>
                 <Grid item xs={12} sm={4}>
-                  <Card variant="outlined">
-                    <CardContent sx={{ textAlign: 'center' }}>
-                      <Typography variant="h3" sx={{ fontWeight: 700 }}>
+                  <Card 
+                    variant="outlined"
+                    sx={{ 
+                      borderRadius: 2,
+                      borderColor: theme.palette.divider,
+                      boxShadow: theme.shadows[1],
+                    }}
+                  >
+                    <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                      <Typography variant="h2" sx={{ fontWeight: 800, mb: 1 }}>
                         {stats.averagePerDay}
                       </Typography>
                       <Typography
                         variant="subtitle1"
                         color="text.secondary"
+                        sx={{ fontWeight: 600 }}
                       >
                         Avg Hours/Day
                       </Typography>
@@ -1044,18 +1173,18 @@ export default function StudentSchedule() {
 
               <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
                     Classes by Subject
                   </Typography>
                   {Object.entries(stats.subjectCounts).map(([subject, count]) => {
                     const percentage = (count / stats.totalEvents) * 100;
                     return (
-                      <Box key={subject} sx={{ mb: 2 }}>
-                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <Box key={subject} sx={{ mb: 2.5 }}>
+                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
                             {subject}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
                             {count} ({percentage.toFixed(1)}%)
                           </Typography>
                         </Stack>
@@ -1063,12 +1192,12 @@ export default function StudentSchedule() {
                           variant="determinate"
                           value={percentage}
                           sx={{ 
-                            height: 8, 
-                            borderRadius: 4,
+                            height: 10, 
+                            borderRadius: 5,
                             backgroundColor: theme.palette.grey[200],
                             '& .MuiLinearProgress-bar': {
-                              borderRadius: 4,
-                              backgroundColor: theme.palette.primary.main,
+                              borderRadius: 5,
+                              background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                             }
                           }}
                         />
@@ -1078,18 +1207,18 @@ export default function StudentSchedule() {
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
                     Classes by Teacher
                   </Typography>
                   {Object.entries(stats.teacherCounts).map(([teacher, count]) => {
                     const percentage = (count / stats.totalEvents) * 100;
                     return (
-                      <Box key={teacher} sx={{ mb: 2 }}>
-                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                      <Box key={teacher} sx={{ mb: 2.5 }}>
+                        <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                          <Typography variant="body1" sx={{ fontWeight: 600 }}>
                             {teacher}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
                             {count} ({percentage.toFixed(1)}%)
                           </Typography>
                         </Stack>
@@ -1097,11 +1226,11 @@ export default function StudentSchedule() {
                           variant="determinate"
                           value={percentage}
                           sx={{ 
-                            height: 8, 
-                            borderRadius: 4,
+                            height: 10, 
+                            borderRadius: 5,
                             backgroundColor: theme.palette.grey[200],
                             '& .MuiLinearProgress-bar': {
-                              borderRadius: 4,
+                              borderRadius: 5,
                               backgroundColor: theme.palette.secondary.main,
                             }
                           }}
@@ -1120,8 +1249,19 @@ export default function StudentSchedule() {
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setStatsOpen(false)}>Close</Button>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={() => setStatsOpen(false)}
+            variant="contained"
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              py: 1,
+              background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+            }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

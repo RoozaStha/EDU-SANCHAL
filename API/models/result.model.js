@@ -44,7 +44,12 @@ const resultSchema = new mongoose.Schema({
   },
   publishedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Teacher',
+    refPath: 'publishedByModel',
+    required: true
+  },
+  publishedByModel: {
+    type: String,
+    enum: ['Teacher', 'School'],
     required: true
   },
   createdAt: {

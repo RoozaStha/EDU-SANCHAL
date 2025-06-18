@@ -43,7 +43,7 @@ import Result from "./teacher/components/result/teacherResult";
 
 // Student Components
 import Student from "./student/Student";
-import StudentDetails from "./student/components/student Details/StudentDetails";
+import StudentDetails from "./student/components/student details/StudentDetails";
 import AttendanceStudent from "./student/components/attendance/AttendanceStudent";
 import ScheduleStudent from "./student/components/schedule/ScheduleStudent";
 import ExaminationsStudent from "./student/components/examinations/ExaminationsStudent";
@@ -55,6 +55,7 @@ import Support from "./student/components/Support/support";
 
 // Other Components
 import ProtectedRoute from "./guard/ProtectedRoute";
+import { ChatbotProvider } from "./context/ChatbotContext";
 import AIChatbot from "./AIChatbot";
 
 function AppContent() {
@@ -143,11 +144,13 @@ export default function App() {
   const { dark } = useContext(AuthContext);
 
   return (
+    <ChatbotProvider>
     <ThemeProvider theme={dark ? darkTheme : lightTheme}>
       <CssBaseline />
       <DraggableButton />
       <AppContent />
       <AIChatbot />
     </ThemeProvider>
+    </ChatbotProvider>
   );
 }

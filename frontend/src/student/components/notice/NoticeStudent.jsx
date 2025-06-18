@@ -1,4 +1,4 @@
-import { keyframes, useTheme } from "@mui/material/styles";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -13,10 +13,17 @@ import {
   TextField,
   Badge,
   Stack,
+  LinearProgress,
+  Paper,
+  Grid,
+  useMediaQuery,
+  useTheme,
+  Button,
+  AppBar,
+  Toolbar,
 } from "@mui/material";
 import axios from "axios";
 import { baseApi } from "../../../environment";
-import React, { useEffect, useState } from "react";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
 
 // Icons
@@ -30,43 +37,27 @@ import SearchIcon from "@mui/icons-material/Search";
 import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-
-// Animations
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
-
-const pulse = keyframes`
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
-`;
-
-const gradientFlow = keyframes`
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-`;
-
-const shimmer = keyframes`
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-`;
+import DownloadIcon from "@mui/icons-material/Download";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SortIcon from "@mui/icons-material/Sort";
 
 export default function NoticeStudent() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [notices, setNotices] = useState([]);
   const [filteredNotices, setFilteredNotices] = useState([]);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("student"); // Default to student tab
+  const [activeTab, setActiveTab] = useState("student");
   const [newNoticesCount, setNewNoticesCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState("newest");
+  const [showFilters, setShowFilters] = useState(!isMobile);
 
   const audienceOptions = [
     { value: "student", label: "Students", icon: <SchoolIcon /> },
+    { value: "teacher", label: "Teachers", icon: <PersonIcon /> },
     { value: "all", label: "All", icon: <GroupsIcon /> },
   ];
 
@@ -79,15 +70,12 @@ export default function NoticeStudent() {
       setLoading(true);
       const response = await axios.get(`${baseApi}/notice/all`);
       const sortedNotices = response.data.data
-        .filter(notice => notice.audience === "student") // Only get student notices
+        .filter(notice => notice.audience === "student")
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       
       setNotices(sortedNotices);
-      
-      // Default to showing student notices
       setFilteredNotices(sortedNotices);
       
-      // Count new notices (created in last 7 days)
       const newNotices = sortedNotices.filter(
         notice => new Date(notice.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       );
@@ -129,7 +117,7 @@ export default function NoticeStudent() {
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d ago`;
     
-    return formatDate(dateString).split(',')[0]; // Return just the date part
+    return formatDate(dateString).split(',')[0];
   };
 
   const handleSearch = (term) => {
@@ -146,13 +134,12 @@ export default function NoticeStudent() {
   };
 
   const filterNoticesByTab = (tabValue) => {
-    // Both tabs show the same content (student notices)
     setFilteredNotices(notices);
   };
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setSearchTerm(""); // Clear search when changing tabs
+    setSearchTerm("");
     filterNoticesByTab(newValue);
   };
 
@@ -169,69 +156,71 @@ export default function NoticeStudent() {
   const getAudienceColor = (audience) => {
     switch (audience) {
       case 'student':
-        return {
-          bg: theme.palette.primary.light,
-          color: theme.palette.primary.dark,
-          border: theme.palette.primary.main
-        };
+        return theme.palette.primary.main;
       case 'teacher':
-        return {
-          bg: theme.palette.secondary.light,
-          color: theme.palette.secondary.dark,
-          border: theme.palette.secondary.main
-        };
+        return theme.palette.secondary.main;
       default:
-        return {
-          bg: theme.palette.success.light,
-          color: theme.palette.success.dark,
-          border: theme.palette.success.main
-        };
+        return theme.palette.success.main;
     }
   };
 
-  // Check if notice is new (within the last 7 days)
   const isNewNotice = (dateString) => {
     const date = new Date(dateString);
     return date > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  };
+
+  const toggleSortOrder = () => {
+    const newOrder = sortOrder === "newest" ? "oldest" : "newest";
+    setSortOrder(newOrder);
+    
+    const sorted = [...filteredNotices].sort((a, b) => {
+      const dateA = new Date(a.createdAt);
+      const dateB = new Date(b.createdAt);
+      return newOrder === "newest" ? dateB - dateA : dateA - dateB;
+    });
+    
+    setFilteredNotices(sorted);
+  };
+
+  const handleExport = () => {
+    setMessage("Export feature would be implemented here");
+    setMessageType("info");
   };
 
   useEffect(() => {
     fetchNotices();
   }, []);
 
-  // Skeleton loader for notices
   const NoticeSkeleton = () => (
     <Card
       variant="outlined"
       sx={{
         borderRadius: 2,
         overflow: 'hidden',
-        transition: 'all 0.3s ease',
-        animation: `${fadeIn} 0.5s ease-out`,
         borderLeft: `4px solid ${theme.palette.grey[300]}`,
         p: 2,
         height: 160,
+        mb: 2
       }}
     >
-      <Box sx={{ 
-        height: '100%',
-        background: 'linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%)',
-        backgroundSize: '200% 100%',
-        animation: `${shimmer} 1.5s infinite`,
-        borderRadius: 1
-      }} />
+      <Box sx={{ mb: 2 }}>
+        <LinearProgress variant="indeterminate" sx={{ height: 8, borderRadius: 2 }} />
+      </Box>
+      <Box sx={{ mb: 1.5 }}>
+        <LinearProgress variant="indeterminate" sx={{ height: 6, borderRadius: 2, width: '60%' }} />
+      </Box>
+      <Box>
+        <LinearProgress variant="indeterminate" sx={{ height: 6, borderRadius: 2, width: '85%' }} />
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+        <LinearProgress variant="indeterminate" sx={{ height: 6, borderRadius: 2, width: '30%' }} />
+        <LinearProgress variant="indeterminate" sx={{ height: 6, borderRadius: 2, width: '20%' }} />
+      </Box>
     </Card>
   );
 
   return (
-    <Box
-      sx={{
-        maxWidth: 1000,
-        mx: "auto",
-        p: 3,
-        animation: `${fadeIn} 0.5s ease-out`,
-      }}
-    >
+    <Box sx={{ p: isMobile ? 1 : 1 }}>
       {message && (
         <MessageSnackbar
           message={message}
@@ -240,124 +229,243 @@ export default function NoticeStudent() {
         />
       )}
 
-      {/* Title and Stats */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 4,
-        position: 'relative'
-      }}>
-        <Typography
-          variant="h3"
-          component="h1"
-          sx={{
-            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.primary.dark} 90%)`,
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            animation: `${gradientFlow} 6s ease infinite`,
-            backgroundSize: "200% 200%",
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2
-          }}
-        >
-          <SchoolIcon fontSize="large" sx={{ color: theme.palette.primary.main }} /> 
-          Student Notices
-        </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Chip 
-            icon={<CalendarTodayIcon />}
-            label={`Last updated: ${formatDate(new Date()).split(',')[0]}`} 
-            variant="outlined"
-            size="small"
-          />
-          <Badge badgeContent={newNoticesCount} color="error">
-            <Chip 
-              label={`Total: ${notices.length}`} 
-              variant="outlined" 
-              avatar={<Avatar>{notices.length}</Avatar>}
-              color="primary"
-            />
-          </Badge>
-        </Box>
-      </Box>
+      {/* App Bar with Title */}
+      <AppBar
+        position="static"
+        color="primary"
+        sx={{
+          mb: 3,
+          borderRadius: 2,
+          background: "linear-gradient(135deg, #1976d2 30%, #2196f3 90%)",
+          boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
+        }}
+      >
+        <Toolbar>
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              onClick={() => setShowFilters(!showFilters)}
+              edge="start"
+              sx={{ mr: 2 }}
+            >
+              <FilterListIcon />
+            </IconButton>
+          )}
+          <Typography
+            variant="h4"
+            component="div"
+            sx={{ flexGrow: 1, fontWeight: "bold" }}
+          >
+            <Box component="span" sx={{ color: "#ffffff" }}>
+              Student
+            </Box>
+            <Box component="span" sx={{ color: "#ffffff", ml: 1 }}>
+              Notices
+            </Box>
+          </Typography>
+          {!isMobile && (
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<DownloadIcon />}
+                onClick={handleExport}
+                sx={{ fontWeight: "bold" }}
+              >
+                Export
+              </Button>
+              <Button
+                variant="outlined"
+                color="inherit"
+                startIcon={<RefreshIcon />}
+                onClick={fetchNotices}
+                sx={{ 
+                  fontWeight: "bold",
+                  color: "white",
+                  borderColor: "rgba(255,255,255,0.5)",
+                  '&:hover': {
+                    borderColor: "white",
+                    backgroundColor: "rgba(255,255,255,0.1)"
+                  }
+                }}
+              >
+                Refresh
+              </Button>
+            </Box>
+          )}
+        </Toolbar>
+      </AppBar>
 
-      {/* Filter and Search Bar */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        mb: 3,
-        gap: 2,
-        flexWrap: {xs: 'wrap', md: 'nowrap'},
-        bgcolor: theme.palette.background.paper,
-        borderRadius: 2,
-        p: 1,
-        boxShadow: theme.shadows[1]
-      }}>
-        <Tabs 
-          value={activeTab} 
-          onChange={handleTabChange} 
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ 
-            flexGrow: 1,
-            '& .MuiTabs-indicator': {
-              height: 3,
-              borderRadius: 3
-            },
-            '& .MuiTab-root': {
-              minHeight: 48,
-              fontWeight: 600,
-              borderRadius: 1,
-              mx: 0.5
-            }
-          }}
-        >
-          <Tab 
-            label="Student Notices" 
-            value="student" 
-            icon={<SchoolIcon fontSize="small" />} 
-            iconPosition="start" 
-          />
-          <Tab 
-            label="All Notices" 
-            value="all" 
-            icon={<GroupsIcon fontSize="small" />} 
-            iconPosition="start" 
-          />
-        </Tabs>
-        
-        <TextField
-          variant="outlined"
-          placeholder="Search notices..."
-          size="small"
-          value={searchTerm}
-          onChange={(e) => handleSearch(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-            endAdornment: searchTerm && (
-              <InputAdornment position="end">
-                <IconButton size="small" onClick={() => handleSearch("")}>
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-          sx={{ 
-            minWidth: {xs: '100%', md: 250},
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 20,
-            }
-          }}
+      <Tabs
+        value={activeTab}
+        onChange={handleTabChange}
+        sx={{ 
+          mb: 3, 
+          background: "#f5f9ff", 
+          borderRadius: 2,
+          boxShadow: theme.shadows[1]
+        }}
+        variant={isMobile ? "scrollable" : "standard"}
+      >
+        <Tab 
+          label="Student Notices" 
+          value="student" 
+          icon={<SchoolIcon fontSize="small" />} 
+          iconPosition="start" 
+          sx={{ fontWeight: "bold", minHeight: 60 }}
         />
-      </Box>
+        <Tab 
+          label="All Notices" 
+          value="all" 
+          icon={<GroupsIcon fontSize="small" />} 
+          iconPosition="start" 
+          sx={{ fontWeight: "bold", minHeight: 60 }}
+        />
+      </Tabs>
+
+      {showFilters && (
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Search notices..."
+                value={searchTerm}
+                onChange={(e) => handleSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: searchTerm && (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => handleSearch("")}>
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                  }
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={3}>
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<SortIcon />}
+                onClick={toggleSortOrder}
+                sx={{
+                  fontWeight: "bold",
+                  height: "56px",
+                  borderRadius: 2,
+                  textTransform: "none"
+                }}
+              >
+                {sortOrder === "newest" ? "Newest First" : "Oldest First"}
+              </Button>
+            </Grid>
+
+            <Grid item xs={12} md={3} sx={{ display: "flex", gap: 1 }}>
+              {isMobile && (
+                <Button
+                  fullWidth
+                  variant="contained"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleExport}
+                  sx={{ fontWeight: "bold" }}
+                >
+                  Export
+                </Button>
+              )}
+              <Button
+                fullWidth
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={fetchNotices}
+                sx={{ fontWeight: "bold" }}
+              >
+                Refresh
+              </Button>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+
+      {!showFilters && isMobile && (
+        <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterListIcon />}
+            onClick={() => setShowFilters(true)}
+            sx={{ mb: 2 }}
+          >
+            Show Filters
+          </Button>
+        </Box>
+      )}
+
+      {/* Stats Cards */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ boxShadow: 3, borderRadius: 2, borderLeft: "4px solid #1976d2" }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">
+                Total Notices
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+                {notices.length}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ boxShadow: 3, borderRadius: 2, borderLeft: "4px solid #4caf50" }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">
+                New Notices
+              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+                {newNoticesCount}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ boxShadow: 3, borderRadius: 2, borderLeft: "4px solid #ff9800" }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">
+                Last Updated
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                {new Date().toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                })}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card sx={{ boxShadow: 3, borderRadius: 2, borderLeft: "4px solid #9c27b0" }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary">
+                Current Audience
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: "bold", display: 'flex', alignItems: 'center', gap: 1 }}>
+                {getAudienceIcon(activeTab)}
+                {getAudienceLabel(activeTab)}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Notices List */}
       <Box>
@@ -368,12 +476,14 @@ export default function NoticeStudent() {
             display: 'flex',
             alignItems: 'center',
             gap: 1,
+            fontWeight: "bold",
+            color: "#1976d2"
           }}
         >
           <FilterListIcon color="primary" />
-          {activeTab === 'all' ? 'All Student Notices' : 'Student Notices'}
+          {activeTab === 'all' ? 'All Notices' : 'Student Notices'}
           <Chip 
-            label={`${filteredNotices.length} found`} 
+            label={`${filteredNotices.length} notices`} 
             size="small" 
             color="primary" 
             variant="outlined"
@@ -383,125 +493,122 @@ export default function NoticeStudent() {
 
         {loading ? (
           <Stack spacing={2}>
-            {[1, 2, 3].map((index) => (
+            {[1, 2, 3, 4].map((index) => (
               <NoticeSkeleton key={index} />
             ))}
           </Stack>
         ) : filteredNotices.length > 0 ? (
-          <Stack spacing={2}>
-            {filteredNotices.map((notice, index) => {
+          <Grid container spacing={3}>
+            {filteredNotices.map((notice) => {
               const isNew = isNewNotice(notice.createdAt);
+              const audienceColor = getAudienceColor(notice.audience);
               
               return (
-                <Card
-                  key={notice._id}
-                  variant="outlined"
-                  sx={{
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                    transition: 'all 0.3s ease',
-                    animation: `${fadeIn} 0.5s ease-out`,
-                    animationDelay: `${index * 50}ms`,
-                    '&:hover': {
-                      transform: 'translateY(-3px)',
-                      boxShadow: theme.shadows[3],
-                    },
-                    borderLeft: `4px solid ${theme.palette.primary.main}`,
-                  }}
-                >
-                  <CardContent>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      gap: 2,
-                      flexWrap: 'wrap'
-                    }}>
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="h6" sx={{ 
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1
-                        }}>
-                          {notice.title}
-                          {isNew && (
-                            <Chip
-                              label="New"
-                              size="small"
-                              color="error"
-                              sx={{ 
-                                height: 20,
-                                '& .MuiChip-label': {
-                                  px: 1,
-                                  py: 0,
-                                  fontWeight: 'bold',
-                                  fontSize: '0.625rem'
-                                }
-                              }}
-                            />
-                          )}
-                        </Typography>
-                        
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, mb: 1 }}>
-                          {notice.audience === "student" && (
-                            <Chip
-                              icon={<SchoolIcon />}
-                              label="Student"
-                              size="small"
-                              sx={{ 
-                                bgcolor: theme.palette.primary.light,
-                                color: theme.palette.primary.dark,
-                                border: `1px solid ${theme.palette.primary.main}`,
-                              }}
-                            />
-                          )}
-                          
-                          <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                            {getTimeAgo(notice.createdAt)}
-                          </Typography>
-                        </Box>
-                        
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary" 
-                          sx={{ 
-                            mt: 1,
-                            lineHeight: 1.6
-                          }}
-                        >
-                          {notice.message}
-                        </Typography>
-                      </Box>
-
+                <Grid item xs={12} key={notice._id}>
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'translateY(-3px)',
+                        boxShadow: theme.shadows[3],
+                      },
+                      borderLeft: `4px solid ${audienceColor}`,
+                    }}
+                  >
+                    <CardContent>
                       <Box sx={{ 
                         display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'flex-end',
-                        minWidth: 150
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        gap: 2,
+                        flexWrap: 'wrap'
                       }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Created: {formatDate(notice.createdAt)}
-                        </Typography>
-                        {notice.publishAt && (
-                          <Typography variant="caption" color="text.secondary">
-                            Published: {formatDate(notice.publishAt)}
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                            <Chip
+                              icon={getAudienceIcon(notice.audience)}
+                              label={getAudienceLabel(notice.audience)}
+                              size="small"
+                              sx={{ 
+                                bgcolor: `${audienceColor}10`,
+                                color: audienceColor,
+                                fontWeight: 'bold'
+                              }}
+                            />
+                            {isNew && (
+                              <Chip
+                                label="New"
+                                size="small"
+                                color="error"
+                                sx={{ 
+                                  height: 24,
+                                  fontWeight: 'bold',
+                                  fontSize: '0.75rem'
+                                }}
+                              />
+                            )}
+                          </Box>
+                          
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 600,
+                            mb: 1
+                          }}>
+                            {notice.title}
                           </Typography>
+                          
+                          <Typography 
+                            variant="body2" 
+                            color="text.secondary" 
+                            sx={{ 
+                              mb: 2,
+                              lineHeight: 1.6
+                            }}
+                          >
+                            {notice.message}
+                          </Typography>
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                              <CalendarTodayIcon fontSize="small" sx={{ mr: 0.5 }} />
+                              {formatDate(notice.createdAt)}
+                            </Typography>
+                            
+                            <Typography variant="caption" color="text.secondary">
+                              {getTimeAgo(notice.createdAt)}
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {notice.publishAt && (
+                          <Box sx={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'flex-end',
+                            minWidth: 150
+                          }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                              <NotificationsActiveIcon fontSize="small" sx={{ mr: 0.5 }} />
+                              Published: {formatDate(notice.publishAt)}
+                            </Typography>
+                          </Box>
                         )}
                       </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Grid>
               );
             })}
-          </Stack>
+          </Grid>
         ) : (
-          <Box
+          <Paper
             sx={{
               textAlign: 'center',
               p: 4,
               borderRadius: 2,
-              bgcolor: theme.palette.action.hover,
+              boxShadow: 3,
             }}
           >
             <AnnouncementIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
@@ -511,9 +618,9 @@ export default function NoticeStudent() {
             <Typography variant="body2" color="text.secondary">
               {searchTerm 
                 ? `No notices match your search for "${searchTerm}"`
-                : "There are no student notices available"}
+                : "There are no notices available for the current audience"}
             </Typography>
-          </Box>
+          </Paper>
         )}
       </Box>
     </Box>

@@ -12,7 +12,25 @@ import {
   Skeleton,
   Avatar,
   Divider,
-  IconButton
+  IconButton,
+  Paper,
+  Grid,
+  TextField,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
+  LinearProgress,
+  useMediaQuery,
+  Button,
+  AppBar,
+  Toolbar,
+  Badge,
+  TablePagination
 } from "@mui/material";
 import axios from "axios";
 import { baseApi } from "../../../environment";
@@ -28,6 +46,14 @@ import UpcomingIcon from '@mui/icons-material/Upcoming';
 import AllInboxIcon from '@mui/icons-material/AllInbox';
 import SchoolIcon from "@mui/icons-material/School";
 import InfoIcon from "@mui/icons-material/Info";
+import FilterListIcon from '@mui/icons-material/FilterList';
+import SearchIcon from '@mui/icons-material/Search';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import AlarmIcon from '@mui/icons-material/Alarm';
+import TodayIcon from '@mui/icons-material/Today';
+import DownloadIcon from '@mui/icons-material/Download';
+import TableChartIcon from '@mui/icons-material/TableChart';
+import TimelineIcon from '@mui/icons-material/Timeline';
 
 // Animations
 const fadeIn = keyframes`
@@ -76,6 +102,7 @@ function a11yProps(index) {
 
 export default function StudentExaminations() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [examinations, setExaminations] = useState([]);
   const [filteredExaminations, setFilteredExaminations] = useState([]);
   const [message, setMessage] = useState("");
@@ -87,6 +114,13 @@ export default function StudentExaminations() {
     upcomingExams: 0,
     completedExams: 0
   });
+  const [selectedExamType, setSelectedExamType] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(!isMobile);
+  const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const handleMessageClose = () => {
     setMessage("");
@@ -137,24 +171,48 @@ export default function StudentExaminations() {
 
   const filterExaminations = (exams, tabIndex) => {
     const now = new Date();
+    let filtered = exams;
+    
+    // Apply tab filter
     switch (tabIndex) {
       case 0: // Upcoming
-        setFilteredExaminations(exams.filter(exam => new Date(exam.examDate) > now));
+        filtered = filtered.filter(exam => new Date(exam.examDate) > now);
         break;
       case 1: // Completed
-        setFilteredExaminations(exams.filter(exam => new Date(exam.examDate) <= now));
+        filtered = filtered.filter(exam => new Date(exam.examDate) <= now);
         break;
       case 2: // All
-        setFilteredExaminations(exams);
+        filtered = filtered;
         break;
       default:
-        setFilteredExaminations(exams);
+        filtered = filtered;
     }
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(exam => 
+        exam.subject?.subject_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exam.examType?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply exam type filter
+    if (selectedExamType) {
+      filtered = filtered.filter(exam => exam.examType === selectedExamType);
+    }
+    
+    // Apply subject filter
+    if (selectedSubject) {
+      filtered = filtered.filter(exam => exam.subject?._id === selectedSubject);
+    }
+    
+    setFilteredExaminations(filtered);
   };
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     filterExaminations(examinations, newValue);
+    setPage(0); // Reset to first page when changing tabs
   };
 
   const formatDate = (dateString) => {
@@ -172,7 +230,8 @@ export default function StudentExaminations() {
     const date = new Date(dateString);
     return date.toLocaleTimeString('en-GB', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     });
   };
 
@@ -191,20 +250,41 @@ export default function StudentExaminations() {
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const getUniqueSubjects = () => {
+    const subjects = [];
+    examinations.forEach(exam => {
+      if (exam.subject && !subjects.some(s => s._id === exam.subject._id)) {
+        subjects.push(exam.subject);
+      }
+    });
+    return subjects;
+  };
+
+  const getUniqueExamTypes = () => {
+    return [...new Set(examinations.map(exam => exam.examType))];
+  };
+
   useEffect(() => {
     fetchExaminations();
   }, []);
 
   useEffect(() => {
     filterExaminations(examinations, tabValue);
-  }, [examinations, tabValue]);
+  }, [examinations, tabValue, searchTerm, selectedExamType, selectedSubject]);
 
   return (
     <Box
       sx={{
-        maxWidth: 1000,
-        mx: "auto",
-        p: 1.5,
+        width: '100%',
         animation: `${fadeIn} 0.5s ease-out`,
       }}
     >
@@ -216,258 +296,437 @@ export default function StudentExaminations() {
         />
       )}
 
-      {/* Header */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        mb: 2,
-        flexWrap: 'wrap',
-        gap: 1
-      }}>
-        <Typography
-          variant="h4"
-          component="h1"
-          sx={{
-            background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            animation: `${gradientFlow} 6s ease infinite`,
-            backgroundSize: "200% 200%",
-          }}
-        >
-          Examination Schedule
-        </Typography>
-      </Box>
-      
+      {/* App Bar with Title */}
+      <AppBar
+        position="static"
+        color="primary"
+        sx={{
+          mb: 3,
+          borderRadius: 2,
+          background: "linear-gradient(135deg, #1976d2 30%, #2196f3 90%)",
+          boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
+        }}
+      >
+        <Toolbar>
+          {isMobile && (
+            <IconButton
+              color="inherit"
+              onClick={() => setShowFilters(!showFilters)}
+              edge="start"
+              sx={{ mr: 2 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
+          <Typography
+            variant="h4"
+            component="div"
+            sx={{ flexGrow: 1, fontWeight: "bold" }}
+          >
+            <Box component="span" sx={{ color: "#ffffff" }}>
+              My
+            </Box>
+            <Box component="span" sx={{ color: "#ffffff", ml: 1 }}>
+              Examinations
+            </Box>
+          </Typography>
+          {!isMobile && (
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant={viewMode === 'card' ? 'contained' : 'outlined'}
+                color="inherit"
+                onClick={() => setViewMode('card')}
+                startIcon={<TodayIcon />}
+                sx={{ 
+                  fontWeight: "bold",
+                  backgroundColor: viewMode === 'card' ? 'rgba(255,255,255,0.2)' : 'transparent'
+                }}
+              >
+                Cards
+              </Button>
+              <Button
+                variant={viewMode === 'table' ? 'contained' : 'outlined'}
+                color="inherit"
+                onClick={() => setViewMode('table')}
+                startIcon={<TableChartIcon />}
+                sx={{ 
+                  fontWeight: "bold",
+                  backgroundColor: viewMode === 'table' ? 'rgba(255,255,255,0.2)' : 'transparent'
+                }}
+              >
+                Table
+              </Button>
+            </Box>
+          )}
+        </Toolbar>
+      </AppBar>
+
       {/* Stats Cards */}
-      <Box sx={{ 
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 2,
-        mb: 2
-      }}>
-        <StatCard 
-          icon={<EventIcon fontSize="medium" />}
-          title="Total Exams"
-          value={stats.totalExams}
-          color={theme.palette.primary.main}
-          loading={isLoading}
-        />
-        
-        <StatCard 
-          icon={<UpcomingIcon fontSize="medium" />}
-          title="Upcoming"
-          value={stats.upcomingExams}
-          color={theme.palette.info.main}
-          loading={isLoading}
-        />
-        
-        <StatCard 
-          icon={<CheckCircleIcon fontSize="medium" />}
-          title="Completed"
-          value={stats.completedExams}
-          color={theme.palette.success.main}
-          loading={isLoading}
-        />
-      </Box>
-      
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={4}>
+          <StatCard 
+            icon={<EventIcon fontSize="medium" />}
+            title="Total Exams"
+            value={stats.totalExams}
+            color={theme.palette.primary.main}
+            loading={isLoading}
+            subtitle="All examinations"
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StatCard 
+            icon={<UpcomingIcon fontSize="medium" />}
+            title="Upcoming"
+            value={stats.upcomingExams}
+            color={theme.palette.info.main}
+            loading={isLoading}
+            subtitle="Future exams"
+          />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <StatCard 
+            icon={<CheckCircleIcon fontSize="medium" />}
+            title="Completed"
+            value={stats.completedExams}
+            color={theme.palette.success.main}
+            loading={isLoading}
+            subtitle="Past exams"
+          />
+        </Grid>
+      </Grid>
+
+      {/* Filters Section */}
+      {showFilters && (
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Search exams"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <SearchIcon sx={{ mr: 1, color: "action.active" }} />
+                  ),
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                select
+                fullWidth
+                label="Exam Type"
+                value={selectedExamType}
+                onChange={(e) => setSelectedExamType(e.target.value)}
+                disabled={isLoading}
+              >
+                <MenuItem value="">All Types</MenuItem>
+                {getUniqueExamTypes().map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                select
+                fullWidth
+                label="Subject"
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                disabled={isLoading}
+              >
+                <MenuItem value="">All Subjects</MenuItem>
+                {getUniqueSubjects().map((subject) => (
+                  <MenuItem key={subject._id} value={subject._id}>
+                    {subject.subject_name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+          </Grid>
+        </Paper>
+      )}
+
+      {!showFilters && isMobile && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterListIcon />}
+            onClick={() => setShowFilters(true)}
+            sx={{ mb: 2 }}
+          >
+            Show Filters
+          </Button>
+        </Box>
+      )}
+
       {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+      <Box sx={{ 
+        borderBottom: 1, 
+        borderColor: 'divider', 
+        mb: 2,
+        backgroundColor: theme.palette.background.paper,
+        borderRadius: 2,
+        boxShadow: theme.shadows[1]
+      }}>
         <Tabs 
           value={tabValue} 
           onChange={handleTabChange} 
           aria-label="examination tabs"
-          variant="fullWidth"
-          sx={{ minHeight: 40 }}
+          variant={isMobile ? "scrollable" : "fullWidth"}
+          sx={{ 
+            minHeight: 48,
+            '& .MuiTab-root': {
+              minHeight: 48,
+              padding: '6px 12px',
+              fontSize: theme.typography.pxToRem(14),
+              fontWeight: theme.typography.fontWeightMedium
+            }
+          }}
         >
           <Tab 
             icon={<UpcomingIcon fontSize="small" />}
             iconPosition="start" 
-            label="Upcoming" 
+            label={
+              <Badge badgeContent={stats.upcomingExams} color="info" max={99}>
+                <Box sx={{ px: 1 }}>Upcoming</Box>
+              </Badge>
+            }
             {...a11yProps(0)} 
-            sx={{ minHeight: 40, py: 0.5 }}
           />
           <Tab 
             icon={<CheckCircleIcon fontSize="small" />}
             iconPosition="start" 
-            label="Completed" 
+            label={
+              <Badge badgeContent={stats.completedExams} color="success" max={99}>
+                <Box sx={{ px: 1 }}>Completed</Box>
+              </Badge>
+            }
             {...a11yProps(1)} 
-            sx={{ minHeight: 40, py: 0.5 }}
           />
           <Tab 
             icon={<AllInboxIcon fontSize="small" />}
             iconPosition="start" 
-            label="All" 
+            label={
+              <Badge badgeContent={stats.totalExams} color="primary" max={99}>
+                <Box sx={{ px: 1 }}>All</Box>
+              </Badge>
+            }
             {...a11yProps(2)} 
-            sx={{ minHeight: 40, py: 0.5 }}
           />
         </Tabs>
       </Box>
 
-      {/* Examinations List */}
-      <Box sx={{ 
-        backgroundColor: theme.palette.background.paper,
-        borderRadius: 2,
-        boxShadow: theme.shadows[1],
-        overflow: 'hidden'
-      }}>
+      {/* View Mode Toggle for Mobile */}
+      {isMobile && (
         <Box sx={{ 
-          p: 1.5,
-          backgroundColor: theme.palette.primary.main,
-          color: theme.palette.primary.contrastText,
-          display: 'flex',
-          alignItems: 'center',
+          display: 'flex', 
+          justifyContent: 'center', 
+          mb: 2,
           gap: 1
         }}>
-          <SchoolIcon fontSize="medium" />
-          <Typography variant="h6" component="h2">
-            Examinations
-          </Typography>
+          <Button
+            variant={viewMode === 'card' ? 'contained' : 'outlined'}
+            onClick={() => setViewMode('card')}
+            startIcon={<TodayIcon />}
+            size="small"
+          >
+            Cards
+          </Button>
+          <Button
+            variant={viewMode === 'table' ? 'contained' : 'outlined'}
+            onClick={() => setViewMode('table')}
+            startIcon={<TableChartIcon />}
+            size="small"
+          >
+            Table
+          </Button>
         </Box>
-        
-        <TabPanel value={tabValue} index={0}>
-          {isLoading ? (
-            <Box sx={{ p: 2 }}>
-              {[...Array(3)].map((_, index) => (
-                <Skeleton 
-                  key={index} 
-                  variant="rectangular" 
-                  height={90}
-                  sx={{ 
-                    borderRadius: 1,
-                    mb: 1
-                  }} 
-                />
-              ))}
-            </Box>
-          ) : filteredExaminations.length > 0 ? (
-            <Box sx={{ p: 0 }}>
-              {filteredExaminations.map((exam, index) => (
-                <React.Fragment key={exam._id}>
-                  <ExamCard 
-                    exam={exam} 
-                    formatDate={formatDate}
-                    formatTime={formatTime}
-                    getDaysRemaining={getDaysRemaining}
-                    theme={theme}
-                  />
-                  {index < filteredExaminations.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </Box>
+      )}
+
+      {/* Examinations List */}
+      {isLoading ? (
+        <Box sx={{ p: 2 }}>
+          {[...Array(3)].map((_, index) => (
+            <Skeleton 
+              key={index} 
+              variant="rectangular" 
+              height={viewMode === 'card' ? 120 : 56}
+              sx={{ 
+                borderRadius: 1,
+                mb: 1
+              }} 
+            />
+          ))}
+        </Box>
+      ) : filteredExaminations.length > 0 ? (
+        <>
+          {viewMode === 'card' ? (
+            <Grid container spacing={2}>
+              {filteredExaminations
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((exam) => (
+                  <Grid item xs={12} key={exam._id}>
+                    <ExamCard 
+                      exam={exam} 
+                      formatDate={formatDate}
+                      formatTime={formatTime}
+                      getDaysRemaining={getDaysRemaining}
+                      theme={theme}
+                    />
+                  </Grid>
+                ))}
+            </Grid>
           ) : (
-            <EmptyState />
+            <>
+              <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 3 }}>
+                <Table>
+                  <TableHead
+                    sx={{
+                      backgroundColor: theme.palette.primary.main,
+                      '& th': { 
+                        fontWeight: 'bold', 
+                        fontSize: theme.typography.pxToRem(14),
+                        color: theme.palette.common.white
+                      },
+                    }}
+                  >
+                    <TableRow>
+                      <TableCell>Subject</TableCell>
+                      <TableCell>Exam Type</TableCell>
+                      <TableCell>Date</TableCell>
+                      <TableCell>Time</TableCell>
+                      <TableCell align="center">Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {filteredExaminations
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((exam) => {
+                        const examDate = new Date(exam.examDate);
+                        const now = new Date();
+                        const isUpcoming = examDate > now;
+                        
+                        return (
+                          <TableRow 
+                            key={exam._id} 
+                            hover
+                            sx={{ 
+                              '&:last-child td, &:last-child th': { border: 0 },
+                              '&:hover': {
+                                backgroundColor: theme.palette.action.hover
+                              }
+                            }}
+                          >
+                            <TableCell sx={{ fontWeight: 500 }}>
+                              {exam.subject?.subject_name || 'Unknown Subject'}
+                            </TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={exam.examType}
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CalendarTodayIcon fontSize="small" color="action" />
+                                {formatDate(exam.examDate)}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <AlarmIcon fontSize="small" color="action" />
+                                {formatTime(exam.examDate)}
+                              </Box>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip
+                                label={isUpcoming ? 'Upcoming' : 'Completed'}
+                                color={isUpcoming ? 'info' : 'success'}
+                                size="small"
+                                sx={{ 
+                                  fontWeight: 'bold',
+                                  minWidth: 90
+                                }}
+                              />
+                              {isUpcoming && (
+                                <Typography variant="caption" display="block" color="text.secondary">
+                                  {getDaysRemaining(exam.examDate)}
+                                </Typography>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
           )}
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={1}>
-          {isLoading ? (
-            <Box sx={{ p: 2 }}>
-              {[...Array(3)].map((_, index) => (
-                <Skeleton 
-                  key={index} 
-                  variant="rectangular" 
-                  height={90}
-                  sx={{ 
-                    borderRadius: 1,
-                    mb: 1
-                  }} 
-                />
-              ))}
-            </Box>
-          ) : filteredExaminations.length > 0 ? (
-            <Box sx={{ p: 0 }}>
-              {filteredExaminations.map((exam, index) => (
-                <React.Fragment key={exam._id}>
-                  <ExamCard 
-                    exam={exam} 
-                    formatDate={formatDate}
-                    formatTime={formatTime}
-                    getDaysRemaining={getDaysRemaining}
-                    theme={theme}
-                  />
-                  {index < filteredExaminations.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </Box>
-          ) : (
-            <EmptyState />
-          )}
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={2}>
-          {isLoading ? (
-            <Box sx={{ p: 2 }}>
-              {[...Array(3)].map((_, index) => (
-                <Skeleton 
-                  key={index} 
-                  variant="rectangular" 
-                  height={90}
-                  sx={{ 
-                    borderRadius: 1,
-                    mb: 1
-                  }} 
-                />
-              ))}
-            </Box>
-          ) : filteredExaminations.length > 0 ? (
-            <Box sx={{ p: 0 }}>
-              {filteredExaminations.map((exam, index) => (
-                <React.Fragment key={exam._id}>
-                  <ExamCard 
-                    exam={exam} 
-                    formatDate={formatDate}
-                    formatTime={formatTime}
-                    getDaysRemaining={getDaysRemaining}
-                    theme={theme}
-                  />
-                  {index < filteredExaminations.length - 1 && <Divider />}
-                </React.Fragment>
-              ))}
-            </Box>
-          ) : (
-            <EmptyState />
-          )}
-        </TabPanel>
-      </Box>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={filteredExaminations.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{ mt: 2 }}
+          />
+        </>
+      ) : (
+        <EmptyState />
+      )}
     </Box>
   );
 }
 
-function StatCard({ icon, title, value, color, loading }) {
+function StatCard({ icon, title, value, color, loading, subtitle }) {
   return (
     <Card sx={{ 
-      borderRadius: 1,
-      boxShadow: 0,
-      border: '1px solid',
-      borderColor: 'divider',
+      borderRadius: 2,
+      boxShadow: 3,
       transition: 'all 0.3s ease',
       '&:hover': {
         transform: 'translateY(-3px)',
-        boxShadow: 2
-      }
+        boxShadow: 4
+      },
+      height: '100%'
     }}>
-      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2 }}>
+      <CardContent sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 2, 
+        p: 3,
+        height: '100%'
+      }}>
         <Avatar sx={{ 
           backgroundColor: `${color}20`, 
           color: color,
-          width: 48,
-          height: 48
+          width: 56,
+          height: 56
         }}>
           {icon}
         </Avatar>
         <Box>
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle1" color="text.secondary">
             {title}
           </Typography>
           {loading ? (
-            <Skeleton variant="text" width={50} height={32} /> 
+            <Skeleton variant="text" width={60} height={40} /> 
           ) : (
-            <Typography variant="h4" component="div">
+            <Typography variant="h3" component="div" sx={{ fontWeight: 700 }}>
               {value}
             </Typography>
           )}
+          <Typography variant="caption" color="text.secondary">
+            {subtitle}
+          </Typography>
         </Box>
       </CardContent>
     </Card>
@@ -480,120 +739,155 @@ function ExamCard({ exam, formatDate, formatTime, getDaysRemaining, theme }) {
   const isUpcoming = examDate > now;
   
   return (
-    <Box sx={{ 
-      p: 2,
-      display: 'flex',
-      flexDirection: { xs: 'column', md: 'row' },
-      gap: 2,
+    <Card sx={{ 
+      borderRadius: 2,
+      boxShadow: 3,
       transition: 'all 0.3s ease',
       '&:hover': {
-        backgroundColor: theme.palette.action.hover,
-        transform: 'translateY(-1px)',
-        boxShadow: theme.shadows[1]
-      }
+        transform: 'translateY(-3px)',
+        boxShadow: 4,
+        borderLeft: `4px solid ${isUpcoming ? theme.palette.info.main : theme.palette.success.main}`
+      },
+      borderLeft: `4px solid ${isUpcoming ? theme.palette.info.light : theme.palette.success.light}`
     }}>
-      {/* Date Section */}
-      <Box sx={{ 
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 80,
-        textAlign: 'center'
-      }}>
-        <Typography variant="caption" color="text.secondary">
-          {formatDate(exam.examDate).split(' ')[1]} {/* Month */}
-        </Typography>
-        <Typography variant="h4" color="primary">
-          {formatDate(exam.examDate).split(' ')[0]} {/* Day */}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          {formatTime(exam.examDate)}
-        </Typography>
-      </Box>
-      
-      {/* Main Content */}
-      <Box sx={{ flex: 1 }}>
-        <Box sx={{ 
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          mb: 0.5,
-          flexWrap: 'wrap'
-        }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {exam.subject?.subject_name || 'Unknown Subject'}
-          </Typography>
+      <CardContent sx={{ p: 3 }}>
+        <Grid container spacing={2}>
+          {/* Date Section */}
+          <Grid item xs={12} sm={2} sx={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRight: { sm: `1px solid ${theme.palette.divider}` },
+            pr: { sm: 2 },
+            mb: { xs: 1, sm: 0 }
+          }}>
+            <Typography variant="caption" color="text.secondary" align="center">
+              {formatDate(exam.examDate).split(' ')[1]} {/* Month */}
+            </Typography>
+            <Typography variant="h3" color="primary" align="center" sx={{ 
+              lineHeight: 1,
+              fontWeight: 700,
+              mb: 0.5
+            }}>
+              {formatDate(exam.examDate).split(' ')[0]} {/* Day */}
+            </Typography>
+            <Typography variant="caption" color="text.secondary" align="center">
+              {formatTime(exam.examDate)}
+            </Typography>
+          </Grid>
           
-          <Chip 
-            label={isUpcoming ? "Upcoming" : "Completed"}
-            size="small"
-            color={isUpcoming ? "info" : "success"}
-            variant="outlined"
-          />
+          {/* Main Content */}
+          <Grid item xs={12} sm={8}>
+            <Box sx={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              mb: 1,
+              flexWrap: 'wrap'
+            }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {exam.subject?.subject_name || 'Unknown Subject'}
+              </Typography>
+              
+              <Chip 
+                label={exam.examType}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            </Box>
+            
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', mr: 2 }}>
+                <AssignmentIcon fontSize="small" sx={{ mr: 0.5 }} />
+                {exam.examType}
+              </Box>
+              {exam.description && (
+                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <SubjectIcon fontSize="small" sx={{ mr: 0.5 }} />
+                  {exam.description.substring(0, 50)}{exam.description.length > 50 ? '...' : ''}
+                </Box>
+              )}
+            </Typography>
+            
+            <Box sx={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap'
+            }}>
+              <Chip 
+                label={isUpcoming ? "Upcoming" : "Completed"}
+                size="small"
+                color={isUpcoming ? "info" : "success"}
+                variant="filled"
+                sx={{ fontWeight: 600 }}
+              />
+              
+              {isUpcoming && (
+                <Chip 
+                  label={getDaysRemaining(exam.examDate)}
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
+            </Box>
+          </Grid>
           
-          {isUpcoming && (
-            <Chip 
-              label={getDaysRemaining(exam.examDate)}
-              size="small"
-              color="warning"
-              variant="filled"
-            />
-          )}
-        </Box>
-        
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-          <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', mr: 1 }}>
-            <AssignmentIcon fontSize="small" sx={{ mr: 0.25 }} />
-            {exam.examType}
-          </Box>
-        </Typography>
-        
-        <Typography variant="caption" sx={{
-          fontStyle: 'italic',
-          color: isUpcoming ? theme.palette.info.main : theme.palette.success.main
-        }}>
-          {isUpcoming ? 'Upcoming examination' : 'This examination has been completed'}
-        </Typography>
-      </Box>
-      
-      {/* Status Indicator */}
-      <Box sx={{ 
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minWidth: 80
-      }}>
-        <Box sx={{ 
-          width: 10,
-          height: 10,
-          borderRadius: '50%',
-          backgroundColor: isUpcoming ? theme.palette.info.main : theme.palette.success.main,
-          boxShadow: `0 0 6px ${isUpcoming ? theme.palette.info.main : theme.palette.success.main}`,
-          animation: 'pulse 2s infinite'
-        }} />
-      </Box>
-    </Box>
+          {/* Status Indicator */}
+          <Grid item xs={12} sm={2} sx={{ 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderLeft: { sm: `1px solid ${theme.palette.divider}` },
+            pl: { sm: 2 }
+          }}>
+            <Box sx={{ 
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}>
+              <Box sx={{ 
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                backgroundColor: isUpcoming ? theme.palette.info.main : theme.palette.success.main,
+                boxShadow: `0 0 8px ${isUpcoming ? theme.palette.info.main : theme.palette.success.main}`,
+                animation: `${pulse} 2s infinite`,
+                mb: 1
+              }} />
+              <Typography variant="caption" color="text.secondary" align="center">
+                {isUpcoming ? 'Upcoming' : 'Completed'}
+              </Typography>
+            </Box>
+          </Grid>
+        </Grid>
+      </CardContent>
+    </Card>
   );
 }
 
 function EmptyState() {
   return (
-    <Box sx={{ 
-      p: 2,
-      textAlign: 'center',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 1
-    }}>
-      <InfoIcon fontSize="medium" color="action" />
-      <Typography variant="subtitle1" color="text.secondary">
+    <Paper
+      sx={{
+        p: 4,
+        textAlign: 'center',
+        borderRadius: 2,
+        boxShadow: 3,
+        backgroundColor: 'background.paper'
+      }}
+    >
+      <InfoIcon fontSize="large" color="action" sx={{ mb: 2 }} />
+      <Typography variant="h6" color="text.secondary" gutterBottom>
         No examinations found
       </Typography>
-      <Typography variant="body2" color="text.secondary">
-        Examinations will appear here once scheduled
+      <Typography variant="body1" color="text.secondary">
+        Examinations will appear here once scheduled for your class
       </Typography>
-    </Box>
+    </Paper>
   );
 }

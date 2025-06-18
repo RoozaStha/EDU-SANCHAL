@@ -65,6 +65,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import MessageSnackbar from "../../../basic utility components/snackbar/MessageSnackbar";
 import { styled } from '@mui/material/styles';
 import { Timeline as MuiTimeline, TimelineItem, TimelineSeparator, TimelineDot, TimelineConnector, TimelineContent } from '@mui/lab';
+import { useNavigate } from "react-router-dom";
 
 // Custom styled components
 const ProfileHeader = styled(Box)(({ theme }) => ({
@@ -106,9 +107,30 @@ const UploadButton = styled(Button)(({ theme }) => ({
   }
 }));
 
+const EditDialogContent = styled(DialogContent)(({ theme }) => ({
+  padding: theme.spacing(4),
+  '& .MuiGrid-container': {
+    marginTop: theme.spacing(2),
+  },
+  '& .MuiTextField-root, & .MuiFormControl-root': {
+    marginBottom: theme.spacing(2),
+  },
+  '& .MuiAvatar-root': {
+    margin: '0 auto',
+    marginBottom: theme.spacing(3),
+  }
+}));
+
+const EditDialogActions = styled(DialogActions)(({ theme }) => ({
+  padding: theme.spacing(3),
+  borderTop: `1px solid ${theme.palette.divider}`,
+  justifyContent: 'space-between'
+}));
+
 const StudentDetails = () => {
   const theme = useTheme();
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -321,6 +343,18 @@ const StudentDetails = () => {
     setActiveTab(newValue);
   };
 
+  const navigateToSchedule = () => {
+    navigate('/student/schedule');
+  };
+
+  const navigateToAssignments = () => {
+    navigate('/student/assignment');
+  };
+
+  const navigateToResults = () => {
+    navigate('/student/results');
+  };
+
   if (loading && !student) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -531,16 +565,36 @@ const StudentDetails = () => {
                   <Divider sx={{ mb: 2 }} />
                   
                   <Stack spacing={2}>
-                    <Button variant="contained" startIcon={<Book />} fullWidth>
-                      View Timetable
+                    <Button 
+                      variant="contained" 
+                      startIcon={<Book />} 
+                      fullWidth
+                      onClick={navigateToSchedule}
+                    >
+                      View Schedule
                     </Button>
-                    <Button variant="outlined" startIcon={<Assignment />} fullWidth>
+                    <Button 
+                      variant="outlined" 
+                      startIcon={<Assignment />} 
+                      fullWidth
+                      onClick={navigateToAssignments}
+                    >
                       View Assignments
                     </Button>
-                    <Button variant="outlined" startIcon={<Quiz />} fullWidth>
+                    <Button 
+                      variant="outlined" 
+                      startIcon={<Quiz />} 
+                      fullWidth
+                      onClick={navigateToResults}
+                    >
                       View Exam Results
                     </Button>
-                    <Button variant="outlined" startIcon={<CalendarToday />} fullWidth onClick={handleEdit}>
+                    <Button 
+                      variant="outlined" 
+                      startIcon={<CalendarToday />} 
+                      fullWidth 
+                      onClick={handleEdit}
+                    >
                       Edit Profile
                     </Button>
                   </Stack>
@@ -723,14 +777,15 @@ const StudentDetails = () => {
           backgroundColor: theme.palette.primary.main,
           color: theme.palette.primary.contrastText,
           borderTopLeftRadius: theme.shape.borderRadius,
-          borderTopRightRadius: theme.shape.borderRadius
+          borderTopRightRadius: theme.shape.borderRadius,
+          padding: theme.spacing(3)
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Edit sx={{ mr: 1 }} />
             Edit Student Profile
           </Box>
         </DialogTitle>
-        <DialogContent sx={{ pt: 4 }}>
+        <EditDialogContent>
           <Box component="form" onSubmit={formik.handleSubmit}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -960,8 +1015,8 @@ const StudentDetails = () => {
               </Grid>
             </Grid>
           </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 3, borderTop: `1px solid ${theme.palette.divider}` }}>
+        </EditDialogContent>
+        <EditDialogActions>
           <Button 
             onClick={() => {
               setEditMode(false);
@@ -981,7 +1036,7 @@ const StudentDetails = () => {
           >
             Update Profile
           </Button>
-        </DialogActions>
+        </EditDialogActions>
       </Dialog>
 
       <MessageSnackbar
