@@ -31,6 +31,7 @@ import LocalLibraryIcon from '@mui/icons-material/LocalLibrary';//class
 import HomeIcon from '@mui/icons-material/Home';
 import LogoutIcon from '@mui/icons-material/Logout';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
+import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 
 
 
@@ -140,6 +141,7 @@ export default function School() {
     { link: "/school/examinations", component: "Examinations", icon: ExplicitIcon },
     { link: "/school/result", component: "Results", icon: FactCheckIcon },
     { link: "/school/notice", component: "Notice", icon: NotificationsIcon },
+    {link: "/school/leave", component:"Leave" , icon: ForwardToInboxOutlinedIcon},
     { link:"/logout", component:"LogOut" , icon: LogoutIcon}
   ];
   

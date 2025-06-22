@@ -49,16 +49,15 @@ export default function NoticeStudent() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("success");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("student");
+  const [activeTab, setActiveTab] = useState("all");
   const [newNoticesCount, setNewNoticesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState("newest");
   const [showFilters, setShowFilters] = useState(!isMobile);
 
   const audienceOptions = [
-    { value: "student", label: "Students", icon: <SchoolIcon /> },
-    { value: "teacher", label: "Teachers", icon: <PersonIcon /> },
-    { value: "all", label: "All", icon: <GroupsIcon /> },
+    { value: "student", label: "For Students", icon: <SchoolIcon /> },
+    { value: "all", label: "All Notices", icon: <GroupsIcon /> },
   ];
 
   const handleMessageClose = () => {
@@ -70,7 +69,7 @@ export default function NoticeStudent() {
       setLoading(true);
       const response = await axios.get(`${baseApi}/notice/all`);
       const sortedNotices = response.data.data
-        .filter(notice => notice.audience === "student")
+        .filter(notice => notice.audience === "student" || notice.audience === "all")
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       
       setNotices(sortedNotices);
@@ -123,7 +122,7 @@ export default function NoticeStudent() {
   const handleSearch = (term) => {
     setSearchTerm(term);
     if (!term.trim()) {
-      setFilteredNotices(notices);
+      filterNoticesByTab(activeTab);
     } else {
       const filtered = notices.filter(
         notice => notice.title.toLowerCase().includes(term.toLowerCase()) ||
@@ -134,7 +133,11 @@ export default function NoticeStudent() {
   };
 
   const filterNoticesByTab = (tabValue) => {
-    setFilteredNotices(notices);
+    if (tabValue === "all") {
+      setFilteredNotices(notices.filter(notice => notice.audience === "student" || notice.audience === "all"));
+    } else {
+      setFilteredNotices(notices.filter(notice => notice.audience === tabValue));
+    }
   };
 
   const handleTabChange = (event, newValue) => {
@@ -307,20 +310,16 @@ export default function NoticeStudent() {
         }}
         variant={isMobile ? "scrollable" : "standard"}
       >
-        <Tab 
-          label="Student Notices" 
-          value="student" 
-          icon={<SchoolIcon fontSize="small" />} 
-          iconPosition="start" 
-          sx={{ fontWeight: "bold", minHeight: 60 }}
-        />
-        <Tab 
-          label="All Notices" 
-          value="all" 
-          icon={<GroupsIcon fontSize="small" />} 
-          iconPosition="start" 
-          sx={{ fontWeight: "bold", minHeight: 60 }}
-        />
+        {audienceOptions.map((option) => (
+          <Tab 
+            key={option.value}
+            label={option.label} 
+            value={option.value} 
+            icon={React.cloneElement(option.icon, { fontSize: "small" })} 
+            iconPosition="start" 
+            sx={{ fontWeight: "bold", minHeight: 60 }}
+          />
+        ))}
       </Tabs>
 
       {showFilters && (

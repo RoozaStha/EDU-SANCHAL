@@ -33,6 +33,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LightbulbRoundedIcon from '@mui/icons-material/LightbulbRounded';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
+import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 
 const drawerWidth = 240;
 
@@ -152,6 +153,7 @@ export default function Student() {
     { link: "/student/notice", component: "Notice", icon: NotificationsIcon },
 
     { link: "/student/support", component: "Support", icon: LightbulbRoundedIcon},
+    {link:"/student/leave",component:"Leave",icon:ForwardToInboxOutlinedIcon},
 
 
 

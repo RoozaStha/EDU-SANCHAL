@@ -32,6 +32,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
+import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 
 
 const drawerWidth = 240;
@@ -148,6 +149,7 @@ export default function Teacher() {
     },
     { link: "result", component: "Results", icon: FactCheckIcon },
     { link: "/teacher/notice", component: "Notice", icon: NotificationsIcon },
+    {link:"/teacher/leave", component:"Leave",icon :ForwardToInboxOutlinedIcon},
     { link: "/logout", component: "Logout", icon: LogoutIcon },
   ];
 

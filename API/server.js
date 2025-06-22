@@ -17,14 +17,13 @@ const teacherAttendanceRouter = require("./routers/teacherAttendance.router.js")
 const chatbotRoutes = require("./routers/chatbot.router.js");
 const assignmentRoutes = require('./routers/assignment.router.js');
 const resultRouter = require('./routers/result.router.js');
-
+const leaveRouter = require('./routers/leave.router.js')
 
 dotenv.config();
 
 const app = express();
 
 // 1. Enhanced CORS configuration
-
 app.use(cors({
   origin: 'http://localhost:5173',
   methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH','OPTIONS'],
@@ -40,27 +39,29 @@ app.use('/images/uploaded/school', express.static(
   { maxAge: '1d' }
 ));
 
-// 2. Middleware ordering fix
+// 2. Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
-
-
-// 4. Improved MongoDB connection
+// 3. MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });
 
-// 5. Health check endpoint
+// 4. Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
   });
 });
 
-// 6. API routes
+// 5. API routes
 app.use('/api/school', schoolRouter);
 app.use("/api/class",classRouter);
 app.use("/api/subjects", subjectRouter); 
@@ -74,17 +75,18 @@ app.use("/api/teacherAttendance",teacherAttendanceRouter);
 app.use("/api/chatbot", chatbotRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/results', resultRouter);
+app.use('/api/leaves',leaveRouter);
 
-
-
-
-// 7. Enhanced error handling
+// 6. Enhanced error handling
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] Error:`, err.stack);
+  
   res.status(500).json({
     success: false,
     message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'production' ? undefined : err.message
+    error: process.env.NODE_ENV === 'production' ? undefined : err.message,
+    timestamp
   });
 });
 
@@ -92,4 +94,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Database: ${mongoose.connection.host}/${mongoose.connection.name}`);
 });

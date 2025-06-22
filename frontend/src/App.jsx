@@ -21,6 +21,7 @@ import Subjects from "./school/components/subjects/Subjects";
 import Teachers from "./school/components/teachers/Teachers";
 import AttendanceStudentList from "./school/components/attendance/AttendanceStudentList";
 import ResultSchool from "./school/components/results/resultsSchool";
+import LeaveSchool from "./school/components/leave/leaveSchool"
 
 // Client Components
 import Client from "./client/Client";
@@ -31,6 +32,7 @@ import LogOut from "./client/components/logout/LogOut";
 import ForgotPassword from "./client/components/login/ForgotPassword";
 import ResetPassword from "./client/components/login/ResetPassword";
 
+
 // Teacher Components
 import Teacher from "./teacher/Teacher";
 import TeacherDetails from "./teacher/components/teacher details/TeacherDetails";
@@ -40,6 +42,7 @@ import ExaminationsTeacher from "./teacher/components/examinations/ExaminationTe
 import NoticeTeacher from "./teacher/components/notice/NoticeTeacher";
 import Assignment from "./teacher/components/assignment/Assignment";
 import Result from "./teacher/components/result/teacherResult";
+import LeaveTeacher from "./teacher/components/leave/leaveTeacher"
 
 // Student Components
 import Student from "./student/Student";
@@ -50,7 +53,7 @@ import ExaminationsStudent from "./student/components/examinations/ExaminationsS
 import NoticeStudent from "./student/components/notice/NoticeStudent";
 import AssignmentStudent from "./student/components/assignmentStudent/AssignmentStudent";
 import ResultStudent from "./student/components/results/resultStudent";
-
+import StudentLeave from "./student/components/leave/leaveStudent";
 import Support from "./student/components/Support/support";
 
 // Other Components
@@ -94,6 +97,8 @@ function AppContent() {
           <Route path="subjects" element={<Subjects />} />
           <Route path="teachers" element={<Teachers />} />
           <Route path="result" element={<ResultSchool />} />
+          <Route path="leave" element={<LeaveSchool/>}/>
+
         </Route>
 
         {/* Student protected routes */}
@@ -113,6 +118,7 @@ function AppContent() {
           <Route path="assignment" element={<AssignmentStudent />} />
           <Route path="support" element={<Support />} />
           <Route path="results" element={<ResultStudent />} />
+          <Route path="leave" element={<StudentLeave/>}/>
         </Route>
 
         {/* Teacher protected routes */}
@@ -131,6 +137,7 @@ function AppContent() {
           <Route path="notice" element={<NoticeTeacher />} />
           <Route path="assignment" element={<Assignment />} />
           <Route path="result" element={<Result />} />
+          <Route path="leave" element={<LeaveTeacher/>}/>
         </Route>
 
         {/* Catch-all route */}
