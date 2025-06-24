@@ -18,7 +18,8 @@ const chatbotRoutes = require("./routers/chatbot.router.js");
 const assignmentRoutes = require('./routers/assignment.router.js');
 const resultRouter = require('./routers/result.router.js');
 const leaveRouter = require('./routers/leave.router.js')
-
+const emailVerificationController = require('./controllers/emailVerification.controller');
+const authRouter = require('./routers/auth.router'); // Add this line
 dotenv.config();
 
 const app = express();
@@ -76,6 +77,8 @@ app.use("/api/chatbot", chatbotRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/results', resultRouter);
 app.use('/api/leaves',leaveRouter);
+app.use('/api', authRouter); // Add this line
+
 
 // 6. Enhanced error handling
 app.use((err, req, res, next) => {

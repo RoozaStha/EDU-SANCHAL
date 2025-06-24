@@ -5,6 +5,7 @@ const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const { sendVerificationEmail } = require('./emailVerification.controller');
 
 // Helper function for file uploads
 const handleFileUpload = (files, uploadPath, fieldName) => {
@@ -77,11 +78,11 @@ exports.registerTeacher = async (req, res) => {
 
                 // Check if class teacher assignment is valid
                 if (isClassTeacher && classId) {
-                    const existingClassTeacher = await Teacher.findOne({ 
+                    const existingClassTeacher = await Teacher.findOne({
                         class: classId,
                         is_class_teacher: true
                     });
-                    
+
                     if (existingClassTeacher) {
                         return res.status(400).json({
                             success: false,
@@ -116,16 +117,14 @@ exports.registerTeacher = async (req, res) => {
                 });
 
                 const savedTeacher = await newTeacher.save();
-
+                try {
+                    await sendVerificationEmail(savedTeacher, 'teacher');
+                } catch (error) {
+                    console.error("Failed to send verification email:", error);
+                }
                 res.status(201).json({
                     success: true,
-                    data: {
-                        id: savedTeacher._id,
-                        email: savedTeacher.email,
-                        name: savedTeacher.name,
-                        is_class_teacher: savedTeacher.is_class_teacher
-                    },
-                    message: "Teacher registered successfully"
+                    message: "Student registered. Check email for verification link."
                 });
 
             } catch (error) {
@@ -146,34 +145,43 @@ exports.registerTeacher = async (req, res) => {
     }
 };
 
-// Login teacher
+
+// Add verification check to login
 exports.loginTeacher = async (req, res) => {
     try {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Email and password are required" 
+            return res.status(400).json({
+                success: false,
+                message: "Email and password are required"
             });
         }
 
-        const teacher = await Teacher.findOne({ 
-            email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
+        const teacher = await Teacher.findOne({
+            email: { $regex: new RegExp(`^${email.trim()}$`, 'i') }
         }).populate('school class subjects');
 
         if (!teacher) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Invalid credentials" 
+            return res.status(401).json({
+                success: false,
+                message: "Invalid credentials"
+            });
+        }
+
+        // Add verification check
+        if (!teacher.isEmailVerified) {
+            return res.status(403).json({
+                success: false,
+                message: "Account not verified. Please check your email."
             });
         }
 
         const isMatch = await bcrypt.compare(password.trim(), teacher.password);
         if (!isMatch) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Invalid credentials" 
+            return res.status(401).json({
+                success: false,
+                message: "Invalid credentials"
             });
         }
 
@@ -208,7 +216,6 @@ exports.loginTeacher = async (req, res) => {
         });
     }
 };
-
 // Get all teachers
 exports.getAllTeachers = async (req, res) => {
     try {
@@ -315,7 +322,7 @@ exports.updateTeacher = async (req, res) => {
                 // Handle class teacher assignment
                 const newClassId = fields.class?.[0] || null;
                 const newIsClassTeacher = fields.is_class_teacher?.[0] === 'true';
-                
+
                 if (newIsClassTeacher && newClassId) {
                     // Check if another teacher is already class teacher of this class
                     const existingClassTeacher = await Teacher.findOne({
@@ -323,7 +330,7 @@ exports.updateTeacher = async (req, res) => {
                         is_class_teacher: true,
                         _id: { $ne: teacher._id }
                     });
-                    
+
                     if (existingClassTeacher) {
                         return res.status(400).json({
                             success: false,
@@ -335,7 +342,7 @@ exports.updateTeacher = async (req, res) => {
                 // Handle image update
                 if (files?.teacher_image) {
                     const uploadDir = path.join(process.cwd(), process.env.TEACHER_IMAGE_PATH);
-                    
+
                     // Delete old image
                     if (teacher.teacher_image) {
                         const oldPath = path.join(uploadDir, teacher.teacher_image);
@@ -353,7 +360,7 @@ exports.updateTeacher = async (req, res) => {
                     'name', 'qualification', 'age', 'gender',
                     'class', 'is_class_teacher', 'subjects'
                 ];
-                
+
                 allowedUpdates.forEach(field => {
                     if (fields[field]) {
                         if (field === 'subjects') {
@@ -417,7 +424,7 @@ exports.updateTeacher = async (req, res) => {
 exports.getClassTeacher = async (req, res) => {
     try {
         const classId = req.params.classId;
-        
+
         if (!mongoose.Types.ObjectId.isValid(classId)) {
             return res.status(400).json({
                 success: false,
@@ -430,8 +437,8 @@ exports.getClassTeacher = async (req, res) => {
             is_class_teacher: true,
             school: req.user.schoolId
         })
-        .select('_id name email teacher_image')
-        .lean();
+            .select('_id name email teacher_image')
+            .lean();
 
         if (!classTeacher) {
             return res.status(404).json({
@@ -484,7 +491,7 @@ exports.deleteTeacherWithId = async (req, res) => {
                 process.env.TEACHER_IMAGE_PATH,
                 teacher.teacher_image
             );
-            
+
             if (fs.existsSync(imagePath)) {
                 fs.unlinkSync(imagePath);
             }

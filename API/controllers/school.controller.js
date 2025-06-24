@@ -6,20 +6,17 @@ const fs = require("fs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mongoose = require('mongoose');
-
-
+const { sendVerificationEmail } = require("./emailVerification.controller");
 
 module.exports = {
-    // Register a new school
+    // Register a new school with email verification
     registerSchool: async (req, res) => {
         try {
             const form = new formidable.IncomingForm();
 
             form.parse(req, async (err, fields, files) => {
                 try {
-                    // ========================
                     // 1. VALIDATE INPUT FIELDS
-                    // ========================
                     const requiredFields = ['school_name', 'email', 'owner_name', 'password'];
                     const missingFields = requiredFields.filter(field => !fields[field]);
 
@@ -30,13 +27,10 @@ module.exports = {
                         });
                     }
 
-                    // ======================
                     // 2. PROCESS CREDENTIALS
-                    // ======================
                     const email = fields.email[0].trim().toLowerCase();
                     const rawPassword = fields.password[0].trim();
 
-                    // Email validation
                     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                         return res.status(400).json({
                             success: false,
@@ -44,7 +38,6 @@ module.exports = {
                         });
                     }
 
-                    // Password strength check
                     if (rawPassword.length < 8) {
                         return res.status(400).json({
                             success: false,
@@ -52,9 +45,7 @@ module.exports = {
                         });
                     }
 
-                    // =====================
                     // 3. CHECK EXISTING USER
-                    // =====================
                     const existingSchool = await School.findOne({
                         email: { $regex: new RegExp(`^${email}$`, "i") }
                     });
@@ -66,29 +57,19 @@ module.exports = {
                         });
                     }
 
-                    // ====================
                     // 4. HANDLE IMAGE UPLOAD
-                    // ====================
-                    // ====================
-                    // 4. HANDLE IMAGE UPLOAD
-                    // ====================
                     const uploadDir = path.join(
-                        process.cwd(), // Start from project root
+                        process.cwd(),
                         process.env.SCHOOL_IMAGE_PATH
                     );
 
-                    // Create directory if not exists
                     if (!fs.existsSync(uploadDir)) {
                         fs.mkdirSync(uploadDir, {
                             recursive: true,
                             mode: 0o755
                         });
-                        console.log('Directory created at:', uploadDir);
-                    } else {
-                        console.log('Directory already exists at:', uploadDir);
                     }
 
-                    // Validate image file
                     if (!files?.school_image) {
                         return res.status(400).json({
                             success: false,
@@ -97,24 +78,15 @@ module.exports = {
                     }
 
                     const photo = files.school_image[0];
-                    console.log('Project root:', process.cwd());
-                    console.log('Resolved upload path:', uploadDir);
-
-                    // Sanitize filename
                     const sanitizedFilename = `${Date.now()}-${photo.originalFilename
                         .replace(/ /g, "_")
                         .replace(/[^a-zA-Z0-9_.-]/g, "")
                         .toLowerCase()}`;
 
                     const newPath = path.join(uploadDir, sanitizedFilename);
-                    console.log('Target path:', newPath); // Debug log
+                    fs.renameSync(photo.filepath, newPath);
 
-                    // Save file
-                    fs.renameSync(photo.filepath, newPath); // Use renameSync instead of writeFileSync
-
-                    // ====================
                     // 5. CREATE SCHOOL ENTRY
-                    // ====================
                     const hashedPassword = bcrypt.hashSync(rawPassword, 10);
 
                     const newSchool = new School({
@@ -127,23 +99,22 @@ module.exports = {
 
                     const savedSchool = await newSchool.save();
 
-                    // =================
-                    // 6. SEND RESPONSE
-                    // =================
+                    // 6. SEND VERIFICATION EMAIL
+                    try {
+                        await sendVerificationEmail(savedSchool, 'school');
+                    } catch (emailError) {
+                        console.error("Failed to send verification email:", emailError);
+                    }
+
+                    // 7. SEND RESPONSE
                     res.status(201).json({
                         success: true,
-                        data: {
-                            id: savedSchool._id,
-                            email: savedSchool.email,
-                            school_name: savedSchool.school_name
-                        },
-                        message: "School registered successfully"
+                        message: "School registered. Check email for verification link."
                     });
 
                 } catch (error) {
                     console.error("Registration error:", error);
 
-                    // Handle duplicate key error
                     if (error.code === 11000) {
                         return res.status(400).json({
                             success: false,
@@ -170,68 +141,75 @@ module.exports = {
     // Login a school
     loginSchool: async (req, res) => {
         try {
-          const { email, password } = req.body;
-      
-          // Input validation
-          if (!email || !password) {
-            return res.status(400).json({ 
-              success: false, 
-              message: "Email and password are required" 
-            });
-          }
-      
-          const school = await School.findOne({ 
-            email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
-          });
-      
-          if (!school) {
-            return res.status(401).json({ 
-              success: false, 
-              message: "Invalid credentials" 
-            });
-          }
-      
-          const isMatch = await bcrypt.compare(password.trim(), school.password);
-          if (!isMatch) {
-            return res.status(401).json({ 
-              success: false, 
-              message: "Invalid credentials" 
-            });
-          }
-      
-          // Create token payload with schoolId
-          const payload = {
-            id: school._id.toString(),
-            schoolId: school._id.toString(), // Critical for subject creation
-            role: "SCHOOL",
-            email: school.email
-          };
-      
-          // Generate token
-          const token = jwt.sign(
-            payload,
-            process.env.SchoolJWT_SECRET,
-            { expiresIn: '7d', algorithm: 'HS256' }
-          );
-      
-          res.status(200).json({
-            success: true,
-            message: "Login successful",
-            token: token,
-            user: payload // Send back the same payload for verification
-          });
-      
-        } catch (error) {
-          console.error("Login error:", error);
-          res.status(500).json({
-            success: false,
-            message: "Login failed",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-          });
-        }
-      },
+            const { email, password } = req.body;
 
-    // Fetch all schools excluding sensitive data
+            if (!email || !password) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Email and password are required"
+                });
+            }
+
+            const school = await School.findOne({
+                email: { $regex: new RegExp(`^${email.trim()}$`, 'i') }
+            });
+
+            if (!school) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Invalid credentials"
+                });
+            }
+
+            // Check if school is verified
+            if (!school.isEmailVerified) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Account not verified. Please check your email for verification instructions."
+                });
+            }
+
+            const isMatch = await bcrypt.compare(password.trim(), school.password);
+            if (!isMatch) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Invalid credentials"
+                });
+            }
+
+            // Create token payload
+            const payload = {
+                id: school._id.toString(),
+                schoolId: school._id.toString(),
+                role: "SCHOOL",
+                email: school.email
+            };
+
+            // Generate token
+            const token = jwt.sign(
+                payload,
+                process.env.SchoolJWT_SECRET,
+                { expiresIn: '7d', algorithm: 'HS256' }
+            );
+
+            res.status(200).json({
+                success: true,
+                message: "Login successful",
+                token: token,
+                user: payload
+            });
+
+        } catch (error) {
+            console.error("Login error:", error);
+            res.status(500).json({
+                success: false,
+                message: "Login failed",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    },
+
+    // Fetch all schools
     getAllSchools: async (req, res) => {
         try {
             const schools = await School.find()
@@ -257,57 +235,55 @@ module.exports = {
     // Fetch data of a single school by ID
     getSchoolOwnData: async (req, res) => {
         try {
-          if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
-            return res.status(400).json({
-              success: false,
-              message: "Invalid school ID format"
+            if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid school ID format"
+                });
+            }
+
+            const school = await School.findById(req.user.id)
+                .select('-password')
+                .lean();
+
+            if (!school) {
+                return res.status(404).json({
+                    success: false,
+                    message: "School not found"
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                data: school
             });
-          }
-    
-          const school = await School.findById(req.user.id)
-            .select('-password')
-            .lean();
-    
-          if (!school) {
-            return res.status(404).json({
-              success: false,
-              message: "School not found"
-            });
-          }
-    
-          res.status(200).json({
-            success: true,
-            data: school
-          });
-    
+
         } catch (error) {
-          console.error("Get school error:", error);
-          
-          // Handle CastError (invalid ID format)
-          if (error.name === 'CastError') {
-            return res.status(400).json({
-              success: false,
-              message: "Invalid school ID format"
+            console.error("Get school error:", error);
+
+            if (error.name === 'CastError') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid school ID format"
+                });
+            }
+
+            res.status(500).json({
+                success: false,
+                message: "Failed to fetch school data",
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
-          }
-          
-          res.status(500).json({
-            success: false,
-            message: "Failed to fetch school data",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
-          });
         }
     },
 
     // Update school details
     updateSchool: async (req, res) => {
         try {
-            const { id } = req.user; // Get ID from authenticated user
+            const { id } = req.user;
             const form = new formidable.IncomingForm();
 
             form.parse(req, async (err, fields, files) => {
                 try {
-                    // Validate school exists
                     const school = await School.findById(id);
                     if (!school) {
                         return res.status(404).json({
@@ -321,7 +297,6 @@ module.exports = {
                         const photo = files.school_image[0];
                         const uploadDir = path.join(process.cwd(), process.env.SCHOOL_IMAGE_PATH);
 
-                        // Create directory if not exists
                         if (!fs.existsSync(uploadDir)) {
                             fs.mkdirSync(uploadDir, { recursive: true });
                         }

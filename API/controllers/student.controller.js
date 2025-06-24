@@ -6,6 +6,7 @@ const fs = require("fs");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const mongoose = require('mongoose');
+const { sendVerificationEmail } = require('./emailVerification.controller');
 
 // Helper function for file upload
 const handleFileUpload = (files, uploadPath, fieldName) => {
@@ -118,15 +119,14 @@ exports.registerStudent = async (req, res) => {
                 });
 
                 const savedStudent = await newStudent.save();
-
+                try {
+                    await sendVerificationEmail(savedStudent, 'student');
+                } catch (error) {
+                    console.error("Failed to send verification email:", error);
+                }
                 res.status(201).json({
                     success: true,
-                    data: {
-                        id: savedStudent._id,
-                        email: savedStudent.email,
-                        name: savedStudent.name
-                    },
-                    message: "Student registered successfully"
+                    message: "Student registered. Check email for verification link."
                 });
 
             } catch (error) {
@@ -155,7 +155,8 @@ exports.registerStudent = async (req, res) => {
     }
 };
 
-// Login student
+
+// Add verification check to login
 exports.loginStudent = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -178,6 +179,14 @@ exports.loginStudent = async (req, res) => {
             });
         }
 
+        // Add verification check
+        if (!student.isEmailVerified) {
+            return res.status(403).json({
+                success: false,
+                message: "Account not verified. Please check your email."
+            });
+        }
+
         const isMatch = await bcrypt.compare(password.trim(), student.password);
         if (!isMatch) {
             return res.status(401).json({
@@ -186,6 +195,7 @@ exports.loginStudent = async (req, res) => {
             });
         }
 
+        // Fix payload serialization
         const payload = {
             id: student._id.toString(),
             schoolId: student.school._id.toString(),
@@ -193,7 +203,7 @@ exports.loginStudent = async (req, res) => {
             image_url: student.student_image,
             role: "STUDENT",
             email: student.email,
-            class: student.student_class 
+            class: student.student_class ? student.student_class.toString() : null
         };
 
         const token = jwt.sign(

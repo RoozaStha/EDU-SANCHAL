@@ -52,7 +52,7 @@ export default function Login() {
       setIsSubmitting(true);
       try {
         const response = await axios.post(
-          URL, // Fixed: Using the URL variable instead of string literal
+          URL,
           {
             email: values.email.trim().toLowerCase(),
             password: values.password.trim(),
@@ -69,14 +69,25 @@ export default function Login() {
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
         login(response.data.user, response.data.token);
-        
+
         // Redirect based on role
         const redirectPath = role === "school" ? "/school" : `/${role}`;
         setTimeout(() => navigate(redirectPath), 1500);
       } catch (error) {
-        const errorMessage =
-          error.response?.data?.message ||
-          "Login failed. Please check your credentials.";
+        // Improved error handling
+        let errorMessage = "Login failed. Please check your credentials.";
+
+        if (error.response) {
+          // Handle specific error cases
+          if (error.response.status === 403) {
+            errorMessage = error.response.data.message;
+          } else if (error.response.status === 401) {
+            errorMessage = "Invalid email or password";
+          } else {
+            errorMessage = error.response.data?.message || errorMessage;
+          }
+        }
+
         setMessage(errorMessage);
         setMessageType("error");
       }

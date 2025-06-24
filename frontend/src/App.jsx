@@ -21,7 +21,7 @@ import Subjects from "./school/components/subjects/Subjects";
 import Teachers from "./school/components/teachers/Teachers";
 import AttendanceStudentList from "./school/components/attendance/AttendanceStudentList";
 import ResultSchool from "./school/components/results/resultsSchool";
-import LeaveSchool from "./school/components/leave/leaveSchool"
+import LeaveSchool from "./school/components/leave/leaveSchool";
 
 // Client Components
 import Client from "./client/Client";
@@ -31,8 +31,8 @@ import Register from "./client/components/register/Register";
 import LogOut from "./client/components/logout/LogOut";
 import ForgotPassword from "./client/components/login/ForgotPassword";
 import ResetPassword from "./client/components/login/ResetPassword";
-
-
+import VerifyEmail from "./client/components/verify-email/VerifyEmail";
+import ResendVerification from "./client/components/verify-email/ResendVerification";
 // Teacher Components
 import Teacher from "./teacher/Teacher";
 import TeacherDetails from "./teacher/components/teacher details/TeacherDetails";
@@ -42,7 +42,7 @@ import ExaminationsTeacher from "./teacher/components/examinations/ExaminationTe
 import NoticeTeacher from "./teacher/components/notice/NoticeTeacher";
 import Assignment from "./teacher/components/assignment/Assignment";
 import Result from "./teacher/components/result/teacherResult";
-import LeaveTeacher from "./teacher/components/leave/leaveTeacher"
+import LeaveTeacher from "./teacher/components/leave/leaveTeacher";
 
 // Student Components
 import Student from "./student/Student";
@@ -70,11 +70,14 @@ function AppContent() {
           <Route index element={<Home />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
-          <Route path="logout" element={<LogOut />} />
 
-          {/* Password reset routes (public) */}
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          {/* Add verification route inside Client layout */}
+          <Route path="verify-email" element={<VerifyEmail />} />
+          <Route path="resend-verification" element={<ResendVerification />} />
+
+          <Route path="logout" element={<LogOut />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
+          <Route path="reset-password/:token" element={<ResetPassword />} />
         </Route>
 
         {/* School protected routes */}
@@ -97,8 +100,7 @@ function AppContent() {
           <Route path="subjects" element={<Subjects />} />
           <Route path="teachers" element={<Teachers />} />
           <Route path="result" element={<ResultSchool />} />
-          <Route path="leave" element={<LeaveSchool/>}/>
-
+          <Route path="leave" element={<LeaveSchool />} />
         </Route>
 
         {/* Student protected routes */}
@@ -118,7 +120,7 @@ function AppContent() {
           <Route path="assignment" element={<AssignmentStudent />} />
           <Route path="support" element={<Support />} />
           <Route path="results" element={<ResultStudent />} />
-          <Route path="leave" element={<StudentLeave/>}/>
+          <Route path="leave" element={<StudentLeave />} />
         </Route>
 
         {/* Teacher protected routes */}
@@ -137,7 +139,7 @@ function AppContent() {
           <Route path="notice" element={<NoticeTeacher />} />
           <Route path="assignment" element={<Assignment />} />
           <Route path="result" element={<Result />} />
-          <Route path="leave" element={<LeaveTeacher/>}/>
+          <Route path="leave" element={<LeaveTeacher />} />
         </Route>
 
         {/* Catch-all route */}
@@ -152,12 +154,12 @@ export default function App() {
 
   return (
     <ChatbotProvider>
-    <ThemeProvider theme={dark ? darkTheme : lightTheme}>
-      <CssBaseline />
-      <DraggableButton />
-      <AppContent />
-      <AIChatbot />
-    </ThemeProvider>
+      <ThemeProvider theme={dark ? darkTheme : lightTheme}>
+        <CssBaseline />
+        <DraggableButton />
+        <AppContent />
+        <AIChatbot />
+      </ThemeProvider>
     </ChatbotProvider>
   );
 }

@@ -1,8 +1,21 @@
 const mongoose = require('mongoose');
 
 const teacherSchema = new mongoose.Schema({
-    school: { type: mongoose.Schema.Types.ObjectId, ref: 'School' },
-    email: { type: String, required: true, unique: true },
+    school: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'School' 
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        validate: {
+            validator: function(v) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+            },
+            message: props => `${props.value} is not a valid email!`
+        }
+    },
     name: { type: String, required: true },
     qualification: { type: String, required: true },
     age: { type: Number, required: true },
@@ -14,24 +27,19 @@ const teacherSchema = new mongoose.Schema({
         ref: 'Class',
         default: null
     },
-    is_class_teacher: {
-        type: Boolean,
-        default: false
-    },
+    is_class_teacher: { type: Boolean, default: false },
     subjects: [{ 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'Subject' 
     }],
-   resetPasswordToken: {
-    type: String, // ✅ FIXED: Should be string, not Object
-  },
-  resetPasswordExpires: {
-    type: Date, // ✅ FIXED: Should be Date, not Object
-  },
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerificationToken: {type:String},
+    emailVerificationExpires: {type: Date},
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
     createdAt: { type: Date, default: Date.now }
 });
 
-// Pre-save hook to ensure only one class teacher per class
 teacherSchema.pre('save', async function(next) {
     if (this.isModified('is_class_teacher') && this.is_class_teacher && this.class) {
         const existingClassTeacher = await mongoose.model('Teacher').findOne({

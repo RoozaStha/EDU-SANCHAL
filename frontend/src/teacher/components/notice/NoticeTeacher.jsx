@@ -1025,6 +1025,8 @@ function NoticeCard({
 }
 
 function EmptyState({ searchTerm, activeTab, getAudienceLabel, fetchNotices }) {
+  const theme = useTheme(); // Fixed: Added useTheme hook
+  
   return (
     <Paper
       sx={{
